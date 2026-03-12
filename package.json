@@ -1,0 +1,16 @@
+{
+  "name": "brainexe-dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard local temps réel pour Neurodivergent Creator Hub",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.0.0",
+    "express": "^4.18.0",
+    "chokidar": "^3.5.0",
+    "ws": "^8.0.0"
+  }
+}
