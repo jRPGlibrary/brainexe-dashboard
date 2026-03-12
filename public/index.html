@@ -422,7 +422,8 @@ let newLogsCount = 0;
 
 // ── WEBSOCKET ─────────────────────────────────────────────────
 function connectWS() {
-  ws = new WebSocket(`ws://${location.host}`);
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
 
   ws.onopen = () => {
     document.getElementById('botDot').style.background = 'var(--green)';

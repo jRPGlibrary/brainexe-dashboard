@@ -21,9 +21,9 @@ const path       = require('path');
 const { Client, GatewayIntentBits, ChannelType, Events, PermissionFlagsBits } = require('discord.js');
 
 // ── CONFIG ───────────────────────────────────────────────────
-const TOKEN         = 'MTQ4MTMyNjgyMzExMDM0ODg2NA.Gg8B4N.xTRaocNaCrQ6ES8FBsZTU0KQX60PoF4ZsFOxVw';
-const GUILD_ID      = '1481022956816830669';
-const PORT          = 3000;
+const TOKEN         = process.env.DISCORD_TOKEN;
+const GUILD_ID      = process.env.GUILD_ID      || '1481022956816830669';
+const PORT          = process.env.PORT           || 3000;
 const TEMPLATE_FILE = 'discord-template.json';
 
 // ── INIT ─────────────────────────────────────────────────────
