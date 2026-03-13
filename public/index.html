@@ -3,461 +3,1789 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BrainEXE Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>BrainEXE — Control Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+/* ═══════════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════════ */
 :root {
-  --bg: #080a0f; --bg2: #0d1017; --bg3: #121520; --bg4: #181d27;
-  --border: rgba(255,255,255,0.06);
-  --accent: #7c5cbf; --accent2: #e040c8; --accent3: #00e5ff;
-  --green: #00e676; --red: #ff1744; --yellow: #ffea00; --orange: #ff6d00;
-  --text: #e8eaf0; --text2: #8b90a8; --text3: #404560;
-  --mono: 'Space Mono', monospace; --sans: 'Syne', sans-serif;
+  --bg:       #06080F;
+  --surface:  #0B0F1C;
+  --card:     #101525;
+  --card2:    #141929;
+  --border:   #1E2847;
+  --border2:  rgba(255,255,255,0.04);
+  --blue:     #5B7FFF;
+  --blue-dim: rgba(91,127,255,0.12);
+  --blue-glow:rgba(91,127,255,0.35);
+  --purple:   #A78BFA;
+  --purple-dim:rgba(167,139,250,0.12);
+  --green:    #34D399;
+  --green-dim:rgba(52,211,153,0.1);
+  --red:      #F87171;
+  --red-dim:  rgba(248,113,113,0.1);
+  --yellow:   #FBBF24;
+  --yellow-dim:rgba(251,191,36,0.1);
+  --cyan:     #22D3EE;
+  --cyan-dim: rgba(34,211,238,0.1);
+  --text:     #E2E8F0;
+  --text2:    #7C8DB5;
+  --text3:    #3A4A6B;
+  --font:     'Plus Jakarta Sans', sans-serif;
+  --mono:     'JetBrains Mono', monospace;
+  --radius:   10px;
+  --radius-lg:14px;
+  --sidebar:  256px;
+  --topbar:   58px;
+  --shadow:   0 4px 24px rgba(0,0,0,0.5);
 }
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events: none; z-index: 9999; opacity: 0.4; }
-body::after { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); pointer-events: none; z-index: 9998; }
 
-.layout { display: grid; grid-template-columns: 220px 1fr; grid-template-rows: 56px 1fr; min-height: 100vh; }
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+  font-size: 14px;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: var(--font); }
+input, select, textarea { font-family: var(--font); }
 
-/* TOPBAR */
-.topbar { grid-column: 1 / -1; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; position: sticky; top: 0; z-index: 100; }
-.topbar-logo { font-family: var(--mono); font-size: 0.85rem; font-weight: 700; color: var(--accent3); letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
-.dot-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ═══════════════════════════════════════════════
+   LAYOUT SHELL
+═══════════════════════════════════════════════ */
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar) 1fr;
+  grid-template-rows: var(--topbar) 1fr;
+  min-height: 100vh;
+}
+
+/* ═══════════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════════ */
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px 0 0;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  backdrop-filter: blur(12px);
+}
+.topbar-brand {
+  width: var(--sidebar);
+  flex-shrink: 0;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-right: 1px solid var(--border);
+  height: 100%;
+}
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.brand-name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--text);
+}
+.brand-ver {
+  font-size: 0.62rem;
+  font-family: var(--mono);
+  color: var(--text3);
+  margin-top: 1px;
+}
 .topbar-sep { flex: 1; }
-.topbar-info { font-family: var(--mono); font-size: 0.68rem; color: var(--text3); display: flex; align-items: center; gap: 16px; }
-.status-pill { display: flex; align-items: center; gap: 5px; color: var(--text2); }
-.s { width: 6px; height: 6px; border-radius: 50%; }
-.s.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
-.s.sync { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); animation: pulse 1.5s infinite; }
-.s.off { background: var(--red); }
+.topbar-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text2);
+  white-space: nowrap;
+}
+.pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pill-dot.on   { background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 3s ease infinite; }
+.pill-dot.sync { background: var(--blue);  box-shadow: 0 0 6px var(--blue);  animation: blink 2s ease infinite; }
+.pill-dot.off  { background: var(--red); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
-/* SIDEBAR */
-.sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 20px 0; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; }
-.sidebar-section { padding: 8px 16px 4px; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); margin-top: 8px; }
-.nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; font-size: 0.83rem; color: var(--text2); border-left: 2px solid transparent; transition: all 0.15s; }
-.nav-item:hover { background: rgba(255,255,255,0.03); color: var(--text); }
-.nav-item.active { background: rgba(124,92,191,0.1); color: var(--text); border-left-color: var(--accent); }
-.nav-badge { margin-left: auto; background: var(--accent); color: white; font-size: 0.6rem; font-family: var(--mono); padding: 1px 5px; border-radius: 4px; }
-.nav-badge.live { background: var(--red); animation: pulse 1s infinite; }
+.topbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text2);
+  transition: all .15s;
+}
+.topbar-btn:hover { background: var(--card2); color: var(--text); border-color: var(--blue); }
+.topbar-btn.primary { background: var(--blue); color: white; border-color: var(--blue); }
+.topbar-btn.primary:hover { background: #6B8FFF; }
 
-/* MAIN */
-.main { padding: 28px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+/* ═══════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════ */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  position: sticky;
+  top: var(--topbar);
+  height: calc(100vh - var(--topbar));
+}
+.nav-section {
+  padding: 14px 10px 5px;
+  font-size: 0.6rem;
+  font-family: var(--mono);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text3);
+  font-weight: 700;
+  margin-top: 2px;
+}
+.nav-section:first-child { padding-top: 4px; }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .13s;
+  border: 1px solid transparent;
+  position: relative;
+}
+.nav-item:hover { background: var(--card); color: var(--text); }
+.nav-item.active {
+  background: var(--blue-dim);
+  color: #A5BAFF;
+  border-color: rgba(91,127,255,0.2);
+  font-weight: 600;
+}
+.nav-item.active .nav-icon { color: var(--blue); }
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.nav-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: white;
+  font-size: 0.58rem;
+  font-family: var(--mono);
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+.nav-badge.blue { background: var(--blue); }
+.nav-badge.green { background: var(--green); color: #000; }
 
-/* PAGES */
-.page { display: none; flex-direction: column; gap: 20px; }
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.server-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+.server-avatar {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #3B4FA0, #7B4FD0);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.server-name { font-size: 0.78rem; font-weight: 700; color: var(--text); }
+.server-meta { font-size: 0.63rem; color: var(--text2); font-family: var(--mono); }
+
+/* ═══════════════════════════════════════════════
+   MAIN CONTENT
+═══════════════════════════════════════════════ */
+.main {
+  padding: 28px 28px 40px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+/* ═══════════════════════════════════════════════
+   PAGES
+═══════════════════════════════════════════════ */
+.page { display: none; flex-direction: column; gap: 22px; animation: fadeIn .2s ease; }
 .page.active { display: flex; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
 
-/* PAGE HEADER */
-.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.page-title { font-size: 1.5rem; font-weight: 800; background: linear-gradient(90deg, #fff 0%, var(--accent3) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.page-sub { font-size: 0.75rem; color: var(--text2); margin-top: 4px; font-family: var(--mono); }
-.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-family: var(--sans); font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
-.btn-primary { background: var(--accent); color: white; }
-.btn-primary:hover { background: #9370d8; transform: translateY(-1px); }
-.btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
-.btn-ghost:hover { background: var(--bg4); color: var(--text); }
-.btn-danger { background: rgba(255,23,68,0.15); color: var(--red); border: 1px solid rgba(255,23,68,0.2); }
-.btn-danger:hover { background: rgba(255,23,68,0.25); }
-.btn-success { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid rgba(0,230,118,0.2); }
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.page-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.page-sub {
+  font-size: 0.78rem;
+  color: var(--text2);
+  margin-top: 3px;
+  font-family: var(--mono);
+}
+.page-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
-/* STATS */
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.stat-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; position: relative; overflow: hidden; transition: border-color 0.2s; }
-.stat-card:hover { border-color: rgba(124,92,191,0.3); }
-.stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
-.stat-card.c1::before { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
-.stat-card.c2::before { background: linear-gradient(90deg, var(--accent3), var(--accent)); }
-.stat-card.c3::before { background: linear-gradient(90deg, var(--green), var(--accent3)); }
-.stat-card.c4::before { background: linear-gradient(90deg, var(--orange), var(--red)); }
-.stat-label { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text2); margin-bottom: 8px; }
-.stat-value { font-size: 1.8rem; font-weight: 800; line-height: 1; }
-.stat-sub { font-size: 0.72rem; color: var(--text2); margin-top: 4px; font-family: var(--mono); }
+/* ═══════════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════════ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.card-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(0,0,0,0.15);
+}
+.card-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title span { font-size: 13px; }
+.card-body { padding: 16px 18px; }
+.card-body.np { padding: 0; }
 
-/* SYNC BAR */
-.sync-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: rgba(0,229,255,0.05); border: 1px solid rgba(0,229,255,0.15); border-radius: 8px; }
-.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent3); box-shadow: 0 0 8px var(--accent3); animation: pulse 1.5s infinite; flex-shrink: 0; }
-.sync-text { font-family: var(--mono); font-size: 0.72rem; color: var(--accent3); }
-.sync-meta { margin-left: auto; font-family: var(--mono); font-size: 0.65rem; color: var(--text3); }
+/* ═══════════════════════════════════════════════
+   STAT CARDS
+═══════════════════════════════════════════════ */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.stat:hover { border-color: rgba(91,127,255,0.3); }
+.stat-accent { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  margin-bottom: 14px;
+}
+.stat-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); margin-bottom: 4px; }
+.stat-value { font-size: 2rem; font-weight: 800; line-height: 1; color: var(--text); }
+.stat-delta { font-size: 0.7rem; color: var(--text2); margin-top: 4px; font-family: var(--mono); }
 
-/* CARD */
-.card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-.card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); }
-.card-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); display: flex; align-items: center; gap: 8px; }
-.card-body { padding: 14px 16px; }
+/* ═══════════════════════════════════════════════
+   SYNC STATUS BAR
+═══════════════════════════════════════════════ */
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+}
+.sync-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sync-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  flex-shrink: 0;
+  animation: blink 2s ease infinite;
+}
+.sync-label { font-size: 0.78rem; font-weight: 600; color: var(--text); }
+.sync-detail { font-size: 0.7rem; color: var(--text2); font-family: var(--mono); }
+.sync-btns { margin-left: auto; display: flex; gap: 8px; }
 
-/* GRID */
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.grid3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+/* ═══════════════════════════════════════════════
+   GRID LAYOUTS
+═══════════════════════════════════════════════ */
+.grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.grid-1-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3   { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 
-/* STRUCTURE TREE */
-.structure-tree { display: flex; flex-direction: column; gap: 2px; max-height: 400px; overflow-y: auto; }
-.tree-cat { display: flex; align-items: center; gap: 8px; padding: 7px 8px; background: rgba(255,255,255,0.03); border-radius: 6px; cursor: pointer; margin-top: 6px; user-select: none; }
-.tree-cat-name { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text2); flex: 1; }
-.tree-channel { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 24px; border-radius: 5px; cursor: default; transition: background 0.1s; }
-.tree-channel:hover { background: rgba(255,255,255,0.04); }
-.tree-ch-name { font-size: 0.8rem; color: var(--text2); flex: 1; }
-.tree-channel:hover .tree-ch-name { color: var(--text); }
-.tree-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.1s; }
-.tree-channel:hover .tree-actions { opacity: 1; }
-.tree-btn { font-size: 11px; padding: 2px 6px; border-radius: 3px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--mono); }
-.tree-btn:hover { background: var(--bg4); color: var(--text); }
-.tree-btn.del:hover { background: rgba(255,23,68,0.15); color: var(--red); border-color: rgba(255,23,68,0.3); }
+/* ═══════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all .13s;
+  white-space: nowrap;
+}
+.btn-primary  { background: var(--blue);  color: white;         border-color: var(--blue);  }
+.btn-primary:hover  { background: #6B8FFF; transform: translateY(-1px); }
+.btn-ghost    { background: var(--card2); color: var(--text2);  border-color: var(--border); }
+.btn-ghost:hover    { background: var(--card);  color: var(--text); border-color: var(--text3); }
+.btn-danger   { background: var(--red-dim); color: var(--red); border-color: rgba(248,113,113,0.2); }
+.btn-danger:hover   { background: rgba(248,113,113,0.2); }
+.btn-success  { background: var(--green-dim); color: var(--green); border-color: rgba(52,211,153,0.2); }
+.btn-success:hover  { background: rgba(52,211,153,0.2); }
+.btn-purple   { background: var(--purple-dim); color: var(--purple); border-color: rgba(167,139,250,0.2); }
+.btn-purple:hover { background: rgba(167,139,250,0.2); }
+.btn-xs { padding: 4px 10px; font-size: 0.7rem; border-radius: 6px; }
+.btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+.btn-icon { padding: 7px; width: 32px; height: 32px; justify-content: center; }
 
-/* ROLES */
-.roles-list { display: flex; flex-direction: column; gap: 5px; max-height: 400px; overflow-y: auto; }
-.role-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg4); transition: border-color 0.15s; }
-.role-row:hover { border-color: rgba(124,92,191,0.3); }
-.role-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-.role-name { font-size: 0.82rem; font-weight: 600; flex: 1; }
-.role-hoist { font-family: var(--mono); font-size: 0.6rem; padding: 2px 6px; border-radius: 3px; background: rgba(124,92,191,0.15); color: var(--accent); }
-.role-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+/* ═══════════════════════════════════════════════
+   FORMS
+═══════════════════════════════════════════════ */
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text2);
+}
+.field-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.field-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
+.field-input::placeholder { color: var(--text3); }
+.field-input[type="color"] { height: 38px; padding: 3px 6px; cursor: pointer; }
+select.field-input { cursor: pointer; }
+.form-row { display: flex; gap: 12px; }
+.form-row > * { flex: 1; }
+
+/* ═══════════════════════════════════════════════
+   TABLE
+═══════════════════════════════════════════════ */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead tr { border-bottom: 1px solid var(--border); }
+th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text3);
+}
+tbody tr {
+  border-bottom: 1px solid var(--border2);
+  transition: background .1s;
+}
+tbody tr:hover { background: rgba(255,255,255,0.02); }
+tbody tr:last-child { border-bottom: none; }
+td {
+  padding: 11px 14px;
+  font-size: 0.82rem;
+  color: var(--text2);
+  vertical-align: middle;
+}
+
+/* ═══════════════════════════════════════════════
+   CHANNEL TREE
+═══════════════════════════════════════════════ */
+.tree { display: flex; flex-direction: column; }
+.tree-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 6px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+.tree-cat-row::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: var(--border);
+}
+.tree-cat-icon { font-size: 10px; color: var(--text3); transition: transform .15s; }
+.tree-cat-icon.open { transform: rotate(90deg); }
+.tree-cat-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text2);
+  flex: 1;
+}
+.tree-cat-count {
+  font-size: 0.65rem;
+  font-family: var(--mono);
+  color: var(--text3);
+  background: var(--card2);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.tree-ch-list { padding: 4px 0 8px; }
+.tree-ch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 6px 36px;
+  border-radius: 6px;
+  margin: 1px 8px;
+  cursor: default;
+  transition: background .1s;
+  group: true;
+}
+.tree-ch-row:hover { background: rgba(255,255,255,0.04); }
+.ch-type-icon { font-size: 12px; color: var(--text3); flex-shrink: 0; }
+.ch-name { font-size: 0.82rem; color: var(--text2); flex: 1; }
+.ch-topic { font-size: 0.7rem; color: var(--text3); font-family: var(--mono); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-actions { display: flex; gap: 4px; opacity: 0; transition: opacity .1s; }
+.tree-ch-row:hover .ch-actions { opacity: 1; }
+
+/* ═══════════════════════════════════════════════
+   ROLE CHIP
+═══════════════════════════════════════════════ */
+.roles-grid { display: flex; flex-direction: column; gap: 4px; }
+.role-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  transition: border-color .15s;
+}
+.role-row:hover { border-color: rgba(91,127,255,0.25); }
+.role-swatch { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.08); }
+.role-name { font-size: 0.83rem; font-weight: 600; flex: 1; }
+.role-tag {
+  font-size: 0.62rem;
+  font-family: var(--mono);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+.role-tag.hoist  { background: var(--blue-dim); color: var(--blue); }
+.role-tag.bot    { background: var(--purple-dim); color: var(--purple); }
+.role-tag.admin  { background: var(--red-dim); color: var(--red); }
+.role-pos { font-family: var(--mono); font-size: 0.65rem; color: var(--text3); min-width: 24px; text-align: right; }
+.role-actions { display: flex; gap: 4px; opacity: 0; transition: opacity .13s; }
 .role-row:hover .role-actions { opacity: 1; }
 
-/* LOG */
-.log-container { background: var(--bg); border-radius: 8px; padding: 10px; font-family: var(--mono); font-size: 0.68rem; height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
-.log-line { display: flex; gap: 8px; align-items: flex-start; animation: fadeIn 0.3s forwards; }
-@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
-.log-time { color: var(--text3); flex-shrink: 0; min-width: 60px; }
-.log-dir { padding: 1px 5px; border-radius: 3px; font-size: 0.58rem; font-weight: 700; flex-shrink: 0; min-width: 36px; text-align: center; }
-.log-dir.d2f { background: rgba(0,229,255,0.12); color: var(--accent3); }
-.log-dir.f2d { background: rgba(224,64,200,0.12); color: var(--accent2); }
-.log-dir.sys { background: rgba(124,92,191,0.12); color: var(--accent); }
-.log-dir.api { background: rgba(0,230,118,0.12); color: var(--green); }
-.log-dir.err { background: rgba(255,23,68,0.12); color: var(--red); }
-.log-msg { color: var(--text2); flex: 1; }
-.log-msg.success { color: var(--green); }
-.log-msg.error { color: var(--red); }
+/* ═══════════════════════════════════════════════
+   LOG STREAM
+═══════════════════════════════════════════════ */
+.log-stream {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 10px;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.log-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  transition: background .1s;
+  animation: slideIn .2s ease;
+}
+.log-line:hover { background: rgba(255,255,255,0.03); }
+@keyframes slideIn { from{opacity:0;transform:translateX(-4px)} to{opacity:1;transform:none} }
+.log-ts { color: var(--text3); flex-shrink: 0; min-width: 62px; }
+.log-badge {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  min-width: 40px;
+  text-align: center;
+}
+.log-badge.d2f  { background: rgba(34,211,238,0.12); color: var(--cyan); }
+.log-badge.f2d  { background: var(--purple-dim); color: var(--purple); }
+.log-badge.sys  { background: var(--blue-dim); color: var(--blue); }
+.log-badge.api  { background: var(--green-dim); color: var(--green); }
+.log-badge.err  { background: var(--red-dim); color: var(--red); }
+.log-badge.join { background: var(--yellow-dim); color: var(--yellow); }
+.log-msg { flex: 1; color: var(--text2); }
+.log-msg.ok  { color: var(--green); }
+.log-msg.bad { color: var(--red); }
 
-/* FORM */
-.add-form { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.input-field { flex: 1; min-width: 100px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-family: var(--mono); font-size: 0.73rem; color: var(--text); outline: none; transition: border-color 0.15s; }
-.input-field:focus { border-color: var(--accent); }
-.input-field::placeholder { color: var(--text3); }
-select.input-field { cursor: pointer; }
-.color-input { width: 36px; height: 36px; padding: 3px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; }
+/* ═══════════════════════════════════════════════
+   LOG FILTERS
+═══════════════════════════════════════════════ */
+.log-filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.log-filter-btn {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-family: var(--mono);
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--text3);
+  cursor: pointer;
+  transition: all .12s;
+}
+.log-filter-btn:hover { color: var(--text2); border-color: var(--text3); }
+.log-filter-btn.active { background: var(--blue-dim); color: var(--blue); border-color: rgba(91,127,255,0.3); }
 
-/* QUICK ACTIONS */
-.quick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-.quick-btn { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg4); cursor: pointer; transition: all 0.15s; font-size: 0.82rem; font-weight: 600; color: var(--text2); }
-.quick-btn:hover { border-color: rgba(124,92,191,0.4); color: var(--text); transform: translateY(-1px); }
+/* ═══════════════════════════════════════════════
+   QUICK ACTIONS
+═══════════════════════════════════════════════ */
+.qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qa-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  cursor: pointer;
+  transition: all .15s;
+  text-align: left;
+}
+.qa-btn:hover { border-color: rgba(91,127,255,0.3); background: var(--card); transform: translateY(-1px); }
+.qa-icon { font-size: 18px; }
+.qa-label { font-size: 0.78rem; font-weight: 700; color: var(--text); }
+.qa-desc { font-size: 0.68rem; color: var(--text2); }
 
-/* MODAL */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-.modal-overlay.open { display: flex; }
-.modal { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 400px; max-width: 90vw; }
-.modal-title { font-size: 1rem; font-weight: 800; margin-bottom: 16px; }
-.modal-fields { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-.field-label { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); margin-bottom: 4px; }
-.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+/* ═══════════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════════ */
+.modal-wrap {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-wrap.open { display: flex; }
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 460px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+}
+.modal-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title { font-size: 0.98rem; font-weight: 800; }
+.modal-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+}
+.modal-close:hover { background: var(--red-dim); color: var(--red); border-color: rgba(248,113,113,0.3); }
+.modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { padding: 12px 20px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
 
-/* TOAST */
-.toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
-.toast { padding: 10px 16px; border-radius: 8px; font-family: var(--mono); font-size: 0.72rem; animation: slideUp 0.3s forwards; border: 1px solid; }
-@keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
-.toast.success { background: rgba(0,230,118,0.1); color: var(--green); border-color: rgba(0,230,118,0.3); }
-.toast.error { background: rgba(255,23,68,0.1); color: var(--red); border-color: rgba(255,23,68,0.3); }
-.toast.info { background: rgba(0,229,255,0.1); color: var(--accent3); border-color: rgba(0,229,255,0.3); }
+/* ═══════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════ */
+.toast-stack {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid;
+  box-shadow: var(--shadow);
+  animation: toastIn .25s ease;
+  max-width: 340px;
+}
+@keyframes toastIn { from{opacity:0;transform:translateY(8px) scale(0.96)} to{opacity:1;transform:none} }
+.toast.success { background: rgba(10,26,18,0.95); color: var(--green); border-color: rgba(52,211,153,0.25); }
+.toast.error   { background: rgba(26,10,12,0.95); color: var(--red);   border-color: rgba(248,113,113,0.25); }
+.toast.info    { background: rgba(10,14,26,0.95); color: #A5BAFF;      border-color: rgba(91,127,255,0.25); }
+.toast.warn    { background: rgba(26,22,10,0.95); color: var(--yellow); border-color: rgba(251,191,36,0.25); }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--text3); border-radius: 2px; }
+/* ═══════════════════════════════════════════════
+   BADGES / TAGS
+═══════════════════════════════════════════════ */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+.tag.voice { background: var(--purple-dim); color: var(--purple); }
+.tag.text  { background: var(--blue-dim); color: var(--blue); }
 
-@media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; }
+/* ═══════════════════════════════════════════════
+   REACTION ROLE BUILDER
+═══════════════════════════════════════════════ */
+.rr-list { display: flex; flex-direction: column; gap: 8px; }
+.rr-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+}
+.rr-emoji {
+  font-size: 22px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.rr-role-name { font-size: 0.83rem; font-weight: 600; flex: 1; }
+.rr-role-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.rr-actions { display: flex; gap: 4px; opacity: 0; transition: opacity .12s; }
+.rr-item:hover .rr-actions { opacity: 1; }
+
+/* ═══════════════════════════════════════════════
+   WELCOME CONFIG
+═══════════════════════════════════════════════ */
+.embed-preview {
+  border-left: 4px solid var(--blue);
+  background: rgba(30,40,71,0.4);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.embed-author { font-size: 0.75rem; color: var(--text2); }
+.embed-title { font-size: 0.95rem; font-weight: 700; color: var(--text); }
+.embed-desc { font-size: 0.8rem; color: var(--text2); line-height: 1.5; white-space: pre-wrap; }
+.embed-footer { font-size: 0.68rem; color: var(--text3); padding-top: 8px; border-top: 1px solid var(--border); }
+
+/* ═══════════════════════════════════════════════
+   MEMBERS LIST
+═══════════════════════════════════════════════ */
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+}
+.member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3B4FA0, #7B4FD0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.member-name { font-size: 0.82rem; font-weight: 600; flex: 1; }
+.member-roles { display: flex; gap: 4px; flex-wrap: wrap; }
+.member-role-chip {
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 10px;
+  color: white;
+  font-family: var(--mono);
+}
+
+/* ═══════════════════════════════════════════════
+   SETTINGS SECTION
+═══════════════════════════════════════════════ */
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border2);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-info { flex: 1; }
+.setting-title { font-size: 0.85rem; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.setting-desc { font-size: 0.75rem; color: var(--text2); }
+.setting-control { flex-shrink: 0; }
+
+/* Toggle switch */
+.toggle { position: relative; display: inline-block; width: 40px; height: 22px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  transition: .2s;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 3px;
+  bottom: 3px;
+  background: var(--text3);
+  border-radius: 50%;
+  transition: .2s;
+}
+.toggle input:checked + .toggle-slider { background: var(--blue-dim); border-color: var(--blue); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(18px); background: var(--blue); }
+
+/* ═══════════════════════════════════════════════
+   INLINE EDIT
+═══════════════════════════════════════════════ */
+.inline-edit-wrap { display: flex; gap: 4px; align-items: center; }
+.inline-edit-wrap input {
+  background: var(--bg);
+  border: 1px solid var(--blue);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 0.8rem;
+  color: var(--text);
+  outline: none;
+  width: 180px;
+}
+
+/* ═══════════════════════════════════════════════
+   ACTIVITY FEED
+═══════════════════════════════════════════════ */
+.activity-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border2);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.activity-text { font-size: 0.8rem; color: var(--text2); flex: 1; line-height: 1.4; }
+.activity-time { font-size: 0.66rem; font-family: var(--mono); color: var(--text3); flex-shrink: 0; margin-top: 3px; }
+
+/* ═══════════════════════════════════════════════
+   BACKUP LIST
+═══════════════════════════════════════════════ */
+.backup-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+}
+.backup-icon { font-size: 18px; flex-shrink: 0; }
+.backup-name { font-size: 0.8rem; font-weight: 600; flex: 1; font-family: var(--mono); color: var(--text2); }
+.backup-date { font-size: 0.68rem; color: var(--text3); font-family: var(--mono); }
+
+/* ═══════════════════════════════════════════════
+   EMPTY STATE
+═══════════════════════════════════════════════ */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 20px;
+  color: var(--text3);
+  text-align: center;
+}
+.empty-icon { font-size: 32px; opacity: 0.5; }
+.empty-text { font-size: 0.8rem; }
+
+/* ═══════════════════════════════════════════════
+   CHANNEL INLINE EDIT
+═══════════════════════════════════════════════ */
+.edit-input {
+  background: var(--bg);
+  border: 1px solid var(--blue);
+  border-radius: 5px;
+  padding: 3px 8px;
+  color: var(--text);
+  font-size: 0.8rem;
+  outline: none;
+  font-family: var(--font);
+  width: 160px;
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════ */
+@media (max-width: 1000px) {
+  :root { --sidebar: 60px; }
+  .nav-item span:not(.nav-icon) { display: none; }
+  .nav-item { justify-content: center; padding: 9px; }
+  .nav-badge { display: none; }
+  .nav-section { display: none; }
+  .brand-name, .brand-ver, .server-name, .server-meta { display: none; }
+  .brand-icon { margin: auto; }
+  .topbar-brand { justify-content: center; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .grid-2-1, .grid-1-1 { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  :root { --sidebar: 0px; }
   .sidebar { display: none; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .grid2, .grid3 { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: 1fr; }
 }
 </style>
 </head>
 <body>
-<div class="layout">
+<div class="shell">
 
-  <!-- TOPBAR -->
-  <header class="topbar">
-    <div class="topbar-logo">
-      <span class="dot-pulse" id="botDot"></span>
-      BRAINEXE // DASHBOARD
+<!-- ═══ TOPBAR ═══════════════════════════════════ -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">🧠</div>
+    <div>
+      <div class="brand-name">BrainEXE</div>
+      <div class="brand-ver">CONTROL PANEL</div>
     </div>
-    <div class="topbar-sep"></div>
-    <div class="topbar-info">
-      <div class="status-pill"><span class="s" id="botStatusDot"></span><span id="botStatusText">Connexion...</span></div>
-      <div class="status-pill"><span class="s sync" id="syncDot"></span><span id="syncText">Sync active</span></div>
-      <div class="status-pill" style="color:var(--text3)" id="lastSyncText">—</div>
+  </div>
+
+  <div class="topbar-pills">
+    <div class="pill"><span class="pill-dot off" id="botDot"></span><span id="botLabel">Connexion…</span></div>
+    <div class="pill"><span class="pill-dot sync" id="syncDot"></span><span id="syncLabel">Sync active</span></div>
+    <div class="pill" style="color:var(--text3)" id="lastSyncPill">—</div>
+  </div>
+
+  <div class="topbar-sep"></div>
+
+  <div style="display:flex;gap:8px;align-items:center;margin-right:4px">
+    <button class="topbar-btn" id="tbBackup">📦 Backup</button>
+    <button class="topbar-btn primary" id="tbSync">⚡ Forcer sync</button>
+  </div>
+</header>
+
+<!-- ═══ SIDEBAR ══════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="nav-section">Principal</div>
+  <div class="nav-item active" data-page="overview"><span class="nav-icon">🏠</span> Vue d'ensemble</div>
+  <div class="nav-item" data-page="members"><span class="nav-icon">👥</span> Membres <span class="nav-badge blue" id="navMemberCount">?</span></div>
+
+  <div class="nav-section">Serveur</div>
+  <div class="nav-item" data-page="channels"><span class="nav-icon">📁</span> Salons</div>
+  <div class="nav-item" data-page="roles"><span class="nav-icon">🎭</span> Rôles</div>
+
+  <div class="nav-section">Bots & Config</div>
+  <div class="nav-item" data-page="autorole"><span class="nav-icon">🤖</span> Auto-Role</div>
+  <div class="nav-item" data-page="reactionroles"><span class="nav-icon">✨</span> Reaction Roles</div>
+  <div class="nav-item" data-page="welcome"><span class="nav-icon">👋</span> Bienvenue</div>
+
+  <div class="nav-section">Système</div>
+  <div class="nav-item" data-page="logs"><span class="nav-icon">📋</span> Logs <span class="nav-badge" id="navLogsBadge" style="display:none">0</span></div>
+  <div class="nav-item" data-page="backups"><span class="nav-icon">📦</span> Backups</div>
+  <div class="nav-item" data-page="settings"><span class="nav-icon">⚙️</span> Paramètres</div>
+
+  <div class="sidebar-footer">
+    <div class="server-card">
+      <div class="server-avatar">⚡</div>
+      <div>
+        <div class="server-name" id="sideServerName">BrainEXE</div>
+        <div class="server-meta" id="sideServerMeta">— membres</div>
+      </div>
     </div>
-  </header>
+  </div>
+</nav>
 
-  <!-- SIDEBAR -->
-  <nav class="sidebar">
-    <div class="sidebar-section">Navigation</div>
-    <div class="nav-item active" data-page="dashboard">🧠 Dashboard</div>
-    <div class="nav-item" data-page="channels">📁 Salons</div>
-    <div class="nav-item" data-page="roles">🎭 Rôles</div>
-    <div class="sidebar-section">Sync</div>
-    <div class="nav-item" data-page="logs">📋 Logs <span class="nav-badge" id="logsBadge">0</span></div>
-    <div class="sidebar-section">Actions</div>
-    <div class="nav-item" id="navBackup">📦 Backup</div>
-    <div class="nav-item" id="navForceSync">⚡ Forcer sync</div>
-    <div class="nav-item" data-page="autorole">🎭 Auto-Role</div>
-  </nav>
+<!-- ═══ MAIN ══════════════════════════════════════ -->
+<main class="main">
 
-  <!-- MAIN -->
-  <main class="main">
+  <!-- ▸ PAGE: OVERVIEW ─────────────────────────── -->
+  <div class="page active" id="page-overview">
+    <div class="page-head">
+      <div>
+        <div class="page-title" id="overviewTitle">Chargement…</div>
+        <div class="page-sub" id="overviewMeta">Guild ID · membres · salons</div>
+      </div>
 
-    <!-- PAGE: DASHBOARD -->
-    <div class="page active" id="page-dashboard">
-      <div class="page-header">
+    </div>
+
+    <!-- Sync bar -->
+    <div class="sync-status">
+      <div class="sync-indicator">
+        <div class="sync-pulse" id="syncPulse"></div>
         <div>
-          <div class="page-title" id="serverName">Chargement...</div>
-          <div class="page-sub" id="serverMeta">—</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost" id="btnBackup">📦 Backup</button>
-          <button class="btn btn-primary" id="btnForceSync">⚡ Forcer sync</button>
+          <div class="sync-label">Sync bidirectionnel · Discord ⟷ discord-template.json</div>
+          <div class="sync-detail" id="syncDetail">En attente de données…</div>
         </div>
       </div>
+      <div class="sync-btns">
+        <button class="btn btn-ghost btn-sm" id="btnD2F">⬇ Discord → File</button>
+        <button class="btn btn-ghost btn-sm" id="btnF2D">⬆ File → Discord</button>
+      </div>
+    </div>
 
-      <div class="sync-bar">
-        <div class="sync-dot"></div>
-        <div class="sync-text">Sync bidirectionnel actif — Discord ⟷ discord-template.json</div>
-        <div class="sync-meta" id="syncMeta">—</div>
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-accent" style="background:linear-gradient(90deg,var(--blue),var(--purple))"></div>
+        <div class="stat-icon" style="background:var(--blue-dim);color:var(--blue)">👥</div>
+        <div class="stat-label">Membres</div>
+        <div class="stat-value" id="statMembers">—</div>
+        <div class="stat-delta">sur le serveur</div>
+      </div>
+      <div class="stat">
+        <div class="stat-accent" style="background:linear-gradient(90deg,var(--cyan),var(--blue))"></div>
+        <div class="stat-icon" style="background:var(--cyan-dim);color:var(--cyan)">📁</div>
+        <div class="stat-label">Salons</div>
+        <div class="stat-value" id="statChannels">—</div>
+        <div class="stat-delta" id="statChannelsSub">catégories</div>
+      </div>
+      <div class="stat">
+        <div class="stat-accent" style="background:linear-gradient(90deg,var(--purple),var(--blue))"></div>
+        <div class="stat-icon" style="background:var(--purple-dim);color:var(--purple)">🎭</div>
+        <div class="stat-label">Rôles</div>
+        <div class="stat-value" id="statRoles">—</div>
+        <div class="stat-delta">configurés</div>
+      </div>
+      <div class="stat">
+        <div class="stat-accent" style="background:linear-gradient(90deg,var(--green),var(--cyan))"></div>
+        <div class="stat-icon" style="background:var(--green-dim);color:var(--green)">🔄</div>
+        <div class="stat-label">Syncs</div>
+        <div class="stat-value" id="statSyncs">0</div>
+        <div class="stat-delta" id="statSyncsSub">F→D : 0</div>
+      </div>
+    </div>
+
+    <!-- Grid: structure + actions + log -->
+    <div class="grid-2-1">
+      <!-- Structure preview -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><span>📁</span> Structure du serveur</div>
+          <button class="btn btn-ghost btn-xs" onclick="showPage('channels')">Gérer →</button>
+        </div>
+        <div class="card-body np">
+          <div class="tree" id="ovTree" style="max-height:340px;overflow-y:auto">
+            <div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Chargement…</div></div>
+          </div>
+        </div>
       </div>
 
-      <div class="stats-grid">
-        <div class="stat-card c1"><div class="stat-label">Membres</div><div class="stat-value" id="statMembers">—</div><div class="stat-sub">sur le serveur</div></div>
-        <div class="stat-card c2"><div class="stat-label">Salons</div><div class="stat-value" id="statChannels">—</div><div class="stat-sub" id="statChannelsSub">—</div></div>
-        <div class="stat-card c3"><div class="stat-label">Rôles</div><div class="stat-value" id="statRoles">—</div><div class="stat-sub">configurés</div></div>
-        <div class="stat-card c4"><div class="stat-label">Syncs D→F</div><div class="stat-value" id="statSyncs">0</div><div class="stat-sub" id="statSyncsSub">F→D : 0</div></div>
-      </div>
-
-      <div class="grid3">
+      <!-- Right column -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <!-- Quick actions -->
         <div class="card">
-          <div class="card-header"><div class="card-title">📁 Structure</div></div>
-          <div class="card-body"><div class="structure-tree" id="dashTree">Chargement...</div></div>
+          <div class="card-head"><div class="card-title"><span>⚡</span> Actions rapides</div></div>
+          <div class="card-body">
+            <div class="qa-grid">
+              <div class="qa-btn" id="qa-sync">
+                <div class="qa-icon">🔄</div>
+                <div class="qa-label">Forcer sync</div>
+                <div class="qa-desc">Discord → Fichier</div>
+              </div>
+              <div class="qa-btn" id="qa-backup">
+                <div class="qa-icon">📦</div>
+                <div class="qa-label">Backup</div>
+                <div class="qa-desc">Snapshot JSON</div>
+              </div>
+              <div class="qa-btn" onclick="showPage('channels')">
+                <div class="qa-icon">📁</div>
+                <div class="qa-label">Salons</div>
+                <div class="qa-desc">Créer / supprimer</div>
+              </div>
+              <div class="qa-btn" onclick="showPage('roles')">
+                <div class="qa-icon">🎭</div>
+                <div class="qa-label">Rôles</div>
+                <div class="qa-desc">Gérer les rôles</div>
+              </div>
+              <div class="qa-btn" onclick="showPage('autorole')">
+                <div class="qa-icon">🤖</div>
+                <div class="qa-label">Auto-Role</div>
+                <div class="qa-desc">Rôle à l'arrivée</div>
+              </div>
+              <div class="qa-btn" onclick="showPage('logs')">
+                <div class="qa-icon">📋</div>
+                <div class="qa-label">Logs</div>
+                <div class="qa-desc">Historique sync</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:16px">
-          <div class="card">
-            <div class="card-header"><div class="card-title">⚡ Actions rapides</div></div>
-            <div class="card-body">
-              <div class="quick-grid">
-                <div class="quick-btn" id="qa-backup">📦 Backup</div>
-                <div class="quick-btn" id="qa-sync">🔄 Forcer sync</div>
-                <div class="quick-btn" onclick="showPage('channels')">📁 Salons</div>
-                <div class="quick-btn" onclick="showPage('roles')">🎭 Rôles</div>
-                <div class="quick-btn" onclick="showPage('logs')">📋 Voir logs</div>
-                <div class="quick-btn" id="qa-d2f">⬇️ Discord→File</div>
+
+        <!-- Live arrivals mini -->
+        <div class="card">
+          <div class="card-head"><div class="card-title"><span>👋</span> Dernières arrivées</div></div>
+          <div class="card-body np">
+            <div class="log-stream" id="arrivalMini" style="height:130px">
+              <div class="empty" style="padding:20px"><div class="empty-text">En attente…</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live log -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);display:inline-block"></span> Live Log</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-xs" id="ovClearLog">🗑 Effacer</button>
+          <button class="btn btn-ghost btn-xs" onclick="showPage('logs')">Voir tout →</button>
+        </div>
+      </div>
+      <div class="card-body np">
+        <div class="log-stream" id="ovLog" style="height:200px;border-radius:0"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▸ PAGE: MEMBERS ──────────────────────────── -->
+  <div class="page" id="page-members">
+    <div class="page-head">
+      <div>
+        <div class="page-title">👥 Membres</div>
+        <div class="page-sub">Membres connectés au serveur</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span>👥</span> Liste des membres</div>
+        <div id="memberCountLabel" style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">—</div>
+      </div>
+      <div class="card-body np">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Membre</th>
+                <th>ID</th>
+                <th>Rôles</th>
+                <th>Arrivée</th>
+              </tr>
+            </thead>
+            <tbody id="membersTable">
+              <tr><td colspan="4"><div class="empty" style="padding:30px"><div class="empty-icon">👥</div><div class="empty-text">Les données membres arrivent en temps réel via le bot</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="background:var(--blue-dim);border-color:rgba(91,127,255,0.2)">
+      <div class="card-body" style="display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:22px;flex-shrink:0">💡</span>
+        <div>
+          <div style="font-weight:700;margin-bottom:4px;color:var(--text)">Pour les données membres détaillées</div>
+          <div style="font-size:0.8rem;color:var(--text2);line-height:1.6">
+            Ajoute l'intent <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-family:var(--mono)">GuildMembers</code> dans le server.js et expose une route <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-family:var(--mono)">/api/members</code>. Les arrivées en temps réel s'affichent déjà dans le log.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▸ PAGE: CHANNELS ────────────────────────── -->
+  <div class="page" id="page-channels">
+    <div class="page-head">
+      <div>
+        <div class="page-title">📁 Salons</div>
+        <div class="page-sub" id="channelsSubtitle">— salons · — catégories</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-ghost" id="btnAddCat">+ Catégorie</button>
+        <button class="btn btn-primary" id="btnAddChannel">+ Nouveau salon</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span>📁</span> Structure complète</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-xs" id="btnExpandAll">Tout ouvrir</button>
+          <button class="btn btn-ghost btn-xs" id="btnCollapseAll">Tout fermer</button>
+        </div>
+      </div>
+      <div class="card-body np">
+        <div class="tree" id="channelsTree" style="max-height:calc(100vh - 300px);overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▸ PAGE: ROLES ───────────────────────────── -->
+  <div class="page" id="page-roles">
+    <div class="page-head">
+      <div>
+        <div class="page-title">🎭 Rôles</div>
+        <div class="page-sub" id="rolesSubtitle">— rôles configurés</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" id="btnAddRole">+ Nouveau rôle</button>
+      </div>
+    </div>
+    <div class="grid-1-1">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><span>🎭</span> Tous les rôles</div>
+          <div id="rolesCountLabel" style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">—</div>
+        </div>
+        <div class="card-body np">
+          <div class="roles-grid" id="rolesList" style="max-height:500px;overflow-y:auto;padding:10px"></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="card-head"><div class="card-title"><span>💡</span> Infos rôles</div></div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:10px;font-size:0.8rem;color:var(--text2);line-height:1.6">
+              <div><strong style="color:var(--text)">HOIST</strong> — Le rôle apparaît séparément dans la liste des membres</div>
+              <div><strong style="color:var(--text)">Position</strong> — Plus le numéro est élevé, plus le rôle est haut dans la hiérarchie</div>
+              <div><strong style="color:var(--text)">Couleur</strong> — Couleur affichée pour le rôle (hex)</div>
+              <div style="padding:10px;background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.2);border-radius:8px;color:var(--yellow)">
+                ⚠️ La suppression d'un rôle retire ce rôle à tous les membres qui l'ont
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title"><span>📊</span> Répartition</div></div>
+          <div class="card-body">
+            <div id="rolesBreakdown" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▸ PAGE: AUTO-ROLE ──────────────────────── -->
+  <div class="page" id="page-autorole">
+    <div class="page-head">
+      <div>
+        <div class="page-title">🤖 Auto-Role</div>
+        <div class="page-sub">Rôle assigné automatiquement à chaque nouveau membre</div>
+      </div>
+    </div>
+
+    <div class="grid-1-1">
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span>⚡</span> Statut actuel</div></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--green-dim);border:1px solid rgba(52,211,153,0.2);border-radius:10px">
+            <span style="font-size:28px">🎭</span>
+            <div>
+              <div style="font-size:0.65rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:3px">Rôle auto actuel</div>
+              <div style="font-size:1.1rem;font-weight:800;color:var(--green)" id="arCurrentRole">Chargement…</div>
+            </div>
+          </div>
+          <div style="font-size:0.75rem;color:var(--text2)">
+            Ce rôle est assigné automatiquement par <strong style="color:var(--text)">BrainEXE</strong> dès qu'un nouveau membre rejoint le serveur.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span>🔧</span> Changer le rôle</div></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+          <div class="field">
+            <div class="field-label">Rôle à assigner</div>
+            <select class="field-input" id="arSelect"><option>Chargement…</option></select>
+          </div>
+          <button class="btn btn-primary" id="arSave" style="width:100%">💾 Sauvegarder</button>
+          <div id="arFeedback" style="display:none;font-family:var(--mono);font-size:0.72rem;padding:8px 12px;border-radius:6px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="background:rgba(91,127,255,0.04);border-color:rgba(91,127,255,0.2)">
+      <div class="card-head"><div class="card-title"><span>💡</span> Comment ça marche</div></div>
+      <div class="card-body">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:28px;height:28px;background:var(--blue-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue);flex-shrink:0;font-size:0.75rem">1</div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">Un nouveau membre rejoint le serveur Discord</div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:28px;height:28px;background:var(--blue-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue);flex-shrink:0;font-size:0.75rem">2</div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">BrainEXE lui assigne automatiquement le rôle <strong style="color:var(--text)" id="arHelpRole">👁️ Lurker</strong></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:28px;height:28px;background:var(--blue-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue);flex-shrink:0;font-size:0.75rem">3</div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">Il peut voir <strong style="color:var(--text)">🎭・choix-des-rôles</strong> et choisir ses rôles via les réactions Carl-bot</div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:28px;height:28px;background:var(--yellow-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--yellow);flex-shrink:0;font-size:14px">⚠️</div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">Assure-toi que le rôle auto a bien accès en lecture au salon <strong style="color:var(--text)">🎭・choix-des-rôles</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span>👋</span> Dernières arrivées</div></div>
+      <div class="card-body np">
+        <div class="log-stream" id="arArrivalLog" style="height:200px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▸ PAGE: REACTION ROLES ─────────────────── -->
+  <div class="page" id="page-reactionroles">
+    <div class="page-head">
+      <div>
+        <div class="page-title">✨ Reaction Roles</div>
+        <div class="page-sub">Configuration Carl-bot · salon #choix-des-rôles</div>
+      </div>
+    </div>
+
+    <div class="card" style="background:var(--purple-dim);border-color:rgba(167,139,250,0.2)">
+      <div class="card-body" style="display:flex;gap:14px;align-items:flex-start">
+        <span style="font-size:24px;flex-shrink:0">🤖</span>
+        <div>
+          <div style="font-weight:700;margin-bottom:4px;color:var(--text)">Carl-bot — Reaction Roles</div>
+          <div style="font-size:0.8rem;color:var(--text2);line-height:1.6;margin-bottom:10px">
+            Les reaction roles sont gérés directement par Carl-bot dans Discord.<br>
+            Copie les commandes ci-dessous dans ton serveur pour configurer rapidement tes groupes de rôles.
+          </div>
+          <a href="https://carl.gg" target="_blank" class="btn btn-purple btn-sm">Ouvrir Carl.gg →</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span>📋</span> Groupes de réactions configurés</div></div>
+      <div class="card-body np">
+        <div id="rrGroups" style="display:flex;flex-direction:column"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span>⌨️</span> Commandes Carl-bot à copier</div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:4px">Tape ces commandes dans Discord pour créer tes groupes de reaction roles :</div>
+        <div id="carlCommands" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▸ PAGE: WELCOME ────────────────────────── -->
+  <div class="page" id="page-welcome">
+    <div class="page-head">
+      <div>
+        <div class="page-title">👋 Message de bienvenue</div>
+        <div class="page-sub">Embed envoyé à l'arrivée dans #présentations</div>
+      </div>
+    </div>
+    <div class="grid-1-1">
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span>✏️</span> Éditeur</div></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+          <div class="field">
+            <div class="field-label">Titre</div>
+            <input class="field-input" id="wTitle" value="Bienvenue sur BrainEXE ! 🧠" placeholder="Titre de l'embed">
+          </div>
+          <div class="field">
+            <div class="field-label">Description</div>
+            <textarea class="field-input" id="wDesc" rows="5" placeholder="Message de bienvenue..." style="resize:vertical">Hey {user} ! 👋
+
+Bienvenue dans la communauté **BrainEXE** !
+
+🎭 Va dans **#choix-des-rôles** pour accéder aux salons
+🧠 N'oublie pas de te présenter dans **#présentations**
+
+Content de t'avoir parmi nous !</textarea>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <div class="field-label">Couleur accent</div>
+              <input type="color" class="field-input" id="wColor" value="#5B7FFF">
+            </div>
+            <div class="field">
+              <div class="field-label">Salon cible</div>
+              <select class="field-input" id="wChannel"><option>#👋・présentations</option></select>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Footer</div>
+            <input class="field-input" id="wFooter" value="BrainEXE • Neurodivergent Community" placeholder="Texte du footer">
+          </div>
+          <button class="btn btn-primary" id="wPreviewBtn" style="width:100%" onclick="updateWelcomePreview()">🔍 Mettre à jour l'aperçu</button>
+          <div style="padding:10px;background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-size:0.75rem;color:var(--yellow)">
+            ⚠️ Pour activer le message de bienvenue dans le bot, ajoute une route <code style="font-family:var(--mono)">/api/welcome</code> dans server.js et intègre l'événement <code style="font-family:var(--mono)">GuildMemberAdd</code>.
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span>👁</span> Aperçu</div></div>
+        <div class="card-body">
+          <div style="font-size:0.72rem;color:var(--text3);margin-bottom:10px;font-family:var(--mono)">#👋・présentations</div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,#3B4FA0,#7B4FD0);border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px">🧠</div>
+            <div style="flex:1">
+              <div style="font-size:0.75rem;font-weight:700;color:var(--text);margin-bottom:2px">Brain.EXE <span style="font-size:0.6rem;background:var(--blue);color:white;padding:1px 5px;border-radius:3px;margin-left:4px">BOT</span></div>
+              <div class="embed-preview" id="welcomePreview">
+                <div class="embed-title" id="wPrevTitle">Bienvenue sur BrainEXE ! 🧠</div>
+                <div class="embed-desc" id="wPrevDesc">Hey {user} ! 👋
+
+Bienvenue dans la communauté **BrainEXE** !</div>
+                <div class="embed-footer" id="wPrevFooter">BrainEXE • Neurodivergent Community</div>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="s on" style="display:inline-block"></span> Live Log</div>
-          <button class="btn btn-ghost" style="font-size:0.7rem;padding:4px 10px" id="btnClearLogs">🗑️ Effacer</button>
+  <!-- ▸ PAGE: LOGS ────────────────────────────── -->
+  <div class="page" id="page-logs">
+    <div class="page-head">
+      <div>
+        <div class="page-title">📋 Logs</div>
+        <div class="page-sub">Historique complet des synchronisations en temps réel</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-ghost" id="btnClearLogs">🗑 Effacer</button>
+        <button class="btn btn-ghost" id="btnExportLogs">⬇ Exporter</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span>📋</span> Stream</div>
+        <div class="log-filters" id="logFilters">
+          <div class="log-filter-btn active" data-filter="all">Tout</div>
+          <div class="log-filter-btn" data-filter="d2f">D→F</div>
+          <div class="log-filter-btn" data-filter="f2d">F→D</div>
+          <div class="log-filter-btn" data-filter="api">API</div>
+          <div class="log-filter-btn" data-filter="sys">SYS</div>
+          <div class="log-filter-btn" data-filter="err">ERR</div>
         </div>
-        <div class="card-body"><div class="log-container" id="logContainerDash"></div></div>
+      </div>
+      <div class="card-body np">
+        <div class="log-stream" id="fullLog" style="height:60vh"></div>
       </div>
     </div>
+  </div>
 
-    <!-- PAGE: CHANNELS -->
-    <div class="page" id="page-channels">
-      <div class="page-header">
-        <div><div class="page-title">📁 Salons</div><div class="page-sub">Gérer les catégories et salons du serveur</div></div>
-        <button class="btn btn-primary" id="btnAddChannel">+ Nouveau salon</button>
+  <!-- ▸ PAGE: BACKUPS ────────────────────────── -->
+  <div class="page" id="page-backups">
+    <div class="page-head">
+      <div>
+        <div class="page-title">📦 Backups</div>
+        <div class="page-sub">Snapshots JSON de la structure du serveur</div>
       </div>
-      <div class="card">
-        <div class="card-header"><div class="card-title">Structure complète</div><div id="channelCount" style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">—</div></div>
-        <div class="card-body"><div class="structure-tree" id="channelsTree">Chargement...</div></div>
+      <div class="page-actions">
+        <button class="btn btn-primary" id="btnCreateBackup">📦 Créer un backup</button>
       </div>
     </div>
-
-    <!-- PAGE: ROLES -->
-    <div class="page" id="page-roles">
-      <div class="page-header">
-        <div><div class="page-title">🎭 Rôles</div><div class="page-sub">Gérer les rôles du serveur</div></div>
-        <button class="btn btn-primary" id="btnAddRole">+ Nouveau rôle</button>
+    <div class="grid-1-1">
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span>📦</span> Backups créés</div></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:8px" id="backupsList">
+          <div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Aucun backup — crée-en un !</div></div>
+        </div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">Tous les rôles</div><div id="rolesCount" style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">—</div></div>
-        <div class="card-body"><div class="roles-list" id="rolesList">Chargement...</div></div>
-      </div>
-    </div>
-
-    <!-- PAGE: LOGS -->
-    <div class="page" id="page-logs">
-      <div class="page-header">
-        <div><div class="page-title">📋 Logs</div><div class="page-sub">Historique complet des synchronisations</div></div>
-        <button class="btn btn-ghost" id="btnClearLogsPage">🗑️ Effacer</button>
-      </div>
-      <div class="card">
-        <div class="card-body"><div class="log-container" id="logContainerFull" style="height:500px"></div></div>
-      </div>
-    </div>
-
-    <!-- PAGE: AUTO-ROLE -->
-    <div class="page" id="page-autorole">
-      <div class="page-header">
-        <div><div class="page-title">🎭 Auto-Role</div><div class="page-sub">Rôle assigné automatiquement aux nouveaux membres</div></div>
-      </div>
-
-      <!-- STATUS CARD -->
-      <div class="card">
-        <div class="card-header"><div class="card-title">⚡ Statut actuel</div></div>
-        <div class="card-body" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(0,230,118,0.07);border:1px solid rgba(0,230,118,0.2);border-radius:8px;flex:1;min-width:200px">
-            <span style="font-size:22px">🎭</span>
-            <div>
-              <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text2);margin-bottom:2px">RÔLE AUTO ACTUEL</div>
-              <div style="font-size:1rem;font-weight:700;color:var(--green)" id="currentAutoRole">Chargement...</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(0,229,255,0.07);border:1px solid rgba(0,229,255,0.2);border-radius:8px;flex:1;min-width:200px">
-            <span style="font-size:22px">👋</span>
-            <div>
-              <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text2);margin-bottom:2px">COMPORTEMENT</div>
-              <div style="font-size:0.82rem;color:var(--accent3)">Assigné automatiquement à chaque arrivée</div>
-            </div>
+        <div class="card-head"><div class="card-title"><span>💡</span> À propos des backups</div></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px;font-size:0.8rem;color:var(--text2)">
+          <div>📸 Un backup est un <strong style="color:var(--text)">snapshot JSON</strong> complet de la structure Discord : rôles, catégories, salons, topics.</div>
+          <div>💾 Les fichiers sont sauvegardés localement sur le serveur Railway sous forme de <code style="font-family:var(--mono);background:var(--bg);padding:1px 5px;border-radius:4px">backup_XXXX.json</code></div>
+          <div>🔄 Pour <strong style="color:var(--text)">restaurer</strong> un backup, il faudra copier son contenu dans <code style="font-family:var(--mono);background:var(--bg);padding:1px 5px;border-radius:4px">discord-template.json</code> et lancer une sync F→D.</div>
+          <div style="padding:10px;background:var(--green-dim);border:1px solid rgba(52,211,153,0.2);border-radius:8px;color:var(--green)">
+            💡 Le README mentionne une backup auto toutes les 6h — vérifie que tu as bien implémenté le setInterval dans server.js !
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- CHANGER LE RÔLE -->
-      <div class="card">
-        <div class="card-header"><div class="card-title">🔧 Changer le rôle auto</div></div>
-        <div class="card-body">
-          <p style="font-size:0.82rem;color:var(--text2);margin-bottom:14px;line-height:1.6">
-            Choisis le rôle qui sera donné à chaque nouveau membre dès son arrivée.<br>
-            Ce rôle doit avoir accès au salon <strong style="color:var(--text)">🎭・choix-des-rôles</strong> pour que les membres puissent choisir leurs rôles via les emojis.
-          </p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <select class="input-field" id="autoRoleSelect" style="flex:1;min-width:200px"><option value="">Chargement des rôles...</option></select>
-            <button class="btn btn-primary" id="btnSaveAutoRole">💾 Sauvegarder</button>
-          </div>
-          <div id="autoRoleFeedback" style="margin-top:10px;font-family:var(--mono);font-size:0.72rem;display:none"></div>
-        </div>
-      </div>
-
-      <!-- COMMENT ÇA MARCHE -->
-      <div class="card" style="background:rgba(124,92,191,0.06);border-color:rgba(124,92,191,0.2)">
-        <div class="card-header"><div class="card-title">💡 Comment ça marche</div></div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
-          <div style="display:flex;gap:12px;align-items:flex-start;font-size:0.82rem;color:var(--text2)">
-            <span style="font-size:18px;flex-shrink:0">1️⃣</span>
-            <span>Un nouveau membre rejoint le serveur</span>
-          </div>
-          <div style="display:flex;gap:12px;align-items:flex-start;font-size:0.82rem;color:var(--text2)">
-            <span style="font-size:18px;flex-shrink:0">2️⃣</span>
-            <span>BrainEXE lui assigne automatiquement le rôle <strong style="color:var(--text)" id="helpAutoRole">👁️ Lurker</strong></span>
-          </div>
-          <div style="display:flex;gap:12px;align-items:flex-start;font-size:0.82rem;color:var(--text2)">
-            <span style="font-size:18px;flex-shrink:0">3️⃣</span>
-            <span>Le membre peut voir <strong style="color:var(--text)">🎭・choix-des-rôles</strong> et réagir avec les emojis pour avoir ses rôles définitifs</span>
-          </div>
-          <div style="display:flex;gap:12px;align-items:flex-start;font-size:0.82rem;color:var(--text2)">
-            <span style="font-size:18px;flex-shrink:0">⚠️</span>
-            <span>Assure-toi que le rôle auto a bien accès en lecture au salon <strong style="color:var(--text)">🎭・choix-des-rôles</strong> dans les permissions Discord</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- LOG ARRIVÉES -->
-      <div class="card">
-        <div class="card-header"><div class="card-title">👋 Dernières arrivées</div></div>
-        <div class="card-body"><div class="log-container" id="arrivalLog" style="height:180px"></div></div>
+  <!-- ▸ PAGE: SETTINGS ───────────────────────── -->
+  <div class="page" id="page-settings">
+    <div class="page-head">
+      <div>
+        <div class="page-title">⚙️ Paramètres</div>
+        <div class="page-sub">Configuration du bot et du dashboard</div>
       </div>
     </div>
 
-  </main>
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span>🤖</span> Bot</div></div>
+      <div class="card-body">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Guild ID</div>
+            <div class="setting-desc">Identifiant unique du serveur Discord</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:0.75rem;color:var(--text2);background:var(--bg);padding:6px 12px;border-radius:6px;border:1px solid var(--border)">1481022956816830669</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Bot tag</div>
+            <div class="setting-desc">Nom affiché du bot</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:0.75rem;color:var(--text2);background:var(--bg);padding:6px 12px;border-radius:6px;border:1px solid var(--border)" id="settingBotTag">—</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Hébergement</div>
+            <div class="setting-desc">Plateforme de déploiement</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:0.75rem;color:var(--green);background:var(--green-dim);padding:6px 12px;border-radius:6px;border:1px solid rgba(52,211,153,0.2)">Railway 🚀</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span>🔄</span> Synchronisation</div></div>
+      <div class="card-body">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Sync bidirectionnelle</div>
+            <div class="setting-desc">Discord ⟷ discord-template.json en temps réel</div>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" checked id="toggleSync" onchange="toggleSyncHandler(this)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Débounce Discord → Fichier</div>
+            <div class="setting-desc">Délai avant d'écrire le fichier après un changement Discord (ms)</div>
+          </div>
+          <input class="field-input" value="2000" style="width:100px;text-align:center">
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Fichier template</div>
+            <div class="setting-desc">Source de vérité de la structure</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:0.75rem;color:var(--text2);background:var(--bg);padding:6px 12px;border-radius:6px;border:1px solid var(--border)">discord-template.json</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span>🔗</span> Liens</div></div>
+      <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="https://brainexe-dashboard-production.up.railway.app" target="_blank" class="btn btn-ghost">🌐 Dashboard Railway</a>
+        <a href="https://github.com/jRPGlibrary/brainexe-dashboard" target="_blank" class="btn btn-ghost">🐙 GitHub Repo</a>
+        <a href="https://discord.com/developers/applications" target="_blank" class="btn btn-ghost">🤖 Discord Dev Portal</a>
+        <a href="https://carl.gg" target="_blank" class="btn btn-ghost">🎭 Carl.gg</a>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(248,113,113,0.2)">
+      <div class="card-head"><div class="card-title" style="color:var(--red)"><span>⚠️</span> Zone danger</div></div>
+      <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-danger" onclick="if(confirm('Vider les logs ?')){allLogs=[];renderLogs();toast('Logs effacés','success')}">🗑 Vider les logs</button>
+        <button class="btn btn-danger" onclick="toast('Reconnexion WS…','info');ws&&ws.close()">🔌 Reconnecter WS</button>
+      </div>
+    </div>
+  </div>
+
+</main>
 </div>
 
-<!-- MODAL CHANNEL -->
-<div class="modal-overlay" id="modalChannel">
+<!-- ═══ MODAL CHANNEL ════════════════════════ -->
+<div class="modal-wrap" id="modalChannel">
   <div class="modal">
-    <div class="modal-title">➕ Nouveau salon</div>
-    <div class="modal-fields">
-      <div><div class="field-label">Nom du salon</div><input class="input-field" id="chName" placeholder="nom-du-salon" style="width:100%"></div>
-      <div><div class="field-label">Type</div><select class="input-field" id="chType" style="width:100%"><option value="text">📝 Texte</option><option value="voice">🔊 Vocal</option></select></div>
-      <div><div class="field-label">Catégorie</div><select class="input-field" id="chCategory" style="width:100%"></select></div>
-      <div><div class="field-label">Topic (optionnel)</div><input class="input-field" id="chTopic" placeholder="Description du salon..." style="width:100%"></div>
+    <div class="modal-head">
+      <div class="modal-title">➕ Nouveau salon</div>
+      <div class="modal-close" onclick="closeModal('modalChannel')">✕</div>
     </div>
-    <div class="modal-actions">
+    <div class="modal-body">
+      <div class="field"><div class="field-label">Nom du salon</div><input class="field-input" id="chName" placeholder="nom-du-salon"></div>
+      <div class="field"><div class="field-label">Type</div>
+        <select class="field-input" id="chType">
+          <option value="text">📝 Texte</option>
+          <option value="voice">🔊 Vocal</option>
+        </select>
+      </div>
+      <div class="field"><div class="field-label">Catégorie</div><select class="field-input" id="chCategory"><option value="">— Sans catégorie —</option></select></div>
+      <div class="field"><div class="field-label">Topic (optionnel)</div><input class="field-input" id="chTopic" placeholder="Description du salon…"></div>
+    </div>
+    <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modalChannel')">Annuler</button>
-      <button class="btn btn-primary" id="btnCreateChannel">Créer</button>
+      <button class="btn btn-primary" id="btnCreateChannel">Créer le salon</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL ROLE -->
-<div class="modal-overlay" id="modalRole">
+<!-- ═══ MODAL ROLE ════════════════════════════ -->
+<div class="modal-wrap" id="modalRole">
   <div class="modal">
-    <div class="modal-title">➕ Nouveau rôle</div>
-    <div class="modal-fields">
-      <div><div class="field-label">Nom du rôle</div><input class="input-field" id="roleName" placeholder="🎯 Nom du rôle" style="width:100%"></div>
-      <div style="display:flex;gap:12px;align-items:flex-end">
-        <div style="flex:1"><div class="field-label">Couleur</div><input type="color" class="color-input" id="roleColor" value="#7c5cbf" style="width:100%;height:36px"></div>
-        <div style="flex:1"><div class="field-label">Affiché séparé</div><select class="input-field" id="roleHoist" style="width:100%"><option value="false">Non</option><option value="true">Oui</option></select></div>
+    <div class="modal-head">
+      <div class="modal-title">➕ Nouveau rôle</div>
+      <div class="modal-close" onclick="closeModal('modalRole')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><div class="field-label">Nom du rôle</div><input class="field-input" id="roleName" placeholder="🎯 Nom du rôle"></div>
+      <div class="form-row">
+        <div class="field"><div class="field-label">Couleur</div><input type="color" class="field-input" id="roleColor" value="#5B7FFF"></div>
+        <div class="field"><div class="field-label">Affiché séparé (hoist)</div>
+          <select class="field-input" id="roleHoist"><option value="false">Non</option><option value="true">Oui</option></select>
+        </div>
+      </div>
+      <div style="padding:10px 12px;background:var(--blue-dim);border:1px solid rgba(91,127,255,0.2);border-radius:8px;font-size:0.75rem;color:#A5BAFF">
+        💡 Le rôle sera créé sans permissions — assigne-les ensuite dans Discord
       </div>
     </div>
-    <div class="modal-actions">
+    <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modalRole')">Annuler</button>
-      <button class="btn btn-primary" id="btnCreateRole">Créer</button>
+      <button class="btn btn-primary" id="btnCreateRole">Créer le rôle</button>
     </div>
   </div>
 </div>
 
-<!-- TOASTS -->
-<div class="toast-container" id="toastContainer"></div>
+<!-- ═══ MODAL EDIT CHANNEL ════════════════════ -->
+<div class="modal-wrap" id="modalEditChannel">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">✏️ Modifier le salon</div>
+      <div class="modal-close" onclick="closeModal('modalEditChannel')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><div class="field-label">Nom</div><input class="field-input" id="editChName" placeholder="nom-du-salon"></div>
+      <div class="field"><div class="field-label">Topic</div><input class="field-input" id="editChTopic" placeholder="Description…"></div>
+      <input type="hidden" id="editChId">
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modalEditChannel')">Annuler</button>
+      <button class="btn btn-primary" id="btnSaveEditChannel">💾 Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOASTS ════════════════════════════════ -->
+<div class="toast-stack" id="toasts"></div>
 
 <script>
-// ── STATE ─────────────────────────────────────────────────────
-let state     = null;
-let ws        = null;
-let allLogs   = [];
-let newLogsCount = 0;
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+let state = null;
+let allLogs = [];
+let ws = null;
+let logFilter = 'all';
+let newLogs = 0;
+let backups = [];
+let members = [];
 
-// ── WEBSOCKET ─────────────────────────────────────────────────
+/* ══════════════════════════════════════════════
+   WEBSOCKET
+══════════════════════════════════════════════ */
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}`);
 
   ws.onopen = () => {
-    document.getElementById('botDot').style.background = 'var(--green)';
-    document.getElementById('syncDot').style.background = 'var(--accent3)';
+    setStatus(true);
   };
 
-  ws.onmessage = (e) => {
+  ws.onmessage = e => {
     const { type, data } = JSON.parse(e.data);
-    if (type === 'state') { state = data; renderAll(); }
-    if (type === 'logs')  { allLogs = data; renderLogs(); }
-    if (type === 'log')   { allLogs.push(data); appendLog(data); newLogsCount++; updateLogsBadge(); }
-    if (type === 'stats') { renderStats(data); }
+    if (type === 'state')    { state = data; renderAll(); }
+    if (type === 'logs')     { allLogs = data; renderLogs(); }
+    if (type === 'log')      { allLogs.push(data); appendLogLine(data); bumpLogBadge(); }
+    if (type === 'stats')    { renderStats(data); }
     if (type === 'autorole') { appendArrival(data); }
-    if (type === 'config') { if(data.autoRole) updateAutoRoleDisplay(data.autoRole); }
+    if (type === 'config')   { if(data.autoRole) updateARDisplay(data.autoRole); }
   };
 
   ws.onclose = () => {
-    document.getElementById('botStatusDot').className = 's off';
-    document.getElementById('botStatusText').textContent = 'Déconnecté — reconnexion...';
+    setStatus(false);
     setTimeout(connectWS, 3000);
   };
 }
 
-// ── RENDER ALL ────────────────────────────────────────────────
+function setStatus(on) {
+  const dot = document.getElementById('botDot');
+  const lbl = document.getElementById('botLabel');
+  dot.className = 'pill-dot ' + (on ? 'on' : 'off');
+  lbl.textContent = on ? 'BrainEXE connecté' : 'Déconnecté…';
+}
+
+/* ══════════════════════════════════════════════
+   API
+══════════════════════════════════════════════ */
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: {'Content-Type':'application/json'},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return res.json();
+}
+
+/* ══════════════════════════════════════════════
+   RENDER ALL
+══════════════════════════════════════════════ */
 function renderAll() {
   if (!state) return;
 
-  // Topbar
-  document.getElementById('botStatusDot').className = 's on';
-  document.getElementById('botStatusText').textContent = 'BrainEXE connecté';
-  document.getElementById('serverName').textContent   = state.name || 'Serveur';
-  document.getElementById('serverMeta').textContent   = `// ${state.id} · ${state.memberCount} membres · ${state.totalChannels} salons · ${state.roles.length} rôles`;
-  document.getElementById('syncMeta').textContent     = `Dernière sync : ${new Date().toLocaleTimeString('fr-FR')}`;
-  document.getElementById('lastSyncText').textContent = `Sync : ${new Date().toLocaleTimeString('fr-FR')}`;
+  // Topbar / overview header
+  document.getElementById('overviewTitle').textContent = state.name || 'Serveur';
+  document.getElementById('overviewMeta').textContent = `// ${state.id} · ${state.memberCount} membres · ${state.totalChannels} salons · ${state.roles.length} rôles`;
+  document.getElementById('syncDetail').textContent = `Dernière sync : ${new Date().toLocaleTimeString('fr-FR')} · ${state.totalChannels} salons · ${state.roles.length} rôles`;
+  document.getElementById('lastSyncPill').textContent = `Sync ${new Date().toLocaleTimeString('fr-FR')}`;
 
   // Stats
   document.getElementById('statMembers').textContent  = state.memberCount;
@@ -465,264 +1793,643 @@ function renderAll() {
   document.getElementById('statChannelsSub').textContent = `${state.structure.length} catégories`;
   document.getElementById('statRoles').textContent    = state.roles.length;
 
-  // Channel count
-  document.getElementById('channelCount').textContent = `${state.totalChannels} salons · ${state.structure.length} catégories`;
-  document.getElementById('rolesCount').textContent   = `${state.roles.length} rôles`;
+  // Sidebar server card
+  document.getElementById('sideServerName').textContent = state.name || 'BrainEXE';
+  document.getElementById('sideServerMeta').textContent = `${state.memberCount} membres`;
+  document.getElementById('navMemberCount').textContent = state.memberCount;
 
-  renderTree('dashTree', true);
+  // Subtitles
+  document.getElementById('channelsSubtitle').textContent = `${state.totalChannels} salons · ${state.structure.length} catégories`;
+  document.getElementById('rolesSubtitle').textContent = `${state.roles.length} rôles configurés`;
+  document.getElementById('rolesCountLabel').textContent = `${state.roles.length} rôles`;
+  document.getElementById('memberCountLabel').textContent = `${state.memberCount} membres`;
+
+  renderTree('ovTree', true);
   renderTree('channelsTree', false);
   renderRoles();
-  populateAutoRoleSelect();
-  populateCategorySelect();
+  populateCatSelect();
+  renderRRGroups();
+  renderRolesBreakdown();
+  loadAutoRole();
 }
 
-function renderStats(stats) {
-  document.getElementById('statSyncs').textContent    = stats.d2f;
-  document.getElementById('statSyncsSub').textContent = `F→D : ${stats.f2d}`;
+function renderStats(s) {
+  document.getElementById('statSyncs').textContent = s.d2f;
+  document.getElementById('statSyncsSub').textContent = `F→D : ${s.f2d}`;
 }
 
-// ── TREE ──────────────────────────────────────────────────────
+/* ══════════════════════════════════════════════
+   TREE
+══════════════════════════════════════════════ */
 function renderTree(containerId, compact) {
   if (!state) return;
   const container = document.getElementById(containerId);
   container.innerHTML = '';
 
   for (const block of state.structure) {
-    const catEl = document.createElement('div');
-    catEl.className = 'tree-cat';
-    catEl.innerHTML = `<span style="font-size:10px;color:var(--text3)">▾</span><span class="tree-cat-name">${block.category}</span><span style="font-family:var(--mono);font-size:0.62rem;color:var(--text3)">${block.channels.length}</span>`;
-    container.appendChild(catEl);
+    const catRow = document.createElement('div');
+    catRow.className = 'tree-cat-row';
+    const icon = document.createElement('span');
+    icon.className = 'tree-cat-icon open';
+    icon.textContent = '▶';
+    const name = document.createElement('span');
+    name.className = 'tree-cat-name';
+    name.textContent = block.category;
+    const count = document.createElement('span');
+    count.className = 'tree-cat-count';
+    count.textContent = block.channels.length;
+    catRow.appendChild(icon);
+    catRow.appendChild(name);
+    catRow.appendChild(count);
+
+    const chList = document.createElement('div');
+    chList.className = 'tree-ch-list';
+
+    // Toggle category
+    catRow.addEventListener('click', () => {
+      icon.classList.toggle('open');
+      chList.style.display = chList.style.display === 'none' ? '' : 'none';
+    });
 
     for (const ch of block.channels) {
-      const chEl = document.createElement('div');
-      chEl.className = 'tree-channel';
-      const icon = ch.type === 'voice' ? '🔊' : '#';
-      chEl.innerHTML = `
-        <span style="color:var(--text3);font-size:11px">${icon}</span>
-        <span class="tree-ch-name">${ch.name}</span>
-        ${!compact ? `<div class="tree-actions">
-          <button class="tree-btn del" onclick="deleteChannel('${ch.id}','${ch.name}')">🗑️</button>
-        </div>` : ''}
-      `;
-      container.appendChild(chEl);
+      const chRow = document.createElement('div');
+      chRow.className = 'tree-ch-row';
+
+      const typeIcon = document.createElement('span');
+      typeIcon.className = 'ch-type-icon';
+      typeIcon.textContent = ch.type === 'voice' ? '🔊' : '#';
+
+      const chName = document.createElement('span');
+      chName.className = 'ch-name';
+      chName.textContent = ch.name;
+
+      chRow.appendChild(typeIcon);
+      chRow.appendChild(chName);
+
+      if (ch.topic && compact) {
+        const topic = document.createElement('span');
+        topic.className = 'ch-topic';
+        topic.textContent = ch.topic;
+        chRow.appendChild(topic);
+      }
+
+      if (!compact) {
+        const tag = document.createElement('span');
+        tag.className = 'tag ' + ch.type;
+        tag.textContent = ch.type === 'voice' ? 'VOCAL' : 'TEXT';
+        chRow.appendChild(tag);
+
+        const actions = document.createElement('div');
+        actions.className = 'ch-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-ghost btn-xs';
+        editBtn.textContent = '✏️';
+        editBtn.onclick = e => { e.stopPropagation(); openEditChannel(ch); };
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-danger btn-xs';
+        delBtn.textContent = '🗑';
+        delBtn.onclick = e => { e.stopPropagation(); deleteChannel(ch.id, ch.name); };
+
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        chRow.appendChild(actions);
+      }
+
+      chList.appendChild(chRow);
     }
+
+    container.appendChild(catRow);
+    container.appendChild(chList);
   }
 }
 
-// ── ROLES ─────────────────────────────────────────────────────
+/* ══════════════════════════════════════════════
+   ROLES
+══════════════════════════════════════════════ */
 function renderRoles() {
   if (!state) return;
   const list = document.getElementById('rolesList');
   list.innerHTML = '';
-  for (const role of state.roles) {
-    const el = document.createElement('div');
-    el.className = 'role-row';
-    el.innerHTML = `
-      <div class="role-color-dot" style="background:${role.color}"></div>
-      <div class="role-name">${role.name}</div>
-      ${role.hoist ? '<div class="role-hoist">HOIST</div>' : ''}
-      <div class="role-actions">
-        <button class="tree-btn del" onclick="deleteRole('${role.id}','${role.name}')">🗑️</button>
-      </div>
-    `;
-    list.appendChild(el);
+  const botRoles = ['carl-bot','Ticket Tool','Statbot','Brain.EXE'];
+
+  for (const r of state.roles) {
+    const row = document.createElement('div');
+    row.className = 'role-row';
+
+    const swatch = document.createElement('div');
+    swatch.className = 'role-swatch';
+    swatch.style.background = r.color === '#000000' ? 'transparent' : r.color;
+    swatch.style.borderColor = r.color === '#000000' ? 'var(--border)' : r.color;
+
+    const name = document.createElement('div');
+    name.className = 'role-name';
+    name.textContent = r.name;
+
+    const pos = document.createElement('div');
+    pos.className = 'role-pos';
+    pos.textContent = `#${r.position}`;
+
+    row.appendChild(swatch);
+    row.appendChild(name);
+
+    if (r.hoist) {
+      const tag = document.createElement('span');
+      tag.className = 'role-tag hoist';
+      tag.textContent = 'HOIST';
+      row.appendChild(tag);
+    }
+    if (botRoles.includes(r.name)) {
+      const tag = document.createElement('span');
+      tag.className = 'role-tag bot';
+      tag.textContent = 'BOT';
+      row.appendChild(tag);
+    }
+
+    row.appendChild(pos);
+
+    if (!botRoles.includes(r.name)) {
+      const actions = document.createElement('div');
+      actions.className = 'role-actions';
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-danger btn-xs';
+      delBtn.textContent = '🗑';
+      delBtn.onclick = () => deleteRole(r.id, r.name);
+      actions.appendChild(delBtn);
+      row.appendChild(actions);
+    }
+
+    list.appendChild(row);
   }
 }
 
-// ── LOGS ──────────────────────────────────────────────────────
+function renderRolesBreakdown() {
+  if (!state) return;
+  const el = document.getElementById('rolesBreakdown');
+  const hoisted = state.roles.filter(r => r.hoist).length;
+  const bots = state.roles.filter(r => ['carl-bot','Ticket Tool','Statbot','Brain.EXE'].includes(r.name)).length;
+  const community = state.roles.length - bots;
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem">
+      <span style="color:var(--text2)">Rôles communauté</span>
+      <span style="font-family:var(--mono);font-weight:700;color:var(--text)">${community}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem">
+      <span style="color:var(--text2)">Rôles bots</span>
+      <span style="font-family:var(--mono);font-weight:700;color:var(--purple)">${bots}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem">
+      <span style="color:var(--text2)">Rôles affichés (hoist)</span>
+      <span style="font-family:var(--mono);font-weight:700;color:var(--blue)">${hoisted}</span>
+    </div>
+    <div style="height:1px;background:var(--border);margin:6px 0"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem">
+      <span style="color:var(--text2)">Total</span>
+      <span style="font-family:var(--mono);font-weight:700;color:var(--text)">${state.roles.length}</span>
+    </div>
+  `;
+}
+
+/* ══════════════════════════════════════════════
+   REACTION ROLES
+══════════════════════════════════════════════ */
+const RR_GROUPS = [
+  {
+    name: '🧠 Neurodivergence',
+    type: 'normal',
+    roles: [
+      { emoji: '🧠', role: '🧠 TDAH' },
+      { emoji: '💜', role: '💜 Borderline' },
+    ]
+  },
+  {
+    name: '🎮 Gaming',
+    type: 'normal',
+    roles: [
+      { emoji: '⚔️', role: '⚔️ RPG Addict' },
+      { emoji: '🕹️', role: '🕹️ Retro Gamer' },
+      { emoji: '🌿', role: '🌿 Indie Explorer' },
+      { emoji: '🚀', role: '🚀 Next-Gen Player' },
+    ]
+  },
+  {
+    name: '📱 TikTok & Dev',
+    type: 'normal',
+    roles: [
+      { emoji: '📱', role: '📱 TikToker' },
+      { emoji: '💻', role: '💻 Web Dev' },
+      { emoji: '🔔', role: '🔔 Notif Lives' },
+    ]
+  },
+];
+
+function renderRRGroups() {
+  const el = document.getElementById('rrGroups');
+  const cmds = document.getElementById('carlCommands');
+  if (!el) return;
+
+  el.innerHTML = '';
+  cmds.innerHTML = '';
+
+  for (const g of RR_GROUPS) {
+    // Group header
+    const header = document.createElement('div');
+    header.style.cssText = 'padding:12px 18px 8px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.1)';
+    header.innerHTML = `<div style="font-size:0.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px">${g.name}</div>`;
+    el.appendChild(header);
+
+    const rrList = document.createElement('div');
+    rrList.className = 'rr-list';
+    rrList.style.padding = '10px 14px';
+
+    for (const r of g.roles) {
+      const item = document.createElement('div');
+      item.className = 'rr-item';
+
+      // Find role color
+      const roleData = state?.roles?.find(sr => sr.name === r.role);
+      const colorDot = roleData ? `<div class="rr-role-color" style="background:${roleData.color}"></div>` : '';
+
+      item.innerHTML = `
+        <div class="rr-emoji">${r.emoji}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          ${colorDot}
+          <div class="rr-role-name">${r.role}</div>
+        </div>
+        <span class="tag text">ACTIF</span>
+      `;
+      rrList.appendChild(item);
+    }
+
+    el.appendChild(rrList);
+
+    // Carl-bot command
+    const cmd = document.createElement('div');
+    cmd.style.cssText = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start';
+    const reactions = g.roles.map(r => `${r.emoji}:${r.role}`).join(' ');
+    const cmdText = `!rr add #choix-des-rôles ${g.name} -- ${reactions}`;
+    cmd.innerHTML = `
+      <div style="flex:1">
+        <div style="font-size:0.65rem;font-family:var(--mono);color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">${g.name}</div>
+        <code style="font-family:var(--mono);font-size:0.75rem;color:var(--green);word-break:break-all">${cmdText}</code>
+      </div>
+      <button class="btn btn-ghost btn-xs" onclick="copyText(this,'${cmdText.replace(/'/g,"\\'")}')">📋 Copier</button>
+    `;
+    cmds.appendChild(cmd);
+  }
+}
+
+/* ══════════════════════════════════════════════
+   LOGS
+══════════════════════════════════════════════ */
 function renderLogs() {
-  ['logContainerDash', 'logContainerFull'].forEach(id => {
+  const filtered = filterLogs(allLogs);
+  ['ovLog','fullLog'].forEach(id => {
     const c = document.getElementById(id);
+    if (!c) return;
     c.innerHTML = '';
-    allLogs.slice(-100).forEach(l => c.appendChild(makeLogEl(l)));
+    filtered.slice(-200).forEach(l => c.appendChild(makeLogEl(l)));
     c.scrollTop = c.scrollHeight;
   });
 }
 
-function appendLog(l) {
-  ['logContainerDash', 'logContainerFull'].forEach(id => {
+function appendLogLine(l) {
+  ['ovLog','fullLog'].forEach(id => {
     const c = document.getElementById(id);
+    if (!c) return;
+    if (logFilter !== 'all' && !matchFilter(l, logFilter)) return;
     c.appendChild(makeLogEl(l));
     c.scrollTop = c.scrollHeight;
-    // Garde max 200 lignes
-    while (c.children.length > 200) c.removeChild(c.firstChild);
+    while(c.children.length > 300) c.removeChild(c.firstChild);
   });
+}
+
+function filterLogs(logs) {
+  if (logFilter === 'all') return logs;
+  return logs.filter(l => matchFilter(l, logFilter));
+}
+
+function matchFilter(l, f) {
+  if (f === 'err') return l.level === 'error';
+  return l.dir?.toLowerCase() === f.toLowerCase();
 }
 
 function makeLogEl(l) {
   const el = document.createElement('div');
   el.className = 'log-line';
   const dirClass = l.dir === 'D→F' ? 'd2f' : l.dir === 'F→D' ? 'f2d' : l.dir === 'API' ? 'api' : l.level === 'error' ? 'err' : 'sys';
-  const msgClass = l.level === 'success' ? 'success' : l.level === 'error' ? 'error' : '';
-  el.innerHTML = `<span class="log-time">${l.time}</span><span class="log-dir ${dirClass}">${l.dir}</span><span class="log-msg ${msgClass}">${l.msg}</span>`;
+  const msgClass = l.level === 'success' ? 'ok' : l.level === 'error' ? 'bad' : '';
+  el.innerHTML = `
+    <span class="log-ts">${l.time}</span>
+    <span class="log-badge ${dirClass}">${l.dir}</span>
+    <span class="log-msg ${msgClass}">${l.msg}</span>
+  `;
   return el;
 }
 
-function updateLogsBadge() {
-  const badge = document.getElementById('logsBadge');
-  badge.textContent = newLogsCount > 99 ? '99+' : newLogsCount;
-  badge.style.display = newLogsCount > 0 ? 'inline' : 'none';
+function bumpLogBadge() {
+  newLogs++;
+  const b = document.getElementById('navLogsBadge');
+  b.textContent = newLogs > 99 ? '99+' : newLogs;
+  b.style.display = 'inline';
 }
 
-// ── NAVIGATION ────────────────────────────────────────────────
+/* ══════════════════════════════════════════════
+   AUTO-ROLE
+══════════════════════════════════════════════ */
+async function loadAutoRole() {
+  try {
+    const r = await fetch('/api/autorole');
+    const d = await r.json();
+    if (d.ok) updateARDisplay(d.roleName);
+  } catch(e) {}
+  populateARSelect();
+}
+
+function updateARDisplay(name) {
+  const el1 = document.getElementById('arCurrentRole');
+  const el2 = document.getElementById('arHelpRole');
+  if(el1) el1.textContent = name;
+  if(el2) el2.textContent = name;
+  const sel = document.getElementById('arSelect');
+  if(sel) for(const o of sel.options) if(o.value === name) { sel.value = name; break; }
+}
+
+function populateARSelect() {
+  if (!state) return;
+  const sel = document.getElementById('arSelect');
+  if (!sel) return;
+  const current = document.getElementById('arCurrentRole')?.textContent || '';
+  sel.innerHTML = state.roles
+    .filter(r => !['carl-bot','Ticket Tool','Statbot','Brain.EXE'].includes(r.name))
+    .map(r => `<option value="${r.name}" ${r.name === current ? 'selected' : ''}>${r.name}</option>`)
+    .join('');
+}
+
+function appendArrival(data) {
+  const containers = ['arArrivalLog','arrivalMini'];
+  containers.forEach(id => {
+    const c = document.getElementById(id);
+    if (!c) return;
+    const empty = c.querySelector('.empty');
+    if (empty) empty.remove();
+    const el = document.createElement('div');
+    el.className = 'log-line';
+    const t = new Date().toLocaleTimeString('fr-FR');
+    el.innerHTML = `<span class="log-ts">${t}</span><span class="log-badge join">JOIN</span><span class="log-msg ok">👋 ${data.user} → ${data.role}</span>`;
+    c.appendChild(el);
+    c.scrollTop = c.scrollHeight;
+  });
+}
+
+/* ══════════════════════════════════════════════
+   WELCOME PREVIEW
+══════════════════════════════════════════════ */
+function updateWelcomePreview() {
+  const title = document.getElementById('wTitle').value;
+  const desc  = document.getElementById('wDesc').value;
+  const color = document.getElementById('wColor').value;
+  const footer= document.getElementById('wFooter').value;
+
+  document.getElementById('wPrevTitle').textContent = title;
+  document.getElementById('wPrevDesc').textContent  = desc;
+  document.getElementById('wPrevFooter').textContent= footer;
+  document.getElementById('welcomePreview').style.borderLeftColor = color;
+}
+
+/* ══════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════ */
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
   document.getElementById(`page-${name}`)?.classList.add('active');
   document.querySelector(`.nav-item[data-page="${name}"]`)?.classList.add('active');
-  if (name === 'logs') { newLogsCount = 0; updateLogsBadge(); }
+  if (name === 'logs') { newLogs = 0; document.getElementById('navLogsBadge').style.display = 'none'; }
 }
 
 document.querySelectorAll('.nav-item[data-page]').forEach(el => {
   el.addEventListener('click', () => showPage(el.dataset.page));
 });
 
-// ── MODALS ────────────────────────────────────────────────────
-function openModal(id) { document.getElementById(id).classList.add('open'); }
+// Expand/Collapse all
+document.getElementById('btnExpandAll')?.addEventListener('click', () => {
+  document.querySelectorAll('#channelsTree .tree-ch-list').forEach(l => l.style.display = '');
+  document.querySelectorAll('#channelsTree .tree-cat-icon').forEach(i => i.classList.add('open'));
+});
+document.getElementById('btnCollapseAll')?.addEventListener('click', () => {
+  document.querySelectorAll('#channelsTree .tree-ch-list').forEach(l => l.style.display = 'none');
+  document.querySelectorAll('#channelsTree .tree-cat-icon').forEach(i => i.classList.remove('open'));
+});
+
+/* ══════════════════════════════════════════════
+   MODALS
+══════════════════════════════════════════════ */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-function populateCategorySelect() {
+document.querySelectorAll('.modal-wrap').forEach(m => {
+  m.addEventListener('click', e => { if(e.target === m) m.classList.remove('open'); });
+});
+
+function populateCatSelect() {
   if (!state) return;
   const sel = document.getElementById('chCategory');
-  sel.innerHTML = '<option value="">— Aucune catégorie —</option>' +
-    state.structure.map(b => `<option value="${b.category}">${b.category}</option>`).join('');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Sans catégorie —</option>' +
+    state.structure.map(b => `<option>${b.category}</option>`).join('');
 }
 
-// ── API CALLS ─────────────────────────────────────────────────
-async function api(method, path, body) {
-  const res = await fetch(path, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return res.json();
+function openEditChannel(ch) {
+  document.getElementById('editChId').value    = ch.id;
+  document.getElementById('editChName').value  = ch.name;
+  document.getElementById('editChTopic').value = ch.topic || '';
+  openModal('modalEditChannel');
 }
 
+/* ══════════════════════════════════════════════
+   ACTIONS
+══════════════════════════════════════════════ */
 async function deleteChannel(id, name) {
   if (!confirm(`Supprimer le salon "${name}" ?`)) return;
   const r = await api('DELETE', `/api/channels/${id}`);
-  if (r.ok) toast(`Salon "${name}" supprimé`, 'success');
-  else toast(r.error, 'error');
+  r.ok ? toast(`✅ "${name}" supprimé`, 'success') : toast(r.error, 'error');
 }
 
 async function deleteRole(id, name) {
   if (!confirm(`Supprimer le rôle "${name}" ?`)) return;
   const r = await api('DELETE', `/api/roles/${id}`);
-  if (r.ok) toast(`Rôle "${name}" supprimé`, 'success');
-  else toast(r.error, 'error');
+  r.ok ? toast(`✅ Rôle "${name}" supprimé`, 'success') : toast(r.error, 'error');
 }
 
-// Créer salon
-document.getElementById('btnAddChannel').onclick = () => openModal('modalChannel');
-document.getElementById('btnCreateChannel').onclick = async () => {
+async function doBackup() {
+  toast('Création du backup…', 'info');
+  const r = await api('POST', '/api/backup');
+  if (r.ok) {
+    toast(`📦 Backup créé : ${r.filename}`, 'success');
+    backups.unshift({ name: r.filename, date: new Date().toLocaleString('fr-FR') });
+    renderBackups();
+  } else toast(r.error, 'error');
+}
+
+async function doForceSync() {
+  toast('Synchronisation en cours…', 'info');
+  await api('POST', '/api/sync/discord-to-file');
+}
+
+function renderBackups() {
+  const el = document.getElementById('backupsList');
+  if (!backups.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Aucun backup</div></div>';
+    return;
+  }
+  el.innerHTML = '';
+  backups.forEach(b => {
+    const row = document.createElement('div');
+    row.className = 'backup-row';
+    row.innerHTML = `<div class="backup-icon">📦</div><div class="backup-name">${b.name}</div><div class="backup-date">${b.date}</div>`;
+    el.appendChild(row);
+  });
+}
+
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✅ Copié';
+    setTimeout(() => btn.textContent = '📋 Copier', 2000);
+  });
+}
+
+function toggleSyncHandler(cb) {
+  toast(cb.checked ? 'Sync réactivée' : 'Sync mise en pause (redémarre le bot pour appliquer)', cb.checked ? 'success' : 'warn');
+}
+
+/* ══════════════════════════════════════════════
+   BUTTON WIRING
+══════════════════════════════════════════════ */
+// Backup buttons
+['tbBackup','qa-backup','btnCreateBackup'].forEach(id =>
+  document.getElementById(id)?.addEventListener('click', doBackup));
+
+// Sync buttons
+['tbSync','qa-sync'].forEach(id =>
+  document.getElementById(id)?.addEventListener('click', doForceSync));
+
+document.getElementById('btnD2F')?.addEventListener('click', () => api('POST', '/api/sync/discord-to-file'));
+document.getElementById('btnF2D')?.addEventListener('click', () => api('POST', '/api/sync/file-to-discord'));
+
+// Channel create
+document.getElementById('btnAddChannel')?.addEventListener('click', () => openModal('modalChannel'));
+document.getElementById('btnCreateChannel')?.addEventListener('click', async () => {
   const name     = document.getElementById('chName').value.trim();
   const type     = document.getElementById('chType').value;
   const category = document.getElementById('chCategory').value;
   const topic    = document.getElementById('chTopic').value.trim();
-  if (!name) return toast('Nomme le salon !', 'error');
+  if (!name) return toast('Donne un nom au salon !', 'error');
   const r = await api('POST', '/api/channels', { name, type, categoryName: category, topic });
-  if (r.ok) { toast(`Salon "${name}" créé ✅`, 'success'); closeModal('modalChannel'); document.getElementById('chName').value = ''; }
+  if (r.ok) { toast(`✅ Salon "${name}" créé`, 'success'); closeModal('modalChannel'); document.getElementById('chName').value = ''; }
   else toast(r.error, 'error');
-};
+});
 
-// Créer rôle
-document.getElementById('btnAddRole').onclick = () => openModal('modalRole');
-document.getElementById('btnCreateRole').onclick = async () => {
+// Channel edit
+document.getElementById('btnSaveEditChannel')?.addEventListener('click', async () => {
+  const id    = document.getElementById('editChId').value;
+  const name  = document.getElementById('editChName').value.trim();
+  const topic = document.getElementById('editChTopic').value.trim();
+  const r = await api('PATCH', `/api/channels/${id}`, { name, topic });
+  if (r.ok) { toast('✅ Salon modifié', 'success'); closeModal('modalEditChannel'); }
+  else toast(r.error, 'error');
+});
+
+// Role create
+document.getElementById('btnAddRole')?.addEventListener('click', () => openModal('modalRole'));
+document.getElementById('btnCreateRole')?.addEventListener('click', async () => {
   const name  = document.getElementById('roleName').value.trim();
   const color = document.getElementById('roleColor').value;
   const hoist = document.getElementById('roleHoist').value === 'true';
-  if (!name) return toast('Nomme le rôle !', 'error');
+  if (!name) return toast('Donne un nom au rôle !', 'error');
   const r = await api('POST', '/api/roles', { name, color, hoist });
-  if (r.ok) { toast(`Rôle "${name}" créé ✅`, 'success'); closeModal('modalRole'); document.getElementById('roleName').value = ''; }
+  if (r.ok) { toast(`✅ Rôle "${name}" créé`, 'success'); closeModal('modalRole'); document.getElementById('roleName').value = ''; }
   else toast(r.error, 'error');
-};
-
-// Backup
-async function doBackup() {
-  const r = await api('POST', '/api/backup');
-  if (r.ok) toast(`Backup créé : ${r.filename}`, 'success');
-  else toast(r.error, 'error');
-}
-
-// Force sync
-async function doForceSync() {
-  toast('Synchronisation en cours...', 'info');
-  await api('POST', '/api/sync/discord-to-file');
-}
-
-// Boutons
-['btnBackup','qa-backup','navBackup'].forEach(id => document.getElementById(id)?.addEventListener('click', doBackup));
-['btnForceSync','qa-sync','navForceSync'].forEach(id => document.getElementById(id)?.addEventListener('click', doForceSync));
-document.getElementById('qa-d2f').onclick = () => api('POST', '/api/sync/discord-to-file');
-document.getElementById('btnClearLogs').onclick = () => { allLogs = []; renderLogs(); newLogsCount = 0; updateLogsBadge(); };
-document.getElementById('btnClearLogsPage').onclick = () => { allLogs = []; renderLogs(); newLogsCount = 0; updateLogsBadge(); };
-
-// Fermer modal en cliquant dehors
-document.querySelectorAll('.modal-overlay').forEach(o => {
-  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
 });
 
-// ── TOAST ─────────────────────────────────────────────────────
+// Auto-role save
+document.getElementById('arSave')?.addEventListener('click', async () => {
+  const name = document.getElementById('arSelect').value;
+  if (!name) return toast('Sélectionne un rôle !', 'error');
+  const r = await api('POST', '/api/autorole', { roleName: name });
+  if (r.ok) { updateARDisplay(name); toast(`✅ Auto-role → ${name}`, 'success'); }
+  else toast(r.error, 'error');
+});
+
+// Logs clear
+document.getElementById('ovClearLog')?.addEventListener('click', () => {
+  allLogs = []; renderLogs(); newLogs = 0;
+  document.getElementById('navLogsBadge').style.display = 'none';
+});
+document.getElementById('btnClearLogs')?.addEventListener('click', () => {
+  allLogs = []; renderLogs(); newLogs = 0;
+  document.getElementById('navLogsBadge').style.display = 'none';
+});
+
+// Logs export
+document.getElementById('btnExportLogs')?.addEventListener('click', () => {
+  const blob = new Blob([allLogs.map(l => `[${l.time}] [${l.dir}] ${l.msg}`).join('\n')], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `brainexe-logs-${Date.now()}.txt`;
+  a.click();
+  toast('📥 Logs exportés', 'success');
+});
+
+// Add category modal (basic version)
+document.getElementById('btnAddCat')?.addEventListener('click', () => {
+  const name = prompt('Nom de la nouvelle catégorie :');
+  if (!name) return;
+  toast(`Catégorie à créer via /api/channels en mode "category" — ajout prévu dans server.js`, 'info');
+});
+
+// Log filters
+document.querySelectorAll('.log-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.log-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    logFilter = btn.dataset.filter;
+    renderLogs();
+  });
+});
+
+/* ══════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════ */
 function toast(msg, type = 'info') {
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  el.textContent = msg;
-  document.getElementById('toastContainer').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+  const icons = { success:'✅', error:'❌', info:'ℹ️', warn:'⚠️' };
+  el.textContent = `${icons[type]||''} ${msg}`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3800);
 }
 
-// ── AUTO-ROLE ─────────────────────────────────────────────
-async function loadAutoRole() {
-  try {
-    const r = await fetch("/api/autorole");
-    const d = await r.json();
-    if (d.ok) updateAutoRoleDisplay(d.roleName);
-  } catch(e) {}
-}
-
-function updateAutoRoleDisplay(name) {
-  document.getElementById("currentAutoRole").textContent = name;
-  document.getElementById("helpAutoRole").textContent = name;
-  const sel = document.getElementById("autoRoleSelect");
-  if(sel) for(let o of sel.options) if(o.value === name) { sel.value = name; break; }
-}
-
-function populateAutoRoleSelect() {
-  if (!state) return;
-  const sel = document.getElementById("autoRoleSelect");
-  if (!sel) return;
-  const current = document.getElementById("currentAutoRole").textContent;
-  sel.innerHTML = state.roles.map(r =>
-    `<option value="${r.name}" ${r.name === current ? "selected" : ""}>${r.name}</option>`
-  ).join("");
-}
-
-function appendArrival(data) {
-  const c = document.getElementById("arrivalLog");
-  if (!c) return;
-  const el = document.createElement("div");
-  el.className = "log-line";
-  const time = new Date().toLocaleTimeString("fr-FR");
-  el.innerHTML = `<span class="log-time">${time}</span><span class="log-dir api">JOIN</span><span class="log-msg success">👋 ${data.user} → ${data.role}</span>`;
-  c.appendChild(el);
-  c.scrollTop = c.scrollHeight;
-}
-
-document.getElementById("btnSaveAutoRole")?.addEventListener("click", async () => {
-  const name = document.getElementById("autoRoleSelect").value;
-  if (!name) return toast("Sélectionne un rôle !", "error");
-  const r = await api("POST", "/api/autorole", { roleName: name });
-  if (r.ok) {
-    updateAutoRoleDisplay(name);
-    toast(`Auto-role mis à jour : ${name}`, "success");
-    document.getElementById("autoRoleFeedback").style.display = "none";
-  } else toast(r.error, "error");
-});
-
-
-// ── INIT ──────────────────────────────────────────────────────
+/* ══════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════ */
 connectWS();
-updateLogsBadge();
+renderBackups();
+
+// Initial state fetch (fallback if WS slow)
+setTimeout(async () => {
+  if (!state) {
+    try {
+      const r = await api('GET', '/api/state');
+      if (r.ok) { state = r.state; renderAll(); renderStats(r.stats); }
+    } catch(e) {}
+  }
+  const logR = await api('GET', '/api/logs');
+  if (logR.ok) { allLogs = logR.logs; renderLogs(); }
+  loadAutoRole();
+}, 300);
 </script>
 </body>
 </html>
