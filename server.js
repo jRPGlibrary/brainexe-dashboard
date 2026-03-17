@@ -14,12 +14,14 @@ const fs        = require('fs');
 const path      = require('path');
 const cron      = require('node-cron');
 const discord_js = require('discord.js');
-const Client            = discord_js.Client;
-const GatewayIntentBits = discord_js.GatewayIntentBits;
-const ChannelType       = discord_js.ChannelType;
-const Events            = discord_js.Events;
-const EmbedBuilder      = discord_js.EmbedBuilder || discord_js.MessageEmbed;
-const PermissionFlagsBits = discord_js.PermissionFlagsBits || discord_js.Permissions?.FLAGS;
+const Client      = discord_js.Client;
+const ChannelType = discord_js.ChannelType;
+const Events      = discord_js.Events;
+const EmbedBuilder = discord_js.EmbedBuilder || discord_js.MessageEmbed;
+const PermissionFlagsBits = discord_js.PermissionFlagsBits;
+// Intents compatibles v13 et v14
+const INTENTS_GUILDS        = discord_js.GatewayIntentBits?.Guilds        ?? discord_js.Intents?.FLAGS?.GUILDS        ?? 1;
+const INTENTS_GUILD_MEMBERS = discord_js.GatewayIntentBits?.GuildMembers  ?? discord_js.Intents?.FLAGS?.GUILD_MEMBERS ?? 2;
 
 // ── CONFIG ───────────────────────────────────────────────────
 const TOKEN         = process.env.DISCORD_TOKEN;
@@ -133,10 +135,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const discord = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-  ],
+  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS],
 });
 
 let AUTO_ROLE_NAME    = '👁️ Lurker';
