@@ -1,9 +1,9 @@
 {
   "_info": {
-    "lastSync": "2026-03-12T19:56:21.229Z",
+    "lastSync": "2026-03-17T07:05:54.642Z",
     "source": "discord",
     "server": "BrainEXE",
-    "totalRoles": 17,
+    "totalRoles": 18,
     "totalChannels": 42
   },
   "roles": [
@@ -12,116 +12,123 @@
       "name": "carl-bot",
       "color": "#000000",
       "hoist": false,
-      "position": 17
+      "position": 18
     },
     {
       "id": "1481025682187485184",
       "name": "👑 Fondateur",
       "color": "#b890ff",
       "hoist": true,
-      "position": 16
+      "position": 17
     },
     {
       "id": "1481025685161119814",
       "name": "🛡️ Modérateur",
       "color": "#5b9cf6",
       "hoist": true,
-      "position": 15
+      "position": 16
     },
     {
       "id": "1481025692949942397",
       "name": "🧠 TDAH",
       "color": "#3ba55c",
       "hoist": false,
-      "position": 14
+      "position": 15
     },
     {
       "id": "1481025696468828241",
       "name": "💜 Borderline",
       "color": "#f5a623",
       "hoist": false,
-      "position": 13
+      "position": 14
     },
     {
       "id": "1481025687879155824",
       "name": "📱 TikToker",
       "color": "#e040c8",
       "hoist": false,
-      "position": 12
+      "position": 13
     },
     {
       "id": "1481025699543257289",
       "name": "🔔 Notif Lives",
       "color": "#e74c3c",
       "hoist": false,
-      "position": 11
+      "position": 12
     },
     {
       "id": "1481028159041437817",
       "name": "⚔️ RPG Addict",
       "color": "#e74c3c",
       "hoist": false,
-      "position": 10
+      "position": 11
     },
     {
       "id": "1481028161578864683",
       "name": "🕹️ Retro Gamer",
       "color": "#f39c12",
       "hoist": false,
-      "position": 9
+      "position": 10
     },
     {
       "id": "1481028164284055734",
       "name": "🌿 Indie Explorer",
       "color": "#2ecc71",
       "hoist": false,
-      "position": 8
+      "position": 9
     },
     {
       "id": "1481028167098699896",
       "name": "🚀 Next-Gen Player",
       "color": "#3498db",
       "hoist": false,
-      "position": 7
+      "position": 8
     },
     {
       "id": "1481028156730118315",
       "name": "💻 Web Dev",
       "color": "#40c8e0",
       "hoist": false,
-      "position": 6
+      "position": 7
     },
     {
       "id": "1481025690374635743",
       "name": "💻 Dev",
       "color": "#40c8e0",
       "hoist": false,
-      "position": 5
+      "position": 6
     },
     {
       "id": "1481025702030610492",
       "name": "👁️ Lurker",
       "color": "#95a5a6",
       "hoist": false,
-      "position": 4
+      "position": 5
     },
     {
       "id": "1481056503631843371",
       "name": "Ticket Tool",
       "color": "#000000",
       "hoist": false,
-      "position": 3
+      "position": 4
     },
     {
       "id": "1481056615854637111",
       "name": "Statbot",
       "color": "#000000",
       "hoist": false,
-      "position": 2
+      "position": 3
     },
     {
       "id": "1481345193775993012",
       "name": "Brain.EXE",
+      "color": "#000000",
+      "hoist": false,
+      "position": 2
+    },
+    {
+      "id": "1482478838171697296",
+      "name": "PingSync",
       "color": "#000000",
       "hoist": false,
       "position": 1
