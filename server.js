@@ -13,7 +13,13 @@ const chokidar  = require('chokidar');
 const fs        = require('fs');
 const path      = require('path');
 const cron      = require('node-cron');
-const { Client, GatewayIntentBits, ChannelType, Events, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const discord_js = require('discord.js');
+const Client            = discord_js.Client;
+const GatewayIntentBits = discord_js.GatewayIntentBits;
+const ChannelType       = discord_js.ChannelType;
+const Events            = discord_js.Events;
+const EmbedBuilder      = discord_js.EmbedBuilder || discord_js.MessageEmbed;
+const PermissionFlagsBits = discord_js.PermissionFlagsBits || discord_js.Permissions?.FLAGS;
 
 // ── CONFIG ───────────────────────────────────────────────────
 const TOKEN         = process.env.DISCORD_TOKEN;
