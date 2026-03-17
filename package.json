@@ -5,13 +5,17 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "npm install --prefer-online"
   },
   "dependencies": {
     "chokidar": "^3.5.0",
-    "discord.js": "^14.0.0",
+    "discord.js": "14.16.3",
     "express": "^4.18.0",
     "node-cron": "^3.0.0",
     "ws": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
