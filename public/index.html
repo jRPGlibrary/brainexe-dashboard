@@ -1221,6 +1221,7 @@ td {
 
   <div class="nav-section">Bots & Config</div>
   <div class="nav-item" data-page="automations"><span class="nav-icon">🤖</span> Automatisations</div>
+  <div class="nav-item" data-page="posts"><span class="nav-icon">✏️</span> Posts manuels</div>
   <div class="nav-item" data-page="autorole"><span class="nav-icon">🤖</span> Auto-Role</div>
   <div class="nav-item" data-page="reactionroles"><span class="nav-icon">✨</span> Reaction Roles</div>
   <div class="nav-item" data-page="welcome"><span class="nav-icon">👋</span> Bienvenue</div>
@@ -1906,7 +1907,7 @@ Bienvenue dans la communauté **BrainEXE** !</div>
             <input type="number" class="field-input" id="cfgActusDay" min="1" max="28" placeholder="1">
           </div>
           <div style="padding:10px 12px;background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.15);border-radius:8px;font-size:0.75rem;color:var(--yellow);align-self:end;margin-bottom:2px">
-            ⚠️ Nécessite PERPLEXITY_API_KEY — les actus sont générées avec accès web en temps réel
+            ⚠️ Nécessite ANTHROPIC_API_KEY — les actus sont générées par Claude IA
           </div>
         </div>
         <div class="field">
@@ -1956,6 +1957,65 @@ Bienvenue dans la communauté **BrainEXE** !</div>
     </div>
 
   </div>
+
+  <!-- ▸ PAGE: POSTS MANUELS ──────────────────── -->
+  <div class="page" id="page-posts">
+    <div class="page-head">
+      <div>
+        <div class="page-title">✏️ Posts Manuels</div>
+        <div class="page-sub">Envoie toi-même un message dans n'importe quel salon Discord</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span>📝</span> Composer un message</div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+
+        <div class="field">
+          <div class="field-label">Salon de destination</div>
+          <select class="field-input" id="postChannel" style="max-width:400px"></select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Message <span style="color:var(--text2);font-weight:400;text-transform:none;letter-spacing:0">(markdown Discord supporté : **gras**, *italique*, > citation...)</span></div>
+          <textarea class="field-input" id="postContent" rows="6" placeholder="Écris ton message ici..." style="resize:vertical;line-height:1.6"></textarea>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.8rem;color:var(--text2)">
+            <input type="checkbox" id="postAsEmbed" style="width:16px;height:16px;accent-color:var(--blue)">
+            Envoyer comme embed violet BrainEXE
+          </label>
+        </div>
+
+        <div id="postEmbedOptions" style="display:none;flex-direction:column;gap:10px;padding:14px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
+          <div class="field">
+            <div class="field-label">Titre de l'embed</div>
+            <input class="field-input" id="postEmbedTitle" placeholder="Titre du message...">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btnSendPost">📤 Envoyer dans Discord</button>
+          <button class="btn btn-ghost" id="btnClearPost">🗑 Effacer</button>
+          <div id="postStatus" style="font-size:0.78rem;color:var(--text2)"></div>
+        </div>
+
+        <div style="padding:10px 14px;background:var(--blue-dim);border:1px solid rgba(91,127,255,0.15);border-radius:8px;font-size:0.75rem;color:#a5baff">
+          💡 Le message sera envoyé par BrainEXE dans le salon choisi — parfait pour poster tes actus, annonces ou lance-conversations manuellement !
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title"><span>⚡</span> Raccourcis par catégorie</div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px" id="postShortcuts">
+        <div style="color:var(--text2);font-size:0.8rem">Chargement des salons...</div>
+      </div>
+    </div>
+
+  </div>
+
 
 </main>
 </div>
@@ -2129,6 +2189,8 @@ function renderAll() {
   renderRRGroups();
   renderRolesBreakdown();
   loadAutoRole();
+  renderMembers();
+  populatePostChannels();
 }
 
 function renderStats(s) {
@@ -2400,6 +2462,45 @@ function renderRRGroups() {
 }
 
 /* ══════════════════════════════════════════════
+   MEMBRES
+══════════════════════════════════════════════ */
+function renderMembers() {
+  if (!state || !state.members) return;
+  const tbody = document.getElementById('membersTable');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (state.members.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun membre trouvé — vérifie l'intent GuildMembers dans Discord Dev Portal</div></div></td></tr>';
+    return;
+  }
+
+  for (const m of state.members) {
+    const tr = document.createElement('tr');
+    const initials = (m.displayName || m.username || '?').slice(0, 2).toUpperCase();
+    const rolesHtml = (m.roles || []).slice(0, 3).map(r =>
+      `<span class="member-role-chip" style="background:${r.color === '#000000' ? 'var(--border)' : r.color}22;color:${r.color === '#000000' ? 'var(--text2)' : r.color};border:1px solid ${r.color === '#000000' ? 'var(--border)' : r.color}44">${r.name}</span>`
+    ).join('') + (m.roles.length > 3 ? `<span style="font-size:0.6rem;color:var(--text3)">+${m.roles.length - 3}</span>` : '');
+
+    tr.innerHTML = \`
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="member-avatar">\${initials}</div>
+          <div>
+            <div class="member-name">\${m.displayName || m.username}</div>
+            <div style="font-size:0.65rem;color:var(--text3);font-family:var(--mono)">@\${m.username}</div>
+          </div>
+        </div>
+      </td>
+      <td style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">\${m.id}</td>
+      <td><div class="member-roles">\${rolesHtml}</div></td>
+      <td style="font-family:var(--mono);font-size:0.72rem;color:var(--text2)">\${m.joinedAt || '—'}</td>
+    \`;
+    tbody.appendChild(tr);
+  }
+}
+
+/* ══════════════════════════════════════════════
    LOGS
 ══════════════════════════════════════════════ */
 function renderLogs() {
@@ -2528,6 +2629,7 @@ function showPage(name) {
   document.querySelector(`.nav-item[data-page="${name}"]`)?.classList.add('active');
   document.querySelector(`.mobile-nav-item[data-page="${name}"]`)?.classList.add('active');
   if (name === 'logs') { newLogs = 0; document.getElementById('navLogsBadge').style.display = 'none'; }
+  if (name === 'posts') { populatePostChannels(); }
   if (name === 'automations') {
     if (!automationsConfig) loadAutomationsConfig();
     else {
@@ -2926,6 +3028,106 @@ document.querySelectorAll('.nav-item[data-page]').forEach(el => {
 
 // WS event configUpdate
 // (géré dans onmessage plus bas)
+
+
+/* ══════════════════════════════════════════════
+   POSTS MANUELS
+══════════════════════════════════════════════ */
+function populatePostChannels() {
+  if (!state) return;
+  const sel = document.getElementById('postChannel');
+  if (!sel) return;
+  sel.innerHTML = '';
+  for (const block of state.structure) {
+    const group = document.createElement('optgroup');
+    group.label = block.category;
+    for (const ch of block.channels) {
+      if (ch.type === 'voice') continue;
+      const opt = document.createElement('option');
+      opt.value = ch.id;
+      opt.textContent = ch.name;
+      group.appendChild(opt);
+    }
+    sel.appendChild(group);
+  }
+  renderPostShortcuts();
+}
+
+function renderPostShortcuts() {
+  if (!state) return;
+  const el = document.getElementById('postShortcuts');
+  if (!el) return;
+  el.innerHTML = '';
+  const categories = [
+    { label: '🚀 Next-Gen & Actus', ids: ['1481028286892081183','1481028283486175245','1481028291094904995'] },
+    { label: '⚔️ RPG & Aventure',   ids: ['1481028244500385946','1481028247415296231','1481028250741506189'] },
+    { label: '🌿 Indie Games',       ids: ['1481028272090386584','1481028274590322850'] },
+    { label: '🕹️ Retro Gaming',     ids: ['1481028260753051739','1481028264410484837'] },
+    { label: '💬 Communauté',        ids: ['1481028189680570421','1481028192088100977'] },
+  ];
+  for (const cat of categories) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+    const label = document.createElement('span');
+    label.style.cssText = 'font-size:0.75rem;font-weight:700;color:var(--text2);min-width:160px';
+    label.textContent = cat.label;
+    row.appendChild(label);
+    for (const id of cat.ids) {
+      const ch = state.structure.flatMap(b => b.channels).find(c => c.id === id);
+      if (!ch) continue;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-ghost btn-sm';
+      btn.textContent = ch.name;
+      btn.onclick = () => {
+        const sel = document.getElementById('postChannel');
+        if (sel) sel.value = id;
+        document.getElementById('postContent')?.focus();
+      };
+      row.appendChild(btn);
+    }
+    el.appendChild(row);
+  }
+}
+
+document.getElementById('postAsEmbed')?.addEventListener('change', function() {
+  const opts = document.getElementById('postEmbedOptions');
+  if (opts) opts.style.display = this.checked ? 'flex' : 'none';
+});
+
+document.getElementById('btnSendPost')?.addEventListener('click', async () => {
+  const channelId = document.getElementById('postChannel')?.value;
+  const content   = document.getElementById('postContent')?.value?.trim();
+  const asEmbed   = document.getElementById('postAsEmbed')?.checked;
+  const embedTitle = document.getElementById('postEmbedTitle')?.value?.trim();
+  const statusEl  = document.getElementById('postStatus');
+
+  if (!channelId) return toast('Choisis un salon !', 'error');
+  if (!content)   return toast('Écris quelque chose !', 'error');
+
+  statusEl.textContent = '⏳ Envoi en cours...';
+  statusEl.style.color = 'var(--text2)';
+
+  const r = await api('POST', '/api/post', { channelId, content, asEmbed, embedTitle });
+  if (r.ok) {
+    toast('✅ Message envoyé dans Discord !', 'success');
+    statusEl.textContent = '✅ Envoyé !';
+    statusEl.style.color = 'var(--green)';
+    document.getElementById('postContent').value = '';
+  } else {
+    toast(r.error || 'Erreur', 'error');
+    statusEl.textContent = '❌ ' + (r.error || 'Erreur');
+    statusEl.style.color = 'var(--red)';
+  }
+});
+
+document.getElementById('btnClearPost')?.addEventListener('click', () => {
+  document.getElementById('postContent').value = '';
+  document.getElementById('postEmbedTitle').value = '';
+  document.getElementById('postStatus').textContent = '';
+});
+
+// Remplir les salons quand on entre dans Posts
+const _origShowPage = showPage;
 
 /* ══════════════════════════════════════════════
    INIT
