@@ -837,11 +837,12 @@ discord.once('clientReady', async () => {
   startActusCron();
   startConvCron();
 
-  server.listen(PORT, () => {
-    pushLog('SYS', `Serveur démarré sur le port ${PORT}`);
-  });
-
   await syncDiscordToFile('Démarrage');
+});
+
+// Démarrer le serveur HTTP immédiatement (pas d'attente du bot)
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🌐 Serveur HTTP démarré sur le port ${PORT}`);
 });
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
