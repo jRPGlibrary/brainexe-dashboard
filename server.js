@@ -872,8 +872,21 @@ server.listen(PORT, '0.0.0.0', () => {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-discord.login(TOKEN).catch(err => {
-  console.error('\n❌ Token invalide :', err.message);
+// Vérifications avant login
+console.log('🔍 Variables Railway :');
+console.log('  DISCORD_TOKEN    :', !!TOKEN, TOKEN ? '(défini)' : '(MANQUANT !)');
+console.log('  GUILD_ID         :', GUILD_ID);
+console.log('  ANTHROPIC_API_KEY:', !!ANTHROPIC_API_KEY);
+
+if (!TOKEN) {
+  console.error('❌ DISCORD_TOKEN manquant — ajoute-le dans Railway Variables');
+  process.exit(1);
+}
+
+discord.login(TOKEN).then(() => {
+  console.log('✅ discord.login() OK — en attente clientReady...');
+}).catch(err => {
+  console.error('❌ Login Discord échoué :', err.message);
   process.exit(1);
 });
 
