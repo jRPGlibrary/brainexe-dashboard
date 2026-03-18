@@ -29,7 +29,7 @@ const GUILD_ID      = process.env.GUILD_ID || '1481022956816830669';
 const PORT          = process.env.PORT     || 3000;
 const TEMPLATE_FILE = 'discord-template.json';
 const CONFIG_FILE   = 'brainexe-config.json';
-const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // ── CONFIG PERSISTANTE ────────────────────────────────────────
 const DEFAULT_CONFIG = {
@@ -409,23 +409,35 @@ function startFileWatcher() {
   });
 }
 
-// ── ANECDOTE GAMING QUOTIDIENNE ───────────────────────────────
-async function generateAnecdote() {
-  if (!PERPLEXITY_API_KEY) throw new Error('PERPLEXITY_API_KEY manquante dans Railway');
-  const response = await fetch('https://api.perplexity.ai/chat/completions', {
+// ── APPEL CLAUDE (Anthropic) ─────────────────────────────────
+async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
+  if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante dans Railway');
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${PERPLEXITY_API_KEY}` },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
     body: JSON.stringify({
-      model: 'sonar',
-      messages: [
-        { role: 'system', content: "Tu es un expert gaming passionné qui écrit pour une communauté Discord francophone neurodivergente. Tu génères des anecdotes gaming courtes, vraies, fun et surprenantes." },
-        { role: 'user',   content: "Génère UNE anecdote gaming courte et surprenante. Thèmes : JRPG, retro, indie, next-gen, easter eggs, records, bugs légendaires... FORMAT : 2 à 4 phrases maximum, punchy. Termine par une ligne vide puis : 🕹️ *[Jeu ou contexte concerné]*" },
-      ],
-      max_tokens: 300,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
     }),
   });
-  if (!response.ok) throw new Error(`Perplexity API error ${response.status}`);
-  return (await response.json()).choices[0].message.content.trim();
+  if (!response.ok) throw new Error(`Anthropic API error ${response.status}`);
+  const data = await response.json();
+  return data.content[0].text.trim();
+}
+
+// ── ANECDOTE GAMING QUOTIDIENNE ───────────────────────────────
+async function generateAnecdote() {
+  return callClaude(
+    "Tu es un expert gaming passionné qui écrit pour une communauté Discord francophone neurodivergente. Tu génères des anecdotes gaming courtes, vraies, fun et surprenantes.",
+    "Génère UNE anecdote gaming courte et surprenante. Thèmes : JRPG, retro, indie, next-gen, easter eggs, records, bugs légendaires... FORMAT : 2 à 4 phrases maximum, punchy. Termine par une ligne vide puis : 🕹️ *[Jeu ou contexte concerné]*",
+    400
+  );
 }
 
 async function postDailyAnecdote() {
@@ -506,21 +518,12 @@ async function postMonthlyActus() {
     try {
       const channel = guild.channels.cache.get(ch.channelId);
       if (!channel) { pushLog('ERR', `Actus : ${ch.channelName} introuvable`, 'error'); continue; }
-      if (!PERPLEXITY_API_KEY) { pushLog('ERR', 'PERPLEXITY_API_KEY manquante', 'error'); break; }
-      const response = await fetch('https://api.perplexity.ai/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${PERPLEXITY_API_KEY}` },
-        body: JSON.stringify({
-          model: 'sonar',
-          messages: [
-            { role: 'system', content: "Tu es un expert gaming qui résume les actualités récentes pour une communauté Discord francophone. Tu utilises des données réelles et récentes." },
-            { role: 'user',   content: `Génère un récapitulatif des actualités de ${monthCap} pour un salon dédié à : ${ch.topic}. Format : 4 à 6 actus concrètes avec dates. Style : emojis, punchy. Commence directement par les actus.` },
-          ],
-          max_tokens: 600,
-        }),
-      });
-      if (!response.ok) throw new Error(`Perplexity error ${response.status}`);
-      const content = (await response.json()).choices[0].message.content.trim();
+      if (!ANTHROPIC_API_KEY) { pushLog('ERR', 'ANTHROPIC_API_KEY manquante', 'error'); break; }
+      const content = await callClaude(
+        "Tu es un expert gaming qui résume les actualités récentes pour une communauté Discord francophone. Génère des actus réalistes et pertinentes basées sur ta connaissance.",
+        `Génère un récapitulatif des actualités récentes pour un salon Discord dédié à : ${ch.topic}. Format : 4 à 6 actus concrètes avec emojis. Style punchy, communauté jeune. Commence directement par les actus.`,
+        600
+      );
       const embed   = new EmbedBuilder()
         .setColor(0x5b7fff)
         .setTitle(`📅 Actus ${monthCap}`)
@@ -555,21 +558,12 @@ async function postRandomConversation() {
     const guild   = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
-    if (!channel || !PERPLEXITY_API_KEY) return;
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${PERPLEXITY_API_KEY}` },
-      body: JSON.stringify({
-        model: 'sonar',
-        messages: [
-          { role: 'system', content: "Tu écris pour une communauté Discord francophone neurodivergente passionnée de gaming. Tu lances des conversations naturelles et engageantes." },
-          { role: 'user',   content: `Génère UN message court pour lancer une conversation dans un salon dédié à : ${ch.topic}. Maximum 3 phrases, ton décontracté, une question ouverte à la fin. Pas de titre, commence directement.` },
-        ],
-        max_tokens: 150,
-      }),
-    });
-    if (!response.ok) return;
-    const content = (await response.json()).choices[0].message.content.trim();
+    if (!channel || !ANTHROPIC_API_KEY) return;
+    const content = await callClaude(
+      "Tu écris pour une communauté Discord francophone neurodivergente passionnée de gaming. Tu lances des conversations naturelles et engageantes.",
+      `Génère UN message court pour lancer une conversation dans un salon dédié à : ${ch.topic}. Maximum 3 phrases, ton décontracté, une question ouverte à la fin. Pas de titre, commence directement.`,
+      150
+    );
     await channel.send(content);
     pushLog('SYS', `💬 Lance-conversation posté dans ${ch.channelName}`, 'success');
     broadcast('conversation', { channel: ch.channelName, time: new Date().toLocaleTimeString('fr-FR') });
