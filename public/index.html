@@ -975,24 +975,210 @@ td {
 }
 
 /* ═══════════════════════════════════════════════
-   RESPONSIVE
+   BARRE NAV MOBILE (cachée par défaut)
+═══════════════════════════════════════════════ */
+.mobile-nav { display: none; }
+.mobile-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background .15s;
+  font-size: 0.58rem;
+  color: var(--text2);
+  font-weight: 600;
+  user-select: none;
+}
+.mobile-nav-item:hover { background: rgba(255,255,255,0.04); }
+.mobile-nav-item.active { color: var(--blue); }
+.mobile-nav-item.active .mn-icon { filter: drop-shadow(0 0 4px var(--blue)); }
+.mobile-nav-item .mn-icon { font-size: 20px; line-height: 1; }
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE — TABLETTE (< 1000px)
 ═══════════════════════════════════════════════ */
 @media (max-width: 1000px) {
   :root { --sidebar: 60px; }
+
+  /* Sidebar réduite */
   .nav-item span:not(.nav-icon) { display: none; }
-  .nav-item { justify-content: center; padding: 9px; }
+  .nav-item { justify-content: center; padding: 10px; }
   .nav-badge { display: none; }
   .nav-section { display: none; }
-  .brand-name, .brand-ver, .server-name, .server-meta { display: none; }
+  .sidebar-footer { display: none; }
+  .brand-name, .brand-ver { display: none; }
   .brand-icon { margin: auto; }
-  .topbar-brand { justify-content: center; }
-  .stats-row { grid-template-columns: 1fr 1fr; }
-  .grid-2-1, .grid-1-1 { grid-template-columns: 1fr; }
+  .topbar-brand { justify-content: center; padding: 0 12px; }
+
+  /* Grids */
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-2-1, .grid-1-1, .grid-3 { grid-template-columns: 1fr; gap: 12px; }
+
+  /* Contenu */
+  .main { padding: 20px; }
+  .card-body { padding: 14px; }
+  .form-row { flex-direction: column; gap: 10px; }
 }
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE — MOBILE (< 680px)
+═══════════════════════════════════════════════ */
 @media (max-width: 680px) {
-  :root { --sidebar: 0px; }
+  :root {
+    --sidebar: 0px;
+    --topbar:  52px;
+    --mobile-nav-h: 62px;
+  }
+
+  /* ── Layout shell ── */
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--topbar) 1fr;
+    min-height: 100vh;
+  }
   .sidebar { display: none; }
+
+  /* ── Main — padding bottom = hauteur nav mobile ── */
+  .main {
+    padding: 12px 12px calc(var(--mobile-nav-h) + 12px);
+    overflow-x: hidden;
+  }
+
+  /* ── Pages ── */
+  .page { gap: 12px; }
+
+  /* ── Topbar mobile ── */
+  .topbar {
+    padding: 0 12px;
+    gap: 6px;
+    height: var(--topbar);
+  }
+  .topbar-brand { width: auto; padding: 0; flex-shrink: 0; }
+  .topbar-sep { flex: 1; }
+  .topbar-btn { display: none; }
+  .topbar-pills { gap: 6px; flex-wrap: nowrap; overflow: hidden; }
+  .pill {
+    font-size: 0.65rem;
+    padding: 3px 7px;
+    white-space: nowrap;
+  }
+  /* Cacher la pill sync sur mobile, garder juste le statut bot */
+  .topbar-pills .pill:nth-child(2),
+  .topbar-pills .pill:nth-child(3) { display: none; }
+
+  /* ── Stats ── */
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { padding: 12px 14px; }
+  .stat-value { font-size: 1.8rem; }
+  .stat-icon { width: 30px; height: 30px; font-size: 14px; margin-bottom: 10px; }
+
+  /* ── Cards ── */
+  .card-head { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+  .card-body { padding: 12px 14px; }
+
+  /* ── Grids ── */
+  .grid-2-1, .grid-1-1, .grid-3 { grid-template-columns: 1fr; gap: 10px; }
+
+  /* ── Page headers ── */
+  .page-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .page-title { font-size: 1.2rem; }
+  .page-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+  .page-actions .btn { flex: 1; justify-content: center; min-width: 120px; }
+
+  /* ── Formulaires ── */
+  .form-row { flex-direction: column; gap: 10px; }
+  .field-input { font-size: 16px; } /* Évite le zoom iOS au focus */
+
+  /* ── Rôles ── */
+  .role-row { flex-wrap: wrap; gap: 6px; }
+  .role-actions { opacity: 1; } /* Toujours visible sur mobile */
+
+  /* ── Tree salons ── */
+  .ch-actions { opacity: 1; }
+  .ch-topic { display: none; }
+  .tree-ch-row { padding-left: 28px; }
+
+  /* ── Sync bar ── */
+  .sync-status { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .sync-btns { width: 100%; }
+  .sync-btns .btn { flex: 1; justify-content: center; }
+
+  /* ── Quick actions ── */
+  .qa-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .qa-btn { padding: 10px 12px; }
+  .qa-label { font-size: 0.72rem; }
+  .qa-desc { display: none; }
+
+  /* ── Logs ── */
+  .log-stream { height: 40vh !important; }
+  .log-filters { gap: 4px; }
+  .log-filter-btn { padding: 3px 8px; font-size: 0.62rem; }
+
+  /* ── Settings ── */
+  .setting-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+
+  /* ── Automatisations — override inline styles ── */
+  .card-body [style*="grid-template-columns"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  /* ── Members ── */
+  .member-roles { display: none; } /* Trop de chips sur mobile */
+
+  /* ── Modals — slide du bas ── */
+  .modal-wrap {
+    align-items: flex-end;
+    padding: 0;
+    padding-top: 40px; /* espace pour fermer en cliquant derrière */
+  }
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 85vh;
+  }
+
+  /* ── Toasts — au-dessus de la nav mobile ── */
+  .toast-stack {
+    bottom: calc(var(--mobile-nav-h) + 8px);
+    right: 12px;
+    left: 12px;
+    align-items: stretch;
+  }
+  .toast { max-width: 100%; }
+
+  /* ── Nav mobile visible ── */
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--mobile-nav-h);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 400;
+    padding: 4px 8px max(8px, env(safe-area-inset-bottom));
+    gap: 4px;
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE — TRÈS PETIT (< 380px)
+═══════════════════════════════════════════════ */
+@media (max-width: 380px) {
   .stats-row { grid-template-columns: 1fr; }
+  .qa-grid { grid-template-columns: 1fr; }
+  .pill { display: none; }
+  #botDot, #botLabel { display: flex; }
+  .topbar-pills .pill:first-child { display: flex; }
 }
 </style>
 </head>
@@ -2337,10 +2523,24 @@ function updateWelcomePreview() {
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(`page-${name}`)?.classList.add('active');
   document.querySelector(`.nav-item[data-page="${name}"]`)?.classList.add('active');
+  document.querySelector(`.mobile-nav-item[data-page="${name}"]`)?.classList.add('active');
   if (name === 'logs') { newLogs = 0; document.getElementById('navLogsBadge').style.display = 'none'; }
+  if (name === 'automations') {
+    if (!automationsConfig) loadAutomationsConfig();
+    else {
+      populateChannelSelect('cfgAnecdoteChannel', automationsConfig.anecdote.channelId);
+      populateChannelSelect('cfgWelcomeChannel', automationsConfig.welcome.channelId);
+    }
+  }
 }
+
+// Nav mobile
+document.querySelectorAll('.mobile-nav-item').forEach(el => {
+  el.addEventListener('click', () => showPage(el.dataset.page));
+});
 
 document.querySelectorAll('.nav-item[data-page]').forEach(el => {
   el.addEventListener('click', () => showPage(el.dataset.page));
@@ -2721,15 +2921,8 @@ document.querySelectorAll('.nav-item[data-page]').forEach(el => {
   });
 });
 
-// Charger la config quand on entre dans la page
-const origShowPage = showPage;
-function showPage(name) {
-  origShowPage(name);
-  if (name === 'automations') {
-    if (!automationsConfig) loadAutomationsConfig();
-    else { populateChannelSelect('cfgAnecdoteChannel', automationsConfig.anecdote.channelId); populateChannelSelect('cfgWelcomeChannel', automationsConfig.welcome.channelId); }
-  }
-}
+// Charger la config automations quand on entre dans la page
+// (géré directement dans les event listeners de nav)
 
 // WS event configUpdate
 // (géré dans onmessage plus bas)
@@ -2753,5 +2946,25 @@ setTimeout(async () => {
   loadAutoRole();
 }, 300);
 </script>
+
+<!-- ═══ NAVIGATION MOBILE ════════════════════ -->
+<nav class="mobile-nav" id="mobileNav">
+  <div class="mobile-nav-item active" data-page="overview">
+    <span class="mn-icon">🏠</span><span>Accueil</span>
+  </div>
+  <div class="mobile-nav-item" data-page="channels">
+    <span class="mn-icon">📁</span><span>Salons</span>
+  </div>
+  <div class="mobile-nav-item" data-page="automations">
+    <span class="mn-icon">🤖</span><span>Auto</span>
+  </div>
+  <div class="mobile-nav-item" data-page="logs">
+    <span class="mn-icon">📋</span><span>Logs</span>
+  </div>
+  <div class="mobile-nav-item" data-page="settings">
+    <span class="mn-icon">⚙️</span><span>Config</span>
+  </div>
+</nav>
+
 </body>
 </html>
