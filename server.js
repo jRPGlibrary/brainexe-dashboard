@@ -828,6 +828,32 @@ app.post('/api/post', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+
+// POST envoyer un message manuel dans un salon
+app.post('/api/post', async (req, res) => {
+  const { channelId, content, asEmbed, embedTitle } = req.body;
+  if (!channelId || !content) return res.status(400).json({ ok: false, error: 'channelId + content requis' });
+  try {
+    const guild   = await discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.get(channelId);
+    if (!channel) return res.status(404).json({ ok: false, error: 'Salon introuvable' });
+    if (asEmbed) {
+      const embed = new EmbedBuilder()
+        .setColor(0x7c5cbf)
+        .setDescription(content)
+        .setFooter({ text: 'BrainEXE • Neurodivergent Creator Hub' })
+        .setTimestamp();
+      if (embedTitle) embed.setTitle(embedTitle);
+      await channel.send({ embeds: [embed] });
+    } else {
+      await channel.send(content);
+    }
+    pushLog('API', 'Post manuel envoyé dans ' + channel.name, 'success');
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // GET membres
 app.get('/api/members', async (req, res) => {
   try {
@@ -874,7 +900,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // Vérifications avant login
 console.log('🔍 Variables Railway :');
-console.log('  DISCORD_TOKEN    :', !!TOKEN, TOKEN ? '(défini)' : '(MANQUANT !)');
+console.log('  DISCORD_TOKEN    :', !!TOKEN);
 console.log('  GUILD_ID         :', GUILD_ID);
 console.log('  ANTHROPIC_API_KEY:', !!ANTHROPIC_API_KEY);
 
