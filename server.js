@@ -845,10 +845,10 @@ app.get('/api/members', async (req, res) => {
 // ── WEBSOCKET ─────────────────────────────────────────────────
 wss.on('connection', async (ws) => {
   pushLog('SYS', 'Dashboard connecté via WebSocket');
-  // Logs + stats envoyés immédiatement (pas besoin de Discord)
+  // Logs + stats IMMÉDIATEMENT (pas besoin de Discord)
   ws.send(JSON.stringify({ type: 'logs',  data: changeLog }));
   ws.send(JSON.stringify({ type: 'stats', data: syncStats }));
-  // State : cache d'abord (instantané), sinon fetch si bot prêt
+  // State : cache instantané → fetch si bot prêt → sinon on attend le broadcast auto
   if (guildCache) {
     ws.send(JSON.stringify({ type: 'state', data: guildCache }));
   } else if (discord.isReady()) {
@@ -860,8 +860,7 @@ wss.on('connection', async (ws) => {
       pushLog('ERR', 'WS init state échoué: ' + e.message, 'error');
     }
   } else {
-    // Bot pas encore prêt — syncDiscordToFile broadcastera le state automatiquement
-    pushLog('SYS', 'WS connecté — bot pas encore prêt, state envoyé dès sync terminée', 'info');
+    pushLog('SYS', 'WS connecté — bot pas prêt, state broadcasté dès sync terminée', 'info');
   }
 });
 
@@ -880,10 +879,10 @@ discord.once('clientReady', async () => {
   startActusCron();
   startConvCron();
 
-  // Sync initiale en ARRIÈRE-PLAN — sans await pour ne pas bloquer le serveur HTTP
-  // Railway tue le process si le serveur ne répond pas aux health checks
-  pushLog('SYS', '✅ Bot prêt — sync initiale en cours en arrière-plan...', 'success');
+  // ⚠️ PAS de await ici — sinon Railway tue le process (SIGTERM après 3 min)
+  // syncDiscordToFile tourne en arrière-plan et broadcast le state quand c'est prêt
   syncDiscordToFile('Démarrage').catch(e => pushLog('ERR', 'Sync démarrage: ' + e.message, 'error'));
+  pushLog('SYS', '✅ Bot prêt — sync en cours en arrière-plan', 'success');
 });
 
 // Démarrer le serveur HTTP immédiatement (pas d'attente du bot)
