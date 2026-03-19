@@ -164,6 +164,7 @@ function pushLog(dir, msg, level = 'info') {
 
 // ── LECTURE ÉTAT DISCORD ──────────────────────────────────────
 async function readGuildState() {
+  if (!discord.isReady()) throw new Error('Bot Discord pas encore prêt');
   const guild = await discord.guilds.fetch(GUILD_ID);
   await guild.channels.fetch();
   await guild.roles.fetch();
@@ -614,6 +615,8 @@ setInterval(async () => {
 // GET état complet (utilise le cache si dispo pour répondre vite)
 app.get('/api/state', async (req, res) => {
   try {
+    if (!discord.isReady() && !guildCache)
+      return res.json({ ok: false, error: 'Bot Discord pas encore prêt — patiente quelques secondes' });
     const state = guildCache || await readGuildState();
     res.json({ ok: true, state, stats: syncStats, uptime: Date.now() - syncStats.startTime });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -845,13 +848,20 @@ wss.on('connection', async (ws) => {
   // Logs + stats envoyés immédiatement (pas besoin de Discord)
   ws.send(JSON.stringify({ type: 'logs',  data: changeLog }));
   ws.send(JSON.stringify({ type: 'stats', data: syncStats }));
-  // State : cache instantané sinon fetch (avec timeout protégé)
-  try {
-    const state = guildCache || await readGuildState();
-    if (ws.readyState === WebSocket.OPEN)
-      ws.send(JSON.stringify({ type: 'state', data: state }));
-  } catch (e) {
-    pushLog('ERR', 'WS init state échoué: ' + e.message, 'error');
+  // State : cache instantané sinon fetch si bot prêt
+  if (guildCache) {
+    ws.send(JSON.stringify({ type: 'state', data: guildCache }));
+  } else if (discord.isReady()) {
+    try {
+      const state = await readGuildState();
+      if (ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify({ type: 'state', data: state }));
+    } catch (e) {
+      pushLog('ERR', 'WS init state échoué: ' + e.message, 'error');
+    }
+  } else {
+    // Bot pas encore prêt — le clientReady broadcastera le state dès qu'il sera dispo
+    pushLog('SYS', 'WS connecté — en attente du bot Discord...', 'info');
   }
 });
 
@@ -870,7 +880,10 @@ discord.once('clientReady', async () => {
   startActusCron();
   startConvCron();
 
+  // Sync initiale → remplit guildCache → broadcast à tous les WS déjà connectés
   await syncDiscordToFile('Démarrage');
+  // syncDiscordToFile appelle déjà broadcast('state', state) donc les clients reçoivent le state
+  pushLog('SYS', '✅ Bot prêt — dashboard opérationnel', 'success');
 });
 
 // Démarrer le serveur HTTP immédiatement (pas d'attente du bot)
