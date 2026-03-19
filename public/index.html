@@ -2471,7 +2471,7 @@ function renderMembers() {
   tbody.innerHTML = '';
 
   if (state.members.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun membre trouvé — vérifie l'intent GuildMembers dans Discord Dev Portal</div></div></td></tr>';
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun membre trouvé — vérifie l'intent GuildMembers dans Discord Dev Portal</div></div></td></tr>`;
     return;
   }
 
@@ -2863,7 +2863,7 @@ async function loadAutomationsConfig() {
 
 function renderAutomationsConfig() {
   const cfg = automationsConfig;
-  if (!cfg) return;
+  if (!cfg || !state) return;
 
   // ─ ANECDOTE ─
   document.getElementById('cfgAnecdoteEnabled').checked = cfg.anecdote.enabled;
@@ -3129,8 +3129,8 @@ document.getElementById('btnClearPost')?.addEventListener('click', () => {
 /* ══════════════════════════════════════════════
    INIT
 ══════════════════════════════════════════════ */
-connectWS();
-renderBackups();
+try { connectWS(); } catch(e) { console.error('WS init error:', e); }
+try { renderBackups(); } catch(e) { console.error('renderBackups error:', e); }
 
 // Initial state fetch (fallback if WS slow)
 setTimeout(async () => {
@@ -3138,10 +3138,12 @@ setTimeout(async () => {
     try {
       const r = await api('GET', '/api/state');
       if (r.ok) { state = r.state; renderAll(); renderStats(r.stats); }
-    } catch(e) {}
+    } catch(e) { console.error('state fetch error:', e); }
   }
-  const logR = await api('GET', '/api/logs');
-  if (logR.ok) { allLogs = logR.logs; renderLogs(); }
+  try {
+    const logR = await api('GET', '/api/logs');
+    if (logR.ok) { allLogs = logR.logs; renderLogs(); }
+  } catch(e) {}
   loadAutoRole();
 }, 300);
 </script>
