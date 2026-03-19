@@ -171,7 +171,7 @@ async function readGuildState() {
 
   const membersCollection = await Promise.race([
     guild.members.fetch(),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('members fetch timeout')), 5000))
+    new Promise((_, reject) => setTimeout(() => reject(new Error('members fetch timeout')), 10000))
   ]).catch(() => new Map());
   const members = [...membersCollection.values()]
     .filter(m => !m.user.bot)
@@ -881,7 +881,9 @@ discord.once('clientReady', async () => {
 
   // ⚠️ PAS de await ici — sinon Railway tue le process (SIGTERM après 3 min)
   // syncDiscordToFile tourne en arrière-plan et broadcast le state quand c'est prêt
-  syncDiscordToFile('Démarrage').catch(e => pushLog('ERR', 'Sync démarrage: ' + e.message, 'error'));
+  syncDiscordToFile('Démarrage')
+    .then(() => { if (guildCache) broadcast('state', guildCache); })
+    .catch(e => pushLog('ERR', 'Sync démarrage: ' + e.message, 'error'));
   pushLog('SYS', '✅ Bot prêt — sync en cours en arrière-plan', 'success');
 });
 
