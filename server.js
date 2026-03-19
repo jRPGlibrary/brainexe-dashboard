@@ -168,7 +168,10 @@ async function readGuildState() {
   await guild.channels.fetch();
   await guild.roles.fetch();
 
-  const membersCollection = await guild.members.fetch().catch(() => new Map());
+  const membersCollection = await Promise.race([
+    guild.members.fetch(),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('members fetch timeout')), 5000))
+  ]).catch(() => new Map());
   const members = [...membersCollection.values()]
     .filter(m => !m.user.bot)
     .sort((a, b) => (a.joinedTimestamp || 0) - (b.joinedTimestamp || 0))
@@ -608,10 +611,10 @@ setInterval(async () => {
 
 // ── REST API ──────────────────────────────────────────────────
 
-// GET état complet
+// GET état complet (utilise le cache si dispo pour répondre vite)
 app.get('/api/state', async (req, res) => {
   try {
-    const state = await readGuildState();
+    const state = guildCache || await readGuildState();
     res.json({ ok: true, state, stats: syncStats, uptime: Date.now() - syncStats.startTime });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -839,12 +842,17 @@ app.get('/api/members', async (req, res) => {
 // ── WEBSOCKET ─────────────────────────────────────────────────
 wss.on('connection', async (ws) => {
   pushLog('SYS', 'Dashboard connecté via WebSocket');
+  // Logs + stats envoyés immédiatement (pas besoin de Discord)
+  ws.send(JSON.stringify({ type: 'logs',  data: changeLog }));
+  ws.send(JSON.stringify({ type: 'stats', data: syncStats }));
+  // State : cache instantané sinon fetch (avec timeout protégé)
   try {
-    const state = await readGuildState();
-    ws.send(JSON.stringify({ type: 'state', data: state }));
-    ws.send(JSON.stringify({ type: 'logs',  data: changeLog }));
-    ws.send(JSON.stringify({ type: 'stats', data: syncStats }));
-  } catch (e) {}
+    const state = guildCache || await readGuildState();
+    if (ws.readyState === WebSocket.OPEN)
+      ws.send(JSON.stringify({ type: 'state', data: state }));
+  } catch (e) {
+    pushLog('ERR', 'WS init state échoué: ' + e.message, 'error');
+  }
 });
 
 // ── DÉMARRAGE ─────────────────────────────────────────────────
