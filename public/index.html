@@ -1180,6 +1180,261 @@ td {
   #botDot, #botLabel { display: flex; }
   .topbar-pills .pill:first-child { display: flex; }
 }
+
+/* ──────────────────────────────────────────────
+   MEMBERS UI v2
+────────────────────────────────────────────── */
+.members-layout{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+.members-stats{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+
+.member-stat{
+  background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:14px 16px;
+}
+
+.member-stat-label{
+  font-size:0.72rem;
+  color:var(--text3);
+  margin-bottom:6px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.member-stat-value{
+  font-size:1.4rem;
+  font-weight:800;
+  color:var(--text);
+}
+
+.members-toolbar{
+  display:grid;
+  grid-template-columns:minmax(220px,1fr) 220px 180px;
+  gap:12px;
+}
+
+.members-toolbar input,
+.members-toolbar select{
+  width:100%;
+  background:var(--panel);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px 14px;
+  outline:none;
+  font-size:0.92rem;
+}
+
+.members-toolbar input:focus,
+.members-toolbar select:focus{
+  border-color:var(--purple);
+  box-shadow:0 0 0 3px rgba(124,92,191,0.15);
+}
+
+.members-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));
+  gap:14px;
+}
+
+.member-card-v2{
+  background:linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.015));
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  min-height:220px;
+}
+
+.member-card-top{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.member-avatar-v2{
+  width:54px;
+  height:54px;
+  border-radius:50%;
+  overflow:hidden;
+  flex-shrink:0;
+  border:2px solid var(--border);
+  background:var(--panel2);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--text2);
+  font-weight:800;
+  position:relative;
+}
+
+.member-avatar-v2 img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.member-status-dot{
+  position:absolute;
+  right:-1px;
+  bottom:-1px;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  border:2px solid var(--card);
+}
+
+.member-main{
+  min-width:0;
+  flex:1;
+}
+
+.member-title-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:4px;
+}
+
+.member-display{
+  font-weight:800;
+  color:var(--text);
+  font-size:1rem;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+}
+
+.member-handle{
+  font-size:0.78rem;
+  color:var(--text3);
+  font-family:var(--mono);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.member-nick{
+  font-size:0.78rem;
+  color:var(--text2);
+}
+
+.member-status-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:0.68rem;
+  font-weight:700;
+  border:1px solid transparent;
+}
+
+.member-badges{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.member-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 9px;
+  border-radius:999px;
+  font-size:0.7rem;
+  font-weight:700;
+  border:1px solid;
+}
+
+.member-badge.boost{
+  background:rgba(255,115,250,0.12);
+  color:#ff8dfb;
+  border-color:rgba(255,115,250,0.28);
+}
+
+.member-badge.timeout{
+  background:rgba(237,66,69,0.12);
+  color:#ff8e90;
+  border-color:rgba(237,66,69,0.28);
+}
+
+.member-meta{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.member-meta-box{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
+}
+
+.member-meta-label{
+  font-size:0.68rem;
+  color:var(--text3);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:4px;
+}
+
+.member-meta-value{
+  color:var(--text);
+  font-size:0.84rem;
+  line-height:1.45;
+}
+
+.member-roles-v2{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.member-role-chip-v2{
+  display:inline-flex;
+  align-items:center;
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:0.72rem;
+  border:1px solid;
+  font-weight:700;
+}
+
+.member-empty{
+  grid-column:1/-1;
+}
+
+@media (max-width: 980px){
+  .members-toolbar{
+    grid-template-columns:1fr;
+  }
+
+  .members-stats{
+    grid-template-columns:1fr;
+  }
+
+  .member-meta{
+    grid-template-columns:1fr;
+  }
+}
+</style>
 </style>
 </head>
 <body>
@@ -1387,32 +1642,64 @@ td {
 
   <!-- ▸ PAGE: MEMBERS ──────────────────────────── -->
   <div class="page" id="page-members">
-    <div class="page-head">
-      <div>
-        <div class="page-title">👥 Membres</div>
-        <div class="page-sub">Membres connectés au serveur</div>
+  <div class="page-head">
+    <div>
+      <div class="page-title">👥 Membres</div>
+      <div class="page-sub">Recherche live, tri et fiches enrichies</div>
+    </div>
+  </div>
+
+  <div class="members-layout">
+    <div class="members-stats">
+      <div class="member-stat">
+        <div class="member-stat-label">Membres total</div>
+        <div class="member-stat-value" id="membersTotalStat">—</div>
+      </div>
+      <div class="member-stat">
+        <div class="member-stat-label">Online / Idle / DND</div>
+        <div class="member-stat-value" id="membersOnlineStat">—</div>
+      </div>
+      <div class="member-stat">
+        <div class="member-stat-label">Boosters</div>
+        <div class="member-stat-value" id="membersBoostersStat">—</div>
       </div>
     </div>
+
     <div class="card">
       <div class="card-head">
-        <div class="card-title"><span>👥</span> Liste des membres</div>
+        <div class="card-title"><span>🔎</span> Recherche & tri</div>
         <div id="memberCountLabel" style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">—</div>
       </div>
-      <div class="card-body np">
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Membre</th>
-                <th>ID</th>
-                <th>Rôles</th>
-                <th>Arrivée</th>
-              </tr>
-            </thead>
-            <tbody id="membersTable">
-              <tr><td colspan="4"><div class="empty" style="padding:30px"><div class="empty-icon">👥</div><div class="empty-text">Les données membres arrivent en temps réel via le bot</div></div></td></tr>
-            </tbody>
-          </table>
+      <div class="card-body">
+        <div class="members-toolbar">
+          <input type="text" id="memberSearch" placeholder="Rechercher par nom, pseudo ou nickname..." />
+          <select id="memberSort">
+            <option value="join-desc">Arrivée : plus récents</option>
+            <option value="join-asc">Arrivée : plus anciens</option>
+            <option value="name-asc">Nom : A → Z</option>
+            <option value="account-asc">Compte : plus anciens</option>
+          </select>
+          <select id="memberPresenceFilter">
+            <option value="all">Tous les statuts</option>
+            <option value="online">Online</option>
+            <option value="idle">Idle</option>
+            <option value="dnd">Ne pas déranger</option>
+            <option value="offline">Offline</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span>🧠</span> Fiches membres</div>
+      </div>
+      <div class="card-body">
+        <div class="members-grid" id="membersGrid">
+          <div class="empty member-empty">
+            <div class="empty-icon">👥</div>
+            <div class="empty-text">Les données membres arrivent en temps réel via le bot</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1421,14 +1708,15 @@ td {
       <div class="card-body" style="display:flex;gap:12px;align-items:flex-start">
         <span style="font-size:22px;flex-shrink:0">💡</span>
         <div>
-          <div style="font-weight:700;margin-bottom:4px;color:var(--text)">Pour les données membres détaillées</div>
+          <div style="font-weight:700;margin-bottom:4px;color:var(--text)">Données enrichies</div>
           <div style="font-size:0.8rem;color:var(--text2);line-height:1.6">
-            Ajoute l'intent <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-family:var(--mono)">GuildMembers</code> dans le server.js et expose une route <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-family:var(--mono)">/api/members</code>. Les arrivées en temps réel s'affichent déjà dans le log.
+            Cette vue affiche le statut de présence, le nickname serveur, l'ancienneté, l'âge du compte, les rôles colorés, le boost et le timeout.
           </div>
         </div>
       </div>
     </div>
   </div>
+</div>
 
   <!-- ▸ PAGE: CHANNELS ────────────────────────── -->
   <div class="page" id="page-channels">
@@ -2465,41 +2753,202 @@ function renderRRGroups() {
 /* ══════════════════════════════════════════════
    MEMBRES
 ══════════════════════════════════════════════ */
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function daysBetween(ts) {
+  if (!ts) return null;
+  const diff = Date.now() - Number(ts);
+  return Math.max(0, Math.floor(diff / 86400000));
+}
+
+function formatAgeLabel(days) {
+  if (days === null || days === undefined) return '—';
+  if (days < 1) return 'Aujourd’hui';
+  if (days < 30) return `${days} jour${days > 1 ? 's' : ''}`;
+  if (days < 365) {
+    const months = Math.floor(days / 30);
+    return `${months} mois`;
+  }
+  const years = Math.floor(days / 365);
+  const restMonths = Math.floor((days % 365) / 30);
+  if (restMonths <= 0) return `${years} an${years > 1 ? 's' : ''}`;
+  return `${years} an${years > 1 ? 's' : ''} ${restMonths} mois`;
+}
+
+function getPresenceMeta(status) {
+  switch (status) {
+    case 'online':
+      return { label: 'Online', color: '#23a55a', bg: 'rgba(35,165,90,0.12)', border: 'rgba(35,165,90,0.3)' };
+    case 'idle':
+      return { label: 'Idle', color: '#f0b232', bg: 'rgba(240,178,50,0.12)', border: 'rgba(240,178,50,0.3)' };
+    case 'dnd':
+      return { label: 'Ne pas déranger', color: '#f23f43', bg: 'rgba(242,63,67,0.12)', border: 'rgba(242,63,67,0.3)' };
+    default:
+      return { label: 'Offline', color: '#80848e', bg: 'rgba(128,132,142,0.12)', border: 'rgba(128,132,142,0.3)' };
+  }
+}
+
 function renderMembers() {
   if (!state || !state.members) return;
-  const tbody = document.getElementById('membersTable');
-  if (!tbody) return;
-  tbody.innerHTML = '';
 
-  if (state.members.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun membre trouvé — vérifie l'intent GuildMembers dans Discord Dev Portal</div></div></td></tr>`;
+  const grid = document.getElementById('membersGrid');
+  const totalEl = document.getElementById('membersTotalStat');
+  const onlineEl = document.getElementById('membersOnlineStat');
+  const boostersEl = document.getElementById('membersBoostersStat');
+  const countLabel = document.getElementById('memberCountLabel');
+  const searchEl = document.getElementById('memberSearch');
+  const sortEl = document.getElementById('memberSort');
+  const presenceEl = document.getElementById('memberPresenceFilter');
+
+  if (!grid) return;
+
+  const members = Array.isArray(state.members) ? [...state.members] : [];
+  const total = members.length;
+  const onlineCount = members.filter(m => ['online', 'idle', 'dnd'].includes(m.presence)).length;
+  const boosterCount = members.filter(m => !!m.isBooster).length;
+
+  if (totalEl) totalEl.textContent = total;
+  if (onlineEl) onlineEl.textContent = onlineCount;
+  if (boostersEl) boostersEl.textContent = boosterCount;
+  if (countLabel) countLabel.textContent = `${total} membres`;
+
+  const query = (searchEl?.value || '').trim().toLowerCase();
+  const sort = sortEl?.value || 'join-desc';
+  const presenceFilter = presenceEl?.value || 'all';
+
+  let filtered = members.filter(m => {
+    const haystack = [
+      m.displayName,
+      m.username,
+      m.nickname
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    const matchQuery = !query || haystack.includes(query);
+    const matchPresence = presenceFilter === 'all' || (m.presence || 'offline') === presenceFilter;
+    return matchQuery && matchPresence;
+  });
+
+  filtered.sort((a, b) => {
+    switch (sort) {
+      case 'join-asc':
+        return (a.joinedTimestamp || 0) - (b.joinedTimestamp || 0);
+      case 'name-asc':
+        return String(a.displayName || a.username || '').localeCompare(String(b.displayName || b.username || ''), 'fr');
+      case 'account-asc':
+        return (a.accountCreatedTimestamp || 0) - (b.accountCreatedTimestamp || 0);
+      case 'join-desc':
+      default:
+        return (b.joinedTimestamp || 0) - (a.joinedTimestamp || 0);
+    }
+  });
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div class="empty member-empty">
+        <div class="empty-icon">🔎</div>
+        <div class="empty-text">Aucun membre ne correspond à la recherche ou au filtre sélectionné</div>
+      </div>
+    `;
     return;
   }
 
-  for (const m of state.members) {
-    const tr = document.createElement('tr');
-    const initials = (m.displayName || m.username || '?').slice(0, 2).toUpperCase();
-    const rolesHtml = (m.roles || []).slice(0, 3).map(r =>
-      `<span class="member-role-chip" style="background:${r.color === '#000000' ? 'var(--border)' : r.color}22;color:${r.color === '#000000' ? 'var(--text2)' : r.color};border:1px solid ${r.color === '#000000' ? 'var(--border)' : r.color}44">${r.name}</span>`
-    ).join('') + (m.roles.length > 3 ? `<span style="font-size:0.6rem;color:var(--text3)">+${m.roles.length - 3}</span>` : '');
+  grid.innerHTML = filtered.map(m => {
+    const displayName = escapeHtml(m.displayName || m.username || 'Membre');
+    const username = escapeHtml(m.username || 'unknown');
+    const nickname = m.nickname ? escapeHtml(m.nickname) : '';
+    const avatar = m.avatar ? escapeHtml(m.avatar) : '';
+    const initials = escapeHtml((m.displayName || m.username || '?').slice(0, 2).toUpperCase());
 
-    tr.innerHTML = `
-      <td>
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="member-avatar">${initials}</div>
-          <div>
-            <div class="member-name">${m.displayName || m.username}</div>
-            <div style="font-size:0.65rem;color:var(--text3);font-family:var(--mono)">@${m.username}</div>
+    const presence = getPresenceMeta(m.presence || 'offline');
+    const joinedDays = daysBetween(m.joinedTimestamp);
+    const accountDays = daysBetween(m.accountCreatedTimestamp);
+
+    const roles = Array.isArray(m.roles) ? m.roles : [];
+    const rolesHtml = roles.length
+      ? roles.map(r => {
+          const color = (!r.color || r.color === '#000000') ? '#9da3af' : r.color;
+          return `<span class="member-role-chip-v2" style="color:${color};border-color:${color}55;background:${color}18">${escapeHtml(r.name)}</span>`;
+        }).join('')
+      : `<span style="font-size:0.78rem;color:var(--text3)">Aucun rôle</span>`;
+
+    let badges = '';
+    if (m.isBooster) {
+      badges += `<span class="member-badge boost">🚀 Booster${m.boostedSince ? ` depuis ${escapeHtml(m.boostedSince)}` : ''}</span>`;
+    }
+    if (m.communicationDisabledUntil) {
+      badges += `<span class="member-badge timeout">🔇 Timeout jusqu'au ${escapeHtml(m.communicationDisabledUntil)}</span>`;
+    }
+
+    return `
+      <article class="member-card-v2">
+        <div class="member-card-top">
+          <div class="member-avatar-v2">
+            ${avatar
+              ? `<img src="${avatar}" alt="${displayName}" onerror="this.remove();this.parentNode.textContent='${initials}'">`
+              : initials}
+            <span class="member-status-dot" style="background:${presence.color}"></span>
+          </div>
+
+          <div class="member-main">
+            <div class="member-title-row">
+              <div class="member-display">${displayName}</div>
+              <span class="member-status-badge" style="color:${presence.color};background:${presence.bg};border-color:${presence.border}">
+                ● ${presence.label}
+              </span>
+            </div>
+            <div class="member-handle">@${username}</div>
+            ${nickname ? `<div class="member-nick">Pseudo serveur : ${nickname}</div>` : ''}
           </div>
         </div>
-      </td>
-      <td style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">${m.id}</td>
-      <td><div class="member-roles">${rolesHtml}</div></td>
-      <td style="font-family:var(--mono);font-size:0.72rem;color:var(--text2)">${m.joinedAt || '—'}</td>
+
+        ${badges ? `<div class="member-badges">${badges}</div>` : ''}
+
+        <div class="member-meta">
+          <div class="member-meta-box">
+            <div class="member-meta-label">Arrivée serveur</div>
+            <div class="member-meta-value">
+              ${escapeHtml(m.joinedAt || '—')}<br>
+              <span style="color:var(--text3)">Ancienneté : ${formatAgeLabel(joinedDays)}</span>
+            </div>
+          </div>
+          <div class="member-meta-box">
+            <div class="member-meta-label">Compte Discord</div>
+            <div class="member-meta-value">
+              ${escapeHtml(m.accountCreatedAt || '—')}<br>
+              <span style="color:var(--text3)">Âge du compte : ${formatAgeLabel(accountDays)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="member-roles-v2">
+          ${rolesHtml}
+        </div>
+      </article>
     `;
-    tbody.appendChild(tr);
-  }
+  }).join('');
 }
+
+// Attach event listeners
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'memberSearch') {
+    renderMembers();
+  }
+});
+
+document.addEventListener('change', (e) => {
+  if (!e.target) return;
+  if (e.target.id === 'memberSort' || e.target.id === 'memberPresenceFilter') {
+    renderMembers();
+  }
+});
+
 
 /* ══════════════════════════════════════════════
    LOGS

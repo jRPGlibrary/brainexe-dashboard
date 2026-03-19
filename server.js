@@ -23,6 +23,8 @@ const PermissionFlagsBits = discord_js.PermissionFlagsBits;
 const { GatewayIntentBits } = require('discord.js');
 const INTENTS_GUILDS        = GatewayIntentBits.Guilds;
 const INTENTS_GUILD_MEMBERS = GatewayIntentBits.GuildMembers;
+const INTENTS_GUILD_PRESENCES = GatewayIntentBits.GuildPresences;
+
 
 // ── CONFIG ───────────────────────────────────────────────────
 const TOKEN         = process.env.DISCORD_TOKEN;
@@ -136,8 +138,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const discord = new Client({
-  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS],
+  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS, INTENTS_GUILD_PRESENCES],
 });
+
+
 
 let AUTO_ROLE_NAME    = '👁️ Lurker';
 let changeLog         = [];
@@ -181,13 +185,32 @@ async function readGuildState() {
       id: m.id,
       username: m.user.username,
       displayName: m.displayName || m.user.username,
+      nickname: m.nickname || null, // Surnom sur le serveur
       avatar: m.user.displayAvatarURL({ size: 64, forceStatic: true }),
       roles: m.roles.cache
         .filter(r => r.name !== '@everyone')
         .sort((a, b) => b.position - a.position)
         .map(r => ({ id: r.id, name: r.name, color: '#' + r.color.toString(16).padStart(6, '0') })),
+      
+      // Dates et timestamps pour l'affichage et le tri
       joinedAt: m.joinedAt ? m.joinedAt.toLocaleDateString('fr-FR') : '—',
+      joinedTimestamp: m.joinedTimestamp || 0,
+      accountCreatedAt: m.user.createdAt ? m.user.createdAt.toLocaleDateString('fr-FR') : '—',
+      accountCreatedTimestamp: m.user.createdTimestamp || 0,
+      
+      // Statut de présence (nécessite l'intent GuildPresences)
+      presence: m.presence ? m.presence.status : 'offline',
+      
+      // Statut de boost
+      isBooster: !!m.premiumSinceTimestamp,
+      boostedSince: m.premiumSince ? m.premiumSince.toLocaleDateString('fr-FR') : null,
+      
+      // Timeout actif
+      communicationDisabledUntil: m.communicationDisabledUntilTimestamp && m.communicationDisabledUntilTimestamp > Date.now() 
+        ? new Date(m.communicationDisabledUntilTimestamp).toLocaleString('fr-FR') 
+        : null
     }));
+
 
   const roles = guild.roles.cache
     .filter(r => r.name !== '@everyone')
