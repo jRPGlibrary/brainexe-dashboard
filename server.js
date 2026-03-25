@@ -19,12 +19,9 @@ const ChannelType = discord_js.ChannelType;
 const Events      = discord_js.Events;
 const EmbedBuilder = discord_js.EmbedBuilder || discord_js.MessageEmbed;
 const PermissionFlagsBits = discord_js.PermissionFlagsBits;
-// Intents compatibles v14
-const { GatewayIntentBits } = require('discord.js');
-const INTENTS_GUILDS        = GatewayIntentBits.Guilds;
-const INTENTS_GUILD_MEMBERS = GatewayIntentBits.GuildMembers;
-const INTENTS_GUILD_PRESENCES = GatewayIntentBits.GuildPresences;
-
+// Intents compatibles v13 et v14
+const INTENTS_GUILDS        = discord_js.GatewayIntentBits?.Guilds        ?? discord_js.Intents?.FLAGS?.GUILDS        ?? 1;
+const INTENTS_GUILD_MEMBERS = discord_js.GatewayIntentBits?.GuildMembers  ?? discord_js.Intents?.FLAGS?.GUILD_MEMBERS ?? 2;
 
 // ── CONFIG ───────────────────────────────────────────────────
 const TOKEN         = process.env.DISCORD_TOKEN;
@@ -138,10 +135,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const discord = new Client({
-  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS, INTENTS_GUILD_PRESENCES],
+  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS],
 });
-
-
 
 let AUTO_ROLE_NAME    = '👁️ Lurker';
 let changeLog         = [];
@@ -169,15 +164,11 @@ function pushLog(dir, msg, level = 'info') {
 
 // ── LECTURE ÉTAT DISCORD ──────────────────────────────────────
 async function readGuildState() {
-  if (!discord.isReady()) throw new Error('Bot Discord pas encore prêt');
   const guild = await discord.guilds.fetch(GUILD_ID);
   await guild.channels.fetch();
   await guild.roles.fetch();
 
-  const membersCollection = await Promise.race([
-    guild.members.fetch(),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('members fetch timeout')), 10000))
-  ]).catch(() => new Map());
+  const membersCollection = await guild.members.fetch().catch(() => new Map());
   const members = [...membersCollection.values()]
     .filter(m => !m.user.bot)
     .sort((a, b) => (a.joinedTimestamp || 0) - (b.joinedTimestamp || 0))
@@ -185,32 +176,13 @@ async function readGuildState() {
       id: m.id,
       username: m.user.username,
       displayName: m.displayName || m.user.username,
-      nickname: m.nickname || null, // Surnom sur le serveur
       avatar: m.user.displayAvatarURL({ size: 64, forceStatic: true }),
       roles: m.roles.cache
         .filter(r => r.name !== '@everyone')
         .sort((a, b) => b.position - a.position)
         .map(r => ({ id: r.id, name: r.name, color: '#' + r.color.toString(16).padStart(6, '0') })),
-      
-      // Dates et timestamps pour l'affichage et le tri
       joinedAt: m.joinedAt ? m.joinedAt.toLocaleDateString('fr-FR') : '—',
-      joinedTimestamp: m.joinedTimestamp || 0,
-      accountCreatedAt: m.user.createdAt ? m.user.createdAt.toLocaleDateString('fr-FR') : '—',
-      accountCreatedTimestamp: m.user.createdTimestamp || 0,
-      
-      // Statut de présence (nécessite l'intent GuildPresences)
-      presence: m.presence ? m.presence.status : 'offline',
-      
-      // Statut de boost
-      isBooster: !!m.premiumSinceTimestamp,
-      boostedSince: m.premiumSince ? m.premiumSince.toLocaleDateString('fr-FR') : null,
-      
-      // Timeout actif
-      communicationDisabledUntil: m.communicationDisabledUntilTimestamp && m.communicationDisabledUntilTimestamp > Date.now() 
-        ? new Date(m.communicationDisabledUntilTimestamp).toLocaleString('fr-FR') 
-        : null
     }));
-
 
   const roles = guild.roles.cache
     .filter(r => r.name !== '@everyone')
@@ -448,7 +420,7 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-3-haiku-20240307',
+      model: 'claude-sonnet-4-6',
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
@@ -636,12 +608,10 @@ setInterval(async () => {
 
 // ── REST API ──────────────────────────────────────────────────
 
-// GET état complet (cache en priorité — ne bloque jamais le serveur)
+// GET état complet
 app.get('/api/state', async (req, res) => {
   try {
-    if (!guildCache && !discord.isReady())
-      return res.json({ ok: false, error: 'Bot pas encore prêt — patiente quelques secondes' });
-    const state = guildCache || await readGuildState();
+    const state = await readGuildState();
     res.json({ ok: true, state, stats: syncStats, uptime: Date.now() - syncStats.startTime });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -869,23 +839,12 @@ app.get('/api/members', async (req, res) => {
 // ── WEBSOCKET ─────────────────────────────────────────────────
 wss.on('connection', async (ws) => {
   pushLog('SYS', 'Dashboard connecté via WebSocket');
-  // Logs + stats IMMÉDIATEMENT (pas besoin de Discord)
-  ws.send(JSON.stringify({ type: 'logs',  data: changeLog }));
-  ws.send(JSON.stringify({ type: 'stats', data: syncStats }));
-  // State : cache instantané → fetch si bot prêt → sinon on attend le broadcast auto
-  if (guildCache) {
-    ws.send(JSON.stringify({ type: 'state', data: guildCache }));
-  } else if (discord.isReady()) {
-    try {
-      const state = await readGuildState();
-      if (ws.readyState === WebSocket.OPEN)
-        ws.send(JSON.stringify({ type: 'state', data: state }));
-    } catch (e) {
-      pushLog('ERR', 'WS init state échoué: ' + e.message, 'error');
-    }
-  } else {
-    pushLog('SYS', 'WS connecté — bot pas prêt, state broadcasté dès sync terminée', 'info');
-  }
+  try {
+    const state = await readGuildState();
+    ws.send(JSON.stringify({ type: 'state', data: state }));
+    ws.send(JSON.stringify({ type: 'logs',  data: changeLog }));
+    ws.send(JSON.stringify({ type: 'stats', data: syncStats }));
+  } catch (e) {}
 });
 
 // ── DÉMARRAGE ─────────────────────────────────────────────────
@@ -903,12 +862,7 @@ discord.once('clientReady', async () => {
   startActusCron();
   startConvCron();
 
-  // ⚠️ PAS de await ici — sinon Railway tue le process (SIGTERM après 3 min)
-  // syncDiscordToFile tourne en arrière-plan et broadcast le state quand c'est prêt
-  syncDiscordToFile('Démarrage')
-    .then(() => { if (guildCache) broadcast('state', guildCache); })
-    .catch(e => pushLog('ERR', 'Sync démarrage: ' + e.message, 'error'));
-  pushLog('SYS', '✅ Bot prêt — sync en cours en arrière-plan', 'success');
+  await syncDiscordToFile('Démarrage');
 });
 
 // Démarrer le serveur HTTP immédiatement (pas d'attente du bot)
