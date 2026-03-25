@@ -2094,6 +2094,8 @@ Bienvenue dans la communauté **BrainEXE** !</div>
 <div class="toast-stack" id="toasts"></div>
 
 <script>
+window.onerror = function(msg, url, line) { console.error('JS ERR:', msg, 'at', line); return false; };
+
 /* ══════════════════════════════════════════════
    STATE
 ══════════════════════════════════════════════ */
@@ -2471,7 +2473,7 @@ function renderMembers() {
   tbody.innerHTML = '';
 
   if (state.members.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun membre trouvé — vérifie l'intent GuildMembers dans Discord Dev Portal</div></div></td></tr>';
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun membre trouvé — vérifie l'intent GuildMembers dans Discord Dev Portal</div></div></td></tr>`;
     return;
   }
 
@@ -2482,20 +2484,20 @@ function renderMembers() {
       `<span class="member-role-chip" style="background:${r.color === '#000000' ? 'var(--border)' : r.color}22;color:${r.color === '#000000' ? 'var(--text2)' : r.color};border:1px solid ${r.color === '#000000' ? 'var(--border)' : r.color}44">${r.name}</span>`
     ).join('') + (m.roles.length > 3 ? `<span style="font-size:0.6rem;color:var(--text3)">+${m.roles.length - 3}</span>` : '');
 
-    tr.innerHTML = \`
+    tr.innerHTML = `
       <td>
         <div style="display:flex;align-items:center;gap:10px">
-          <div class="member-avatar">\${initials}</div>
+          <div class="member-avatar">${initials}</div>
           <div>
-            <div class="member-name">\${m.displayName || m.username}</div>
-            <div style="font-size:0.65rem;color:var(--text3);font-family:var(--mono)">@\${m.username}</div>
+            <div class="member-name">${m.displayName || m.username}</div>
+            <div style="font-size:0.65rem;color:var(--text3);font-family:var(--mono)">@${m.username}</div>
           </div>
         </div>
       </td>
-      <td style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">\${m.id}</td>
-      <td><div class="member-roles">\${rolesHtml}</div></td>
-      <td style="font-family:var(--mono);font-size:0.72rem;color:var(--text2)">\${m.joinedAt || '—'}</td>
-    \`;
+      <td style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">${m.id}</td>
+      <td><div class="member-roles">${rolesHtml}</div></td>
+      <td style="font-family:var(--mono);font-size:0.72rem;color:var(--text2)">${m.joinedAt || '—'}</td>
+    `;
     tbody.appendChild(tr);
   }
 }
