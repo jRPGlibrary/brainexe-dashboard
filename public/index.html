@@ -1407,6 +1407,7 @@ td {
                 <th>ID</th>
                 <th>Rôles</th>
                 <th>Arrivée</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="membersTable">
@@ -2020,6 +2021,91 @@ Bienvenue dans la communauté **BrainEXE** !</div>
 </main>
 </div>
 
+<!-- ═══ MODAL MEMBER MANAGEMENT ═════════════ -->
+<div class="modal-wrap" id="modalMember">
+  <div class="modal" style="width:500px">
+    <div class="modal-head">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="mmAvatar" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3B4FA0,#7B4FD0);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;overflow:hidden"></div>
+        <div>
+          <div class="modal-title" id="mmName">Membre</div>
+          <div style="font-size:0.68rem;color:var(--text3);font-family:var(--mono)" id="mmHandle">@username</div>
+        </div>
+      </div>
+      <div class="modal-close" onclick="closeModal('modalMember')">✕</div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;gap:2px">
+      <div class="mm-tab" data-tab="roles" onclick="switchMMTab('roles')" style="padding:10px 14px;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid var(--blue);color:var(--blue);margin-bottom:-1px;transition:all .15s">🎭 Rôles</div>
+      <div class="mm-tab" data-tab="mute"  onclick="switchMMTab('mute')"  style="padding:10px 14px;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-1px;transition:all .15s">🔇 Timeout</div>
+      <div class="mm-tab" data-tab="sanction" onclick="switchMMTab('sanction')" style="padding:10px 14px;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-1px;transition:all .15s">⚠️ Sanctions</div>
+    </div>
+
+    <!-- Tab Rôles -->
+    <div id="mmTab-roles" class="mm-tab-content" style="padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:0.78rem;color:var(--text2)">Coche / décoche les rôles puis sauvegarde</div>
+      <div id="mmRolesList" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto"></div>
+      <button class="btn btn-primary" onclick="saveMemberRoles()">💾 Sauvegarder les rôles</button>
+      <div id="mmRolesFeedback" style="display:none;font-size:0.75rem;padding:8px 12px;border-radius:6px"></div>
+    </div>
+
+    <!-- Tab Timeout -->
+    <div id="mmTab-mute" class="mm-tab-content" style="padding:18px 20px;display:none;flex-direction:column;gap:12px">
+      <div style="padding:10px 12px;background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-size:0.75rem;color:var(--yellow)">
+        ⚠️ Maximum Discord : 28 jours. Le membre ne peut plus envoyer de messages pendant la durée.
+      </div>
+      <div class="field">
+        <div class="field-label">Raccourcis</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+          <button class="btn btn-ghost btn-xs" onclick="setMuteDuration(10)">10 min</button>
+          <button class="btn btn-ghost btn-xs" onclick="setMuteDuration(60)">1h</button>
+          <button class="btn btn-ghost btn-xs" onclick="setMuteDuration(1440)">24h</button>
+          <button class="btn btn-ghost btn-xs" onclick="setMuteDuration(10080)">7 jours</button>
+          <button class="btn btn-ghost btn-xs" onclick="setMuteDuration(40320)">28 jours</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Durée personnalisée (minutes)</div>
+        <input type="number" class="field-input" id="mmMuteDuration" min="1" max="40320" placeholder="ex : 120 = 2 heures">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" style="flex:1" onclick="applyMute()">🔇 Appliquer</button>
+        <button class="btn btn-success" onclick="applyUnmute()">✅ Lever le timeout</button>
+      </div>
+      <div id="mmMuteFeedback" style="display:none;font-size:0.75rem;padding:8px 12px;border-radius:6px"></div>
+    </div>
+
+    <!-- Tab Sanctions -->
+    <div id="mmTab-sanction" class="mm-tab-content" style="padding:18px 20px;display:none;flex-direction:column;gap:12px">
+      <div class="field">
+        <div class="field-label">Raison (optionnelle)</div>
+        <input class="field-input" id="mmSanctionReason" placeholder="Raison de l'action…">
+      </div>
+      <div style="padding:14px;background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.2);border-radius:10px">
+        <div style="font-weight:700;color:var(--yellow);margin-bottom:4px">👢 Expulser</div>
+        <div style="font-size:0.75rem;color:var(--text2);margin-bottom:10px">Retire le membre — il peut revenir avec une invitation.</div>
+        <button class="btn" style="background:rgba(251,191,36,0.15);color:var(--yellow);border:1px solid rgba(251,191,36,0.3);width:100%" onclick="applyKick()">👢 Expulser du serveur</button>
+      </div>
+      <div style="padding:14px;background:var(--red-dim);border:1px solid rgba(248,113,113,0.2);border-radius:10px">
+        <div style="font-weight:700;color:var(--red);margin-bottom:4px">🔨 Bannir définitivement</div>
+        <div style="font-size:0.75rem;color:var(--text2);margin-bottom:8px">Impossible de revenir sans débannissement manuel.</div>
+        <div class="field" style="margin-bottom:8px">
+          <div class="field-label">Supprimer les messages des derniers</div>
+          <select class="field-input" id="mmBanDeleteDays">
+            <option value="0">Ne pas supprimer</option>
+            <option value="1">1 jour</option>
+            <option value="3">3 jours</option>
+            <option value="7">7 jours</option>
+          </select>
+        </div>
+        <button class="btn btn-danger" style="width:100%" onclick="applyBan()">🔨 Bannir définitivement</button>
+      </div>
+      <div id="mmSanctionFeedback" style="display:none;font-size:0.75rem;padding:8px 12px;border-radius:6px"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL CHANNEL ════════════════════════ -->
 <div class="modal-wrap" id="modalChannel">
   <div class="modal">
@@ -2473,30 +2559,42 @@ function renderMembers() {
   tbody.innerHTML = '';
 
   if (state.members.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun membre trouvé — vérifie l'intent GuildMembers dans Discord Dev Portal</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Aucun membre trouvé</div></div></td></tr>`;
     return;
   }
 
   for (const m of state.members) {
     const tr = document.createElement('tr');
-    const initials = (m.displayName || m.username || '?').slice(0, 2).toUpperCase();
-    const rolesHtml = (m.roles || []).slice(0, 3).map(r =>
+    const displayName = (m.displayName || m.username || '?');
+    const username    = m.username || '';
+    const avatar      = m.avatar   || '';
+    const initials    = displayName.slice(0, 2).toUpperCase();
+    const rolesHtml   = (m.roles || []).slice(0, 3).map(r =>
       `<span class="member-role-chip" style="background:${r.color === '#000000' ? 'var(--border)' : r.color}22;color:${r.color === '#000000' ? 'var(--text2)' : r.color};border:1px solid ${r.color === '#000000' ? 'var(--border)' : r.color}44">${r.name}</span>`
-    ).join('') + (m.roles.length > 3 ? `<span style="font-size:0.6rem;color:var(--text3)">+${m.roles.length - 3}</span>` : '');
+    ).join('') + (m.roles && m.roles.length > 3 ? `<span style="font-size:0.6rem;color:var(--text3)">+${m.roles.length - 3}</span>` : '');
+
+    const safeDisplayName = displayName.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
     tr.innerHTML = `
       <td>
         <div style="display:flex;align-items:center;gap:10px">
           <div class="member-avatar">${initials}</div>
           <div>
-            <div class="member-name">${m.displayName || m.username}</div>
-            <div style="font-size:0.65rem;color:var(--text3);font-family:var(--mono)">@${m.username}</div>
+            <div class="member-name">${displayName}</div>
+            <div style="font-size:0.65rem;color:var(--text3);font-family:var(--mono)">@${username}</div>
           </div>
         </div>
       </td>
       <td style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">${m.id}</td>
       <td><div class="member-roles">${rolesHtml}</div></td>
       <td style="font-family:var(--mono);font-size:0.72rem;color:var(--text2)">${m.joinedAt || '—'}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-xs" title="Gérer les rôles" onclick="openMemberModal('${m.id}','${safeDisplayName}','${username}','${avatar}','roles')">🎭</button>
+          <button class="btn btn-ghost btn-xs" title="Timeout" onclick="openMemberModal('${m.id}','${safeDisplayName}','${username}','${avatar}','mute')">🔇</button>
+          <button class="btn btn-xs" style="color:var(--yellow);background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.2)" title="Expulser / Bannir" onclick="openMemberModal('${m.id}','${safeDisplayName}','${username}','${avatar}','sanction')">⚠️</button>
+        </div>
+      </td>
     `;
     tbody.appendChild(tr);
   }
@@ -2707,25 +2805,35 @@ async function doBackup() {
     toast(`📦 Backup créé : ${r.filename}`, 'success');
     backups.unshift({ name: r.filename, date: new Date().toLocaleString('fr-FR') });
     renderBackups();
-  } else toast(r.error, 'error');
+  } else toast(r.error || 'Erreur backup', 'error');
 }
 
 async function doForceSync() {
-  toast('Synchronisation en cours…', 'info');
-  await api('POST', '/api/sync/discord-to-file');
+  toast('⏳ Synchronisation en cours…', 'info');
+  try {
+    const r = await api('POST', '/api/sync/discord-to-file');
+    if (r.ok) toast('✅ Sync Discord → Fichier effectuée !', 'success');
+    else toast('❌ ' + (r.error || 'Erreur sync'), 'error');
+  } catch (e) { toast('❌ Erreur réseau — sync échouée', 'error'); }
 }
 
 function renderBackups() {
   const el = document.getElementById('backupsList');
+  if (!el) return;
   if (!backups.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Aucun backup</div></div>';
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Aucun backup — crée-en un !</div></div>';
     return;
   }
   el.innerHTML = '';
   backups.forEach(b => {
-    const row = document.createElement('div');
+    const row  = document.createElement('div');
     row.className = 'backup-row';
-    row.innerHTML = `<div class="backup-icon">📦</div><div class="backup-name">${b.name}</div><div class="backup-date">${b.date}</div>`;
+    const size = b.size ? ` · ${b.size > 1024 ? Math.round(b.size/1024) + ' Ko' : b.size + ' o'}` : '';
+    row.innerHTML = `
+      <div class="backup-icon">📦</div>
+      <div class="backup-name">${b.name || b}</div>
+      <div class="backup-date">${b.date || ''}${size}</div>
+    `;
     el.appendChild(row);
   });
 }
@@ -3129,12 +3237,173 @@ document.getElementById('btnClearPost')?.addEventListener('click', () => {
 });
 
 /* ══════════════════════════════════════════════
+   MEMBER MANAGEMENT MODAL
+══════════════════════════════════════════════ */
+let currentMemberId          = null;
+let currentMemberInitialRoles = {};
+
+function openMemberModal(id, name, username, avatar, tab) {
+  currentMemberId = id;
+  tab = tab || 'roles';
+
+  document.getElementById('mmName').textContent   = name;
+  document.getElementById('mmHandle').textContent = '@' + username;
+
+  const avatarEl = document.getElementById('mmAvatar');
+  if (avatar && avatar !== 'undefined') {
+    avatarEl.innerHTML = `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    avatarEl.textContent = name.slice(0, 2).toUpperCase();
+    avatarEl.style.fontSize = '13px';
+  }
+
+  // Reset feedbacks
+  ['mmRolesFeedback','mmMuteFeedback','mmSanctionFeedback'].forEach(fid => {
+    const el = document.getElementById(fid);
+    if (el) { el.style.display = 'none'; el.textContent = ''; }
+  });
+  const reasonEl = document.getElementById('mmSanctionReason');
+  if (reasonEl) reasonEl.value = '';
+  const muteEl = document.getElementById('mmMuteDuration');
+  if (muteEl) muteEl.value = '';
+
+  // Construire la liste des rôles
+  const member      = state && state.members ? state.members.find(m => m.id === id) : null;
+  const memberRoles = new Set((member ? member.roles || [] : []).map(r => r.id));
+  currentMemberInitialRoles = {};
+
+  const rolesList  = document.getElementById('mmRolesList');
+  rolesList.innerHTML = '';
+  const botRoleNames = ['carl-bot','Ticket Tool','Statbot','Brain.EXE','PingSync'];
+
+  (state && state.roles ? state.roles : [])
+    .filter(r => !botRoleNames.includes(r.name) && r.name !== '@everyone')
+    .forEach(r => {
+      const checked = memberRoles.has(r.id);
+      currentMemberInitialRoles[r.id] = checked;
+      const color = (!r.color || r.color === '#000000') ? '#9da3af' : r.color;
+      const row   = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card2);border-radius:8px;border:1px solid var(--border)';
+      row.innerHTML = `
+        <label class="toggle" style="flex-shrink:0">
+          <input type="checkbox" id="mmRole-${r.id}" ${checked ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+        <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;border:1px solid rgba(255,255,255,0.1)"></div>
+        <span style="font-size:0.82rem;font-weight:600;flex:1">${r.name}</span>
+      `;
+      rolesList.appendChild(row);
+    });
+
+  switchMMTab(tab);
+  document.getElementById('modalMember').classList.add('open');
+}
+
+function switchMMTab(tab) {
+  document.querySelectorAll('.mm-tab').forEach(t => {
+    const active = t.dataset.tab === tab;
+    t.style.borderBottom = active ? '2px solid var(--blue)' : '2px solid transparent';
+    t.style.color        = active ? 'var(--blue)' : 'var(--text2)';
+  });
+  document.querySelectorAll('.mm-tab-content').forEach(c => {
+    c.style.display = c.id === `mmTab-${tab}` ? 'flex' : 'none';
+  });
+}
+
+function setMuteDuration(min) {
+  document.getElementById('mmMuteDuration').value = min;
+}
+
+function showMMFeedback(elId, msg, type) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent    = msg;
+  el.style.display  = 'block';
+  el.style.background = type === 'success' ? 'var(--green-dim)' : type === 'error' ? 'var(--red-dim)' : 'var(--blue-dim)';
+  el.style.color      = type === 'success' ? 'var(--green)'     : type === 'error' ? 'var(--red)'     : '#a5baff';
+}
+
+async function saveMemberRoles() {
+  if (!currentMemberId) return;
+  const addRoles = [], removeRoles = [];
+  for (const [roleId, wasChecked] of Object.entries(currentMemberInitialRoles)) {
+    const cb = document.getElementById(`mmRole-${roleId}`);
+    if (!cb) continue;
+    if (cb.checked  && !wasChecked) addRoles.push(roleId);
+    if (!cb.checked &&  wasChecked) removeRoles.push(roleId);
+  }
+  if (!addRoles.length && !removeRoles.length) {
+    showMMFeedback('mmRolesFeedback', 'Aucun changement détecté', 'info');
+    return;
+  }
+  showMMFeedback('mmRolesFeedback', '⏳ Mise à jour en cours…', 'info');
+  const r = await api('PATCH', `/api/members/${currentMemberId}/roles`, { addRoles, removeRoles });
+  if (r.ok) {
+    showMMFeedback('mmRolesFeedback', `✅ Rôles mis à jour ! (+${addRoles.length} / -${removeRoles.length})`, 'success');
+    for (const id of addRoles)    currentMemberInitialRoles[id] = true;
+    for (const id of removeRoles) currentMemberInitialRoles[id] = false;
+    toast(`🎭 Rôles de ${document.getElementById('mmName').textContent} mis à jour`, 'success');
+  } else {
+    showMMFeedback('mmRolesFeedback', '❌ ' + (r.error || 'Erreur'), 'error');
+  }
+}
+
+async function applyMute() {
+  if (!currentMemberId) return;
+  const duration = parseInt(document.getElementById('mmMuteDuration').value);
+  if (!duration || duration <= 0) { showMMFeedback('mmMuteFeedback', '❌ Entre une durée valide !', 'error'); return; }
+  showMMFeedback('mmMuteFeedback', '⏳ Application…', 'info');
+  const r = await api('POST', `/api/members/${currentMemberId}/mute`, { duration });
+  if (r.ok) {
+    const label = duration >= 1440 ? `${Math.round(duration/1440)} jour(s)` : duration >= 60 ? `${Math.round(duration/60)}h` : `${duration}min`;
+    showMMFeedback('mmMuteFeedback', `✅ Timeout de ${label} appliqué !`, 'success');
+    toast(`🔇 ${document.getElementById('mmName').textContent} — timeout ${label}`, 'success');
+  } else { showMMFeedback('mmMuteFeedback', '❌ ' + (r.error || 'Erreur'), 'error'); }
+}
+
+async function applyUnmute() {
+  if (!currentMemberId) return;
+  showMMFeedback('mmMuteFeedback', '⏳ Levée du timeout…', 'info');
+  const r = await api('POST', `/api/members/${currentMemberId}/mute`, { duration: 0 });
+  if (r.ok) {
+    showMMFeedback('mmMuteFeedback', '✅ Timeout levé !', 'success');
+    toast(`✅ Timeout de ${document.getElementById('mmName').textContent} levé`, 'success');
+  } else { showMMFeedback('mmMuteFeedback', '❌ ' + (r.error || 'Erreur'), 'error'); }
+}
+
+async function applyKick() {
+  const name = document.getElementById('mmName').textContent;
+  if (!confirm(`⚠️ Expulser ${name} du serveur ?`)) return;
+  const reason = document.getElementById('mmSanctionReason').value.trim();
+  showMMFeedback('mmSanctionFeedback', '⏳ Expulsion en cours…', 'info');
+  const r = await api('POST', `/api/members/${currentMemberId}/kick`, { reason });
+  if (r.ok) {
+    showMMFeedback('mmSanctionFeedback', `✅ ${name} a été expulsé du serveur`, 'success');
+    toast(`👢 ${name} expulsé`, 'success');
+    setTimeout(() => document.getElementById('modalMember').classList.remove('open'), 2000);
+  } else { showMMFeedback('mmSanctionFeedback', '❌ ' + (r.error || 'Erreur'), 'error'); }
+}
+
+async function applyBan() {
+  const name = document.getElementById('mmName').textContent;
+  if (!confirm(`🔨 BANNIR ${name} définitivement ? Action irréversible depuis le dashboard.`)) return;
+  const reason            = document.getElementById('mmSanctionReason').value.trim();
+  const deleteMessageDays = parseInt(document.getElementById('mmBanDeleteDays').value) || 0;
+  showMMFeedback('mmSanctionFeedback', '⏳ Bannissement…', 'info');
+  const r = await api('POST', `/api/members/${currentMemberId}/ban`, { reason, deleteMessageDays });
+  if (r.ok) {
+    showMMFeedback('mmSanctionFeedback', `✅ ${name} banni définitivement`, 'success');
+    toast(`🔨 ${name} banni`, 'success');
+    setTimeout(() => document.getElementById('modalMember').classList.remove('open'), 2000);
+  } else { showMMFeedback('mmSanctionFeedback', '❌ ' + (r.error || 'Erreur'), 'error'); }
+}
+
+/* ══════════════════════════════════════════════
    INIT
 ══════════════════════════════════════════════ */
 connectWS();
-renderBackups();
 
-// Initial state fetch (fallback if WS slow)
+// Initial state fetch (fallback si WS lent) + chargement backups réels
 setTimeout(async () => {
   if (!state) {
     try {
@@ -3145,6 +3414,15 @@ setTimeout(async () => {
   const logR = await api('GET', '/api/logs');
   if (logR.ok) { allLogs = logR.logs; renderLogs(); }
   loadAutoRole();
+
+  // Charger la vraie liste des backups depuis le serveur
+  try {
+    const bkR = await api('GET', '/api/backups');
+    if (bkR.ok && bkR.backups) {
+      backups = bkR.backups;
+      renderBackups();
+    }
+  } catch(e) {}
 }, 300);
 </script>
 
