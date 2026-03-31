@@ -39,6 +39,7 @@ const DEFAULT_CONFIG = {
     channelName: '💬・général',
     hour: 12,
     randomDelayMax: 30,
+    lastPostedDate: null,   // 'YYYY-MM-DD' — pour éviter double post
   },
   welcome: {
     enabled: true,
@@ -60,6 +61,7 @@ const DEFAULT_CONFIG = {
   actus: {
     enabled: true,
     dayOfMonth: 1,
+    lastPostedMonth: null,  // 'YYYY-MM' — pour éviter double post mensuel
     channels: [
       { channelId: "1481028286892081183", channelName: "📰・actus-gaming",       topic: "gaming général toutes plateformes, gros titres du mois", enabled: true },
       { channelId: "1481028247415296231", channelName: "🐉・jrpg-corner",        topic: "JRPG sorties, DLC, remasters, annonces",                 enabled: true },
@@ -446,6 +448,14 @@ async function generateAnecdote() {
 async function postDailyAnecdote() {
   const cfg = botConfig.anecdote;
   if (!cfg.enabled) { pushLog('SYS', 'Anecdote désactivée — skip'); return; }
+
+  // Anti-doublon : vérifier si déjà postée aujourd'hui
+  const todayStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' }); // YYYY-MM-DD
+  if (cfg.lastPostedDate === todayStr) {
+    pushLog('SYS', `Anecdote déjà postée aujourd'hui (${todayStr}) — skip`);
+    return;
+  }
+
   pushLog('SYS', 'Génération de l\'anecdote gaming du jour...');
   try {
     const text    = await generateAnecdote();
@@ -453,7 +463,7 @@ async function postDailyAnecdote() {
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(cfg.channelId);
     if (!channel) { pushLog('ERR', `Anecdote : salon introuvable (ID: ${cfg.channelId})`, 'error'); return; }
-    const today    = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const today    = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
     const todayCap = today.charAt(0).toUpperCase() + today.slice(1);
     const embed    = new EmbedBuilder()
       .setColor(0x7c5cbf)
@@ -462,6 +472,11 @@ async function postDailyAnecdote() {
       .setFooter({ text: `${todayCap} • Généré par BrainEXE` })
       .setTimestamp();
     await channel.send({ content: '**🧠 Le saviez-vous ?**', embeds: [embed] });
+
+    // Sauvegarder la date pour éviter les doublons
+    botConfig.anecdote.lastPostedDate = todayStr;
+    saveConfig();
+
     pushLog('SYS', `✅ Anecdote postée dans ${cfg.channelName}`, 'success');
     broadcast('anecdote', { status: 'posted', time: new Date().toLocaleTimeString('fr-FR') });
   } catch (err) {
@@ -474,13 +489,35 @@ let anecdoteCron = null;
 function startAnecdoteCron() {
   if (anecdoteCron) { try { anecdoteCron.stop(); } catch {} }
   const h = botConfig.anecdote.hour || 12;
+
   anecdoteCron = cron.schedule(`0 ${h} * * *`, () => {
     const delayMs  = Math.floor(Math.random() * (botConfig.anecdote.randomDelayMax || 30) * 60 * 1000);
     const delayMin = Math.round(delayMs / 60000);
     pushLog('SYS', `Anecdote planifiée dans ${delayMin} min`);
     setTimeout(postDailyAnecdote, delayMs);
   }, { timezone: 'Europe/Paris' });
+
   pushLog('SYS', `✅ Cron anecdote configuré à ${h}h (Europe/Paris)`);
+}
+
+// Rattrapage au démarrage : si l'heure cron est déjà passée aujourd'hui et pas encore postée
+function checkAnecdoteMissed() {
+  const cfg = botConfig.anecdote;
+  if (!cfg.enabled) return;
+  const now      = new Date();
+  const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+  const todayStr = parisNow.toLocaleDateString('fr-CA'); // YYYY-MM-DD
+  const hourNow  = parisNow.getHours();
+  const targetH  = cfg.hour || 12;
+
+  if (cfg.lastPostedDate === todayStr) {
+    pushLog('SYS', `Anecdote : déjà postée aujourd'hui — OK`);
+    return;
+  }
+  if (hourNow >= targetH) {
+    pushLog('SYS', `⚠️ Anecdote manquée détectée (${targetH}h déjà passée) — rattrapage dans 30s`);
+    setTimeout(postDailyAnecdote, 30000);
+  }
 }
 
 // ── MESSAGE D'ACCUEIL AUTO ────────────────────────────────────
@@ -508,7 +545,6 @@ async function sendWelcomeMessage(member) {
 }
 
 // ── ACTUS MENSUELLES ─────────────────────────────────────────
-// Poste les actus d'un seul salon (appelée après un délai aléatoire)
 async function postActuForChannel(ch) {
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
@@ -516,7 +552,7 @@ async function postActuForChannel(ch) {
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel) { pushLog('ERR', `Actus : ${ch.channelName} introuvable`, 'error'); return; }
     if (!ANTHROPIC_API_KEY) { pushLog('ERR', 'ANTHROPIC_API_KEY manquante', 'error'); return; }
-    const month    = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const month    = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
     const monthCap = month.charAt(0).toUpperCase() + month.slice(1);
     const content = await callClaude(
       "Tu es un expert gaming qui résume les actualités récentes pour une communauté Discord francophone. Génère des actus réalistes et pertinentes basées sur ta connaissance.",
@@ -537,10 +573,17 @@ async function postActuForChannel(ch) {
   }
 }
 
-// Planifie les actus de chaque salon à une heure aléatoire entre 10h et 22h
 function postMonthlyActus() {
   const cfg = botConfig.actus;
   if (!cfg.enabled) { pushLog('SYS', 'Actus désactivées — skip'); return; }
+
+  // Anti-doublon mensuel
+  const monthStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' }).slice(0, 7); // YYYY-MM
+  if (cfg.lastPostedMonth === monthStr) {
+    pushLog('SYS', `Actus déjà postées ce mois (${monthStr}) — skip`);
+    return;
+  }
+
   const active = cfg.channels.filter(c => c.enabled);
   if (active.length === 0) { pushLog('SYS', 'Actus : aucun salon actif'); return; }
 
@@ -555,15 +598,39 @@ function postMonthlyActus() {
     pushLog('SYS', `⏱ ${ch.channelName} → dans ${heure}h${min > 0 ? min + 'min' : ''}`);
     setTimeout(() => postActuForChannel(ch), delayMs);
   });
+
+  // Sauvegarder le mois pour éviter les doublons
+  botConfig.actus.lastPostedMonth = monthStr;
+  saveConfig();
 }
 
 let actusCron = null;
 function startActusCron() {
   if (actusCron) { try { actusCron.stop(); } catch {} }
   const day = botConfig.actus.dayOfMonth || 1;
-  // Toujours le 1er (ou jour configuré) à 10h00 pile — les posts sont ensuite étalés via setTimeout
   actusCron = cron.schedule(`0 10 ${day} * *`, postMonthlyActus, { timezone: 'Europe/Paris' });
   pushLog('SYS', `✅ Cron actus configuré : le ${day} du mois à 10h, étalé jusqu\'à 22h`);
+}
+
+// Rattrapage au démarrage : si on est le bon jour du mois et pas encore postées
+function checkActusMissed() {
+  const cfg = botConfig.actus;
+  if (!cfg.enabled) return;
+  const now      = new Date();
+  const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+  const monthStr = parisNow.toLocaleDateString('fr-CA').slice(0, 7);
+  const dayNow   = parisNow.getDate();
+  const hourNow  = parisNow.getHours();
+  const targetDay = cfg.dayOfMonth || 1;
+
+  if (cfg.lastPostedMonth === monthStr) {
+    pushLog('SYS', `Actus : déjà postées ce mois — OK`);
+    return;
+  }
+  if (dayNow === targetDay && hourNow >= 10) {
+    pushLog('SYS', `⚠️ Actus mensuelles manquées — rattrapage dans 60s`);
+    setTimeout(postMonthlyActus, 60000);
+  }
 }
 
 // ── LANCE-CONVERSATIONS ALÉATOIRES ───────────────────────────
@@ -1011,6 +1078,13 @@ discord.once('clientReady', async () => {
   startAnecdoteCron();
   startActusCron();
   startConvCron();
+
+  // Rattrapage : vérifier si des tâches ont été manquées depuis le dernier redémarrage
+  setTimeout(() => {
+    checkAnecdoteMissed();
+    checkActusMissed();
+    pushLog('SYS', '🔍 Vérification rattrapage terminée');
+  }, 5000); // 5s après démarrage, le temps que Discord soit bien connecté
 
   await syncDiscordToFile('Démarrage');
 });
