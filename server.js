@@ -1,34 +1,38 @@
 /**
- * ================================================
- *  🧠 BRAINEXE DASHBOARD — Serveur Backend v1.1.0
- * ================================================
- *  Express + Discord.js + WebSocket + node-cron
- * ================================================
- */
+* ================================================
+* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.2.0
+* ================================================
+* Express + Discord.js + WebSocket + node-cron
+* FIXES v1.2.0:
+*   - getWeekStart() ne mute plus `now`
+*   - convWeeklyCount + convLastPostTime persistés en config
+*   - lastPostedMonth sauvegardé APRÈS confirmation d'envoi
+*   - checkAnecdoteMissed/checkActusMissed délai 5s→15s
+* ================================================
+*/
 
-const express   = require('express');
-const http      = require('http');
+const express = require('express');
+const http = require('http');
 const WebSocket = require('ws');
-const chokidar  = require('chokidar');
-const fs        = require('fs');
-const path      = require('path');
-const cron      = require('node-cron');
+const chokidar = require('chokidar');
+const fs = require('fs');
+const path = require('path');
+const cron = require('node-cron');
 const discord_js = require('discord.js');
-const Client      = discord_js.Client;
+const Client = discord_js.Client;
 const ChannelType = discord_js.ChannelType;
-const Events      = discord_js.Events;
+const Events = discord_js.Events;
 const EmbedBuilder = discord_js.EmbedBuilder || discord_js.MessageEmbed;
 const PermissionFlagsBits = discord_js.PermissionFlagsBits;
-// Intents compatibles v13 et v14
-const INTENTS_GUILDS        = discord_js.GatewayIntentBits?.Guilds        ?? discord_js.Intents?.FLAGS?.GUILDS        ?? 1;
-const INTENTS_GUILD_MEMBERS = discord_js.GatewayIntentBits?.GuildMembers  ?? discord_js.Intents?.FLAGS?.GUILD_MEMBERS ?? 2;
+const INTENTS_GUILDS = discord_js.GatewayIntentBits?.Guilds ?? discord_js.Intents?.FLAGS?.GUILDS ?? 1;
+const INTENTS_GUILD_MEMBERS = discord_js.GatewayIntentBits?.GuildMembers ?? discord_js.Intents?.FLAGS?.GUILD_MEMBERS ?? 2;
 
 // ── CONFIG ───────────────────────────────────────────────────
-const TOKEN         = process.env.DISCORD_TOKEN;
-const GUILD_ID      = process.env.GUILD_ID || '1481022956816830669';
-const PORT          = process.env.PORT     || 3000;
+const TOKEN = process.env.DISCORD_TOKEN;
+const GUILD_ID = process.env.GUILD_ID || '1481022956816830669';
+const PORT = process.env.PORT || 3000;
 const TEMPLATE_FILE = 'discord-template.json';
-const CONFIG_FILE   = 'brainexe-config.json';
+const CONFIG_FILE = 'brainexe-config.json';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // ── CONFIG PERSISTANTE ────────────────────────────────────────
@@ -39,7 +43,7 @@ const DEFAULT_CONFIG = {
     channelName: '💬・général',
     hour: 12,
     randomDelayMax: 30,
-    lastPostedDate: null,   // 'YYYY-MM-DD' — pour éviter double post
+    lastPostedDate: null,
   },
   welcome: {
     enabled: true,
@@ -61,17 +65,17 @@ const DEFAULT_CONFIG = {
   actus: {
     enabled: true,
     dayOfMonth: 1,
-    lastPostedMonth: null,  // 'YYYY-MM' — pour éviter double post mensuel
+    lastPostedMonth: null,
     channels: [
-      { channelId: "1481028286892081183", channelName: "📰・actus-gaming",       topic: "gaming général toutes plateformes, gros titres du mois", enabled: true },
-      { channelId: "1481028247415296231", channelName: "🐉・jrpg-corner",        topic: "JRPG sorties, DLC, remasters, annonces",                 enabled: true },
-      { channelId: "1481028244500385946", channelName: "⚔️・rpg-général",        topic: "RPG large action-RPG, tactique, ARPG",                   enabled: true },
-      { channelId: "1481028272090386584", channelName: "🌿・indie-général",       topic: "indie sorties notables et pépites du mois",              enabled: true },
-      { channelId: "1481028274590322850", channelName: "🔭・à-découvrir",         topic: "kickstarters en cours et jeux annoncés à venir",         enabled: true },
-      { channelId: "1481028283486175245", channelName: "🚀・next-gen-général",    topic: "PS5 Xbox Series PC actus next-gen",                      enabled: true },
-      { channelId: "1481028291094904995", channelName: "🎮・game-of-the-moment",  topic: "le jeu que tout le monde joue en ce moment",             enabled: true },
-      { channelId: "1481028260753051739", channelName: "🕹️・retro-général",      topic: "retro remasters, collections, anniversaires",            enabled: true },
-      { channelId: "1481028304206041243", channelName: "🤖・ia-et-tools",         topic: "IA et outils devs créateurs actus du mois",              enabled: true },
+      { channelId: "1481028286892081183", channelName: "📰・actus-gaming", topic: "gaming général toutes plateformes, gros titres du mois", enabled: true },
+      { channelId: "1481028247415296231", channelName: "🐉・jrpg-corner", topic: "JRPG sorties, DLC, remasters, annonces", enabled: true },
+      { channelId: "1481028244500385946", channelName: "⚔️・rpg-général", topic: "RPG large action-RPG, tactique, ARPG", enabled: true },
+      { channelId: "1481028272090386584", channelName: "🌿・indie-général", topic: "indie sorties notables et pépites du mois", enabled: true },
+      { channelId: "1481028274590322850", channelName: "🔭・à-découvrir", topic: "kickstarters en cours et jeux annoncés à venir", enabled: true },
+      { channelId: "1481028283486175245", channelName: "🚀・next-gen-général", topic: "PS5 Xbox Series PC actus next-gen", enabled: true },
+      { channelId: "1481028291094904995", channelName: "🎮・game-of-the-moment", topic: "le jeu que tout le monde joue en ce moment", enabled: true },
+      { channelId: "1481028260753051739", channelName: "🕹️・retro-général", topic: "retro remasters, collections, anniversaires", enabled: true },
+      { channelId: "1481028304206041243", channelName: "🤖・ia-et-tools", topic: "IA et outils devs créateurs actus du mois", enabled: true },
     ],
   },
   conversations: {
@@ -79,28 +83,31 @@ const DEFAULT_CONFIG = {
     frequencyPerWeek: 3,
     timeStart: 14,
     timeEnd: 22,
+    weeklyCount: 0,
+    weekStart: 0,
+    lastPostTime: 0,
     channels: [
-      { channelId: "1481028189680570421", channelName: "💬・général",             topic: "gaming général et vie communauté",              enabled: true },
-      { channelId: "1481028192088100977", channelName: "🧠・cerveau-en-feu",      topic: "hyperfocus du moment, pensées random TDAH",     enabled: true },
-      { channelId: "1481028195032760531", channelName: "😂・memes-et-chaos",      topic: "humour, memes, questions fun",                  enabled: true },
-      { channelId: "1481028197515788360", channelName: "🎲・off-topic",           topic: "questions insolites et random",                 enabled: true },
-      { channelId: "1481028199948222584", channelName: "🖼️・partage-créations",  topic: "défi créatif et inspiration",                   enabled: true },
-      { channelId: "1481028244500385946", channelName: "⚔️・rpg-général",         topic: "débats RPG, système de combat, perso préféré",  enabled: true },
-      { channelId: "1481028247415296231", channelName: "🐉・jrpg-corner",         topic: "questions JRPG, OST, waifu tier list",          enabled: true },
-      { channelId: "1481028250741506189", channelName: "🗺️・open-world-rpg",     topic: "exploration vs histoire, open world favori",    enabled: true },
-      { channelId: "1481028254721773588", channelName: "🃏・lore-et-théories",    topic: "théorie du moment, lore deep-dive",             enabled: true },
-      { channelId: "1481028260753051739", channelName: "🕹️・retro-général",      topic: "console et souvenirs de jeux retro",            enabled: true },
-      { channelId: "1481028264410484837", channelName: "🏆・hidden-gems",         topic: "hidden gem à partager",                         enabled: true },
-      { channelId: "1481028266830860340", channelName: "📼・nostalgie",           topic: "souvenirs de jeux et nostalgie gaming",         enabled: true },
-      { channelId: "1481028272090386584", channelName: "🌿・indie-général",       topic: "indie chouchou, indie underrated",               enabled: true },
-      { channelId: "1481028274590322850", channelName: "🔭・à-découvrir",         topic: "jeux attendus et futures sorties",               enabled: true },
-      { channelId: "1481028277182402701", channelName: "🎨・pixel-art-love",      topic: "coup de coeur visuel, DA préférée",             enabled: true },
-      { channelId: "1481028283486175245", channelName: "🚀・next-gen-général",    topic: "next-gen vs génération précédente",             enabled: true },
-      { channelId: "1481028291094904995", channelName: "🎮・game-of-the-moment",  topic: "avancement dans le jeu du moment",              enabled: true },
-      { channelId: "1481028228515631307", channelName: "⚡・tips-focus",          topic: "tips productivité, routine, technique focus",   enabled: true },
-      { channelId: "1481028238955249796", channelName: "🎧・playlist-focus",      topic: "playlist du moment et musique de focus",        enabled: true },
-      { channelId: "1481028304206041243", channelName: "🤖・ia-et-tools",         topic: "outils IA utilisés en ce moment",               enabled: true },
-      { channelId: "1481028297025650771", channelName: "💻・code-talk",           topic: "question dev, langage favori, projet en cours", enabled: true },
+      { channelId: "1481028189680570421", channelName: "💬・général", topic: "gaming général et vie communauté", enabled: true },
+      { channelId: "1481028192088100977", channelName: "🧠・cerveau-en-feu", topic: "hyperfocus du moment, pensées random TDAH", enabled: true },
+      { channelId: "1481028195032760531", channelName: "😂・memes-et-chaos", topic: "humour, memes, questions fun", enabled: true },
+      { channelId: "1481028197515788360", channelName: "🎲・off-topic", topic: "questions insolites et random", enabled: true },
+      { channelId: "1481028199948222584", channelName: "🖼️・partage-créations", topic: "défi créatif et inspiration", enabled: true },
+      { channelId: "1481028244500385946", channelName: "⚔️・rpg-général", topic: "débats RPG, système de combat, perso préféré", enabled: true },
+      { channelId: "1481028247415296231", channelName: "🐉・jrpg-corner", topic: "questions JRPG, OST, waifu tier list", enabled: true },
+      { channelId: "1481028250741506189", channelName: "🗺️・open-world-rpg", topic: "exploration vs histoire, open world favori", enabled: true },
+      { channelId: "1481028254721773588", channelName: "🃏・lore-et-théories", topic: "théorie du moment, lore deep-dive", enabled: true },
+      { channelId: "1481028260753051739", channelName: "🕹️・retro-général", topic: "console et souvenirs de jeux retro", enabled: true },
+      { channelId: "1481028264410484837", channelName: "🏆・hidden-gems", topic: "hidden gem à partager", enabled: true },
+      { channelId: "1481028266830860340", channelName: "📼・nostalgie", topic: "souvenirs de jeux et nostalgie gaming", enabled: true },
+      { channelId: "1481028272090386584", channelName: "🌿・indie-général", topic: "indie chouchou, indie underrated", enabled: true },
+      { channelId: "1481028274590322850", channelName: "🔭・à-découvrir", topic: "jeux attendus et futures sorties", enabled: true },
+      { channelId: "1481028277182402701", channelName: "🎨・pixel-art-love", topic: "coup de coeur visuel, DA préférée", enabled: true },
+      { channelId: "1481028283486175245", channelName: "🚀・next-gen-général", topic: "next-gen vs génération précédente", enabled: true },
+      { channelId: "1481028291094904995", channelName: "🎮・game-of-the-moment", topic: "avancement dans le jeu du moment", enabled: true },
+      { channelId: "1481028228515631307", channelName: "⚡・tips-focus", topic: "tips productivité, routine, technique focus", enabled: true },
+      { channelId: "1481028238955249796", channelName: "🎧・playlist-focus", topic: "playlist du moment et musique de focus", enabled: true },
+      { channelId: "1481028304206041243", channelName: "🤖・ia-et-tools", topic: "outils IA utilisés en ce moment", enabled: true },
+      { channelId: "1481028297025650771", channelName: "💻・code-talk", topic: "question dev, langage favori, projet en cours", enabled: true },
     ],
   },
 };
@@ -110,9 +117,9 @@ function loadConfig() {
     if (fs.existsSync(CONFIG_FILE)) {
       const raw = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
       return {
-        anecdote:      { ...DEFAULT_CONFIG.anecdote,      ...(raw.anecdote      || {}) },
-        welcome:       { ...DEFAULT_CONFIG.welcome,       ...(raw.welcome       || {}) },
-        actus:         { ...DEFAULT_CONFIG.actus,         ...(raw.actus         || {}) },
+        anecdote: { ...DEFAULT_CONFIG.anecdote, ...(raw.anecdote || {}) },
+        welcome: { ...DEFAULT_CONFIG.welcome, ...(raw.welcome || {}) },
+        actus: { ...DEFAULT_CONFIG.actus, ...(raw.actus || {}) },
         conversations: { ...DEFAULT_CONFIG.conversations, ...(raw.conversations || {}) },
       };
     }
@@ -128,10 +135,9 @@ function saveConfig() {
 
 let botConfig = loadConfig();
 
-// ── INIT ─────────────────────────────────────────────────────
-const app    = express();
+const app = express();
 const server = http.createServer(app);
-const wss    = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ server });
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -140,23 +146,22 @@ const discord = new Client({
   intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS],
 });
 
-let AUTO_ROLE_NAME    = '👁️ Lurker';
-let changeLog         = [];
-let isApplyingFile    = false;
+let AUTO_ROLE_NAME = '👁️ Lurker';
+let changeLog = [];
+let isApplyingFile = false;
 let isApplyingDiscord = false;
-let debounceDiscord   = null;
-let debounceFile      = null;
-let guildCache        = null;
-let syncStats         = { d2f: 0, f2d: 0, startTime: Date.now() };
+let debounceDiscord = null;
+let debounceFile = null;
+let guildCache = null;
+let syncStats = { d2f: 0, f2d: 0, startTime: Date.now() };
 
-// ── WEBSOCKET BROADCAST ───────────────────────────────────────
 function broadcast(type, data) {
   const msg = JSON.stringify({ type, data, ts: Date.now() });
   wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(msg); });
 }
 
 function pushLog(dir, msg, level = 'info') {
-  const time  = new Date().toLocaleTimeString('fr-FR');
+  const time = new Date().toLocaleTimeString('fr-FR');
   const entry = { time, dir, msg, level };
   changeLog.push(entry);
   if (changeLog.length > 200) changeLog.shift();
@@ -164,7 +169,6 @@ function pushLog(dir, msg, level = 'info') {
   console.log(`[${time}] [${dir}] ${msg}`);
 }
 
-// ── LECTURE ÉTAT DISCORD ──────────────────────────────────────
 async function readGuildState() {
   const guild = await discord.guilds.fetch(GUILD_ID);
   await guild.channels.fetch();
@@ -227,7 +231,6 @@ async function readGuildState() {
   return guildCache;
 }
 
-// ── DISCORD → FICHIER ─────────────────────────────────────────
 function scheduleDiscordToFile(reason) {
   if (isApplyingFile) return;
   if (debounceDiscord) clearTimeout(debounceDiscord);
@@ -262,7 +265,6 @@ async function syncDiscordToFile(reason) {
   }
 }
 
-// ── FICHIER → DISCORD ─────────────────────────────────────────
 function scheduleFileToDiscord() {
   if (isApplyingDiscord) return;
   if (debounceFile) clearTimeout(debounceFile);
@@ -274,7 +276,7 @@ async function syncFileToDiscord() {
   isApplyingFile = true;
   let changes = 0;
   try {
-    const raw      = fs.readFileSync(TEMPLATE_FILE, 'utf8');
+    const raw = fs.readFileSync(TEMPLATE_FILE, 'utf8');
     const template = JSON.parse(raw);
 
     const guild = await discord.guilds.fetch(GUILD_ID);
@@ -284,7 +286,7 @@ async function syncFileToDiscord() {
     pushLog('F→D', 'Lecture du fichier JSON — application sur Discord...');
 
     for (const rd of template.roles || []) {
-      const color    = parseInt((rd.color || '#000000').replace('#', ''), 16);
+      const color = parseInt((rd.color || '#000000').replace('#', ''), 16);
       const existing = guild.roles.cache.find(r => r.name === rd.name);
       if (!existing) {
         await guild.roles.create({ name: rd.name, color, hoist: rd.hoist || false, permissions: [], reason: 'Dashboard sync' });
@@ -307,8 +309,9 @@ async function syncFileToDiscord() {
         changes++;
         await sleep(400);
       }
+
       for (const ch of block.channels || []) {
-        const chType   = ch.type === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
+        const chType = ch.type === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
         const existing = guild.channels.cache.find(c => c.name === ch.name && c.parentId === cat.id);
         if (!existing) {
           const opts = { name: ch.name, type: chType, parent: cat.id, reason: 'Dashboard sync' };
@@ -342,7 +345,6 @@ async function syncFileToDiscord() {
   }
 }
 
-// ── ÉVÉNEMENTS DISCORD ────────────────────────────────────────
 function registerDiscordEvents() {
   discord.on(Events.ChannelCreate, ch => {
     if (ch.guildId !== GUILD_ID) return;
@@ -356,8 +358,8 @@ function registerDiscordEvents() {
   });
   discord.on(Events.ChannelUpdate, (o, n) => {
     if (n.guildId !== GUILD_ID) return;
-    if (o.name !== n.name)           { pushLog('D→F', `Salon renommé : ${o.name} → ${n.name}`); scheduleDiscordToFile('rename'); }
-    else if (o.topic !== n.topic)    { pushLog('D→F', `Topic modifié : ${n.name}`); scheduleDiscordToFile('topic'); }
+    if (o.name !== n.name) { pushLog('D→F', `Salon renommé : ${o.name} → ${n.name}`); scheduleDiscordToFile('rename'); }
+    else if (o.topic !== n.topic) { pushLog('D→F', `Topic modifié : ${n.name}`); scheduleDiscordToFile('topic'); }
     else if (o.parentId !== n.parentId) { pushLog('D→F', `Salon déplacé : ${n.name}`); scheduleDiscordToFile('move'); }
   });
   discord.on(Events.GuildRoleCreate, r => {
@@ -377,28 +379,26 @@ function registerDiscordEvents() {
       scheduleDiscordToFile('Rôle modifié');
     }
   });
-
-  // ── AUTO-ROLE + WELCOME à l'arrivée ──────────────────────────
-  discord.on(Events.GuildMemberAdd, async (member) => {
-    if (member.guild.id !== GUILD_ID) return;
-    try {
-      await member.guild.roles.fetch();
-      const role = member.guild.roles.cache.find(r => r.name === AUTO_ROLE_NAME);
-      if (!role) {
-        pushLog('SYS', `Auto-role introuvable : "${AUTO_ROLE_NAME}"`, 'error');
-      } else {
-        await member.roles.add(role, "Auto-role à l'arrivée");
-        pushLog('API', `Auto-role assigné à ${member.user.tag} : ${role.name}`, 'success');
-        broadcast('autorole', { user: member.user.tag, role: role.name });
-      }
-      await sendWelcomeMessage(member);
-    } catch (err) {
-      pushLog('ERR', `Arrivée échouée pour ${member.user.tag} : ${err.message}`, 'error');
-    }
-  });
 }
 
-// ── WATCHER FICHIER ───────────────────────────────────────────
+discord.on(Events.GuildMemberAdd, async (member) => {
+  if (member.guild.id !== GUILD_ID) return;
+  try {
+    await member.guild.roles.fetch();
+    const role = member.guild.roles.cache.find(r => r.name === AUTO_ROLE_NAME);
+    if (!role) {
+      pushLog('SYS', `Auto-role introuvable : "${AUTO_ROLE_NAME}"`, 'error');
+    } else {
+      await member.roles.add(role, "Auto-role à l'arrivée");
+      pushLog('API', `Auto-role assigné à ${member.user.tag} : ${role.name}`, 'success');
+      broadcast('autorole', { user: member.user.tag, role: role.name });
+    }
+    await sendWelcomeMessage(member);
+  } catch (err) {
+    pushLog('ERR', `Arrivée échouée pour ${member.user.tag} : ${err.message}`, 'error');
+  }
+});
+
 function startFileWatcher() {
   const watcher = chokidar.watch(TEMPLATE_FILE, {
     persistent: true, ignoreInitial: true,
@@ -411,7 +411,6 @@ function startFileWatcher() {
   });
 }
 
-// ── APPEL CLAUDE (Anthropic) ─────────────────────────────────
 async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante dans Railway');
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -436,7 +435,6 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
   return data.content[0].text.trim();
 }
 
-// ── ANECDOTE GAMING QUOTIDIENNE ───────────────────────────────
 async function generateAnecdote() {
   return callClaude(
     "Tu es un expert gaming passionné qui écrit pour une communauté Discord francophone neurodivergente. Tu génères des anecdotes gaming courtes, vraies, fun et surprenantes.",
@@ -449,8 +447,7 @@ async function postDailyAnecdote() {
   const cfg = botConfig.anecdote;
   if (!cfg.enabled) { pushLog('SYS', 'Anecdote désactivée — skip'); return; }
 
-  // Anti-doublon : vérifier si déjà postée aujourd'hui
-  const todayStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' }); // YYYY-MM-DD
+  const todayStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
   if (cfg.lastPostedDate === todayStr) {
     pushLog('SYS', `Anecdote déjà postée aujourd'hui (${todayStr}) — skip`);
     return;
@@ -458,14 +455,14 @@ async function postDailyAnecdote() {
 
   pushLog('SYS', 'Génération de l\'anecdote gaming du jour...');
   try {
-    const text    = await generateAnecdote();
-    const guild   = await discord.guilds.fetch(GUILD_ID);
+    const text = await generateAnecdote();
+    const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(cfg.channelId);
     if (!channel) { pushLog('ERR', `Anecdote : salon introuvable (ID: ${cfg.channelId})`, 'error'); return; }
-    const today    = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+    const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
     const todayCap = today.charAt(0).toUpperCase() + today.slice(1);
-    const embed    = new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setColor(0x7c5cbf)
       .setTitle('🎮 Anecdote Gaming du jour')
       .setDescription(text)
@@ -473,7 +470,6 @@ async function postDailyAnecdote() {
       .setTimestamp();
     await channel.send({ content: '**🧠 Le saviez-vous ?**', embeds: [embed] });
 
-    // Sauvegarder la date pour éviter les doublons
     botConfig.anecdote.lastPostedDate = todayStr;
     saveConfig();
 
@@ -489,26 +485,23 @@ let anecdoteCron = null;
 function startAnecdoteCron() {
   if (anecdoteCron) { try { anecdoteCron.stop(); } catch {} }
   const h = botConfig.anecdote.hour || 12;
-
   anecdoteCron = cron.schedule(`0 ${h} * * *`, () => {
-    const delayMs  = Math.floor(Math.random() * (botConfig.anecdote.randomDelayMax || 30) * 60 * 1000);
+    const delayMs = Math.floor(Math.random() * (botConfig.anecdote.randomDelayMax || 30) * 60 * 1000);
     const delayMin = Math.round(delayMs / 60000);
     pushLog('SYS', `Anecdote planifiée dans ${delayMin} min`);
     setTimeout(postDailyAnecdote, delayMs);
   }, { timezone: 'Europe/Paris' });
-
   pushLog('SYS', `✅ Cron anecdote configuré à ${h}h (Europe/Paris)`);
 }
 
-// Rattrapage au démarrage : si l'heure cron est déjà passée aujourd'hui et pas encore postée
 function checkAnecdoteMissed() {
   const cfg = botConfig.anecdote;
   if (!cfg.enabled) return;
-  const now      = new Date();
+  const now = new Date();
   const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-  const todayStr = parisNow.toLocaleDateString('fr-CA'); // YYYY-MM-DD
-  const hourNow  = parisNow.getHours();
-  const targetH  = cfg.hour || 12;
+  const todayStr = parisNow.toLocaleDateString('fr-CA');
+  const hourNow = parisNow.getHours();
+  const targetH = cfg.hour || 12;
 
   if (cfg.lastPostedDate === todayStr) {
     pushLog('SYS', `Anecdote : déjà postée aujourd'hui — OK`);
@@ -520,17 +513,16 @@ function checkAnecdoteMissed() {
   }
 }
 
-// ── MESSAGE D'ACCUEIL AUTO ────────────────────────────────────
 async function sendWelcomeMessage(member) {
   const cfg = botConfig.welcome;
   if (!cfg.enabled || !cfg.messages || cfg.messages.length === 0) return;
   try {
-    const guild   = await discord.guilds.fetch(GUILD_ID);
+    const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(cfg.channelId);
     if (!channel) { pushLog('ERR', `Welcome : salon introuvable (ID: ${cfg.channelId})`, 'error'); return; }
-    const phrase  = cfg.messages[Math.floor(Math.random() * cfg.messages.length)];
-    const embed   = new EmbedBuilder()
+    const phrase = cfg.messages[Math.floor(Math.random() * cfg.messages.length)];
+    const embed = new EmbedBuilder()
       .setColor(0x7c5cbf)
       .setTitle(`👾 Bienvenue ${member.user.username} !`)
       .setDescription(`${phrase}\n\n📋 Lis les règles → <#1481028175474589827>\n🎭 Choisis tes rôles → <#1481028181485027471>\n💬 Présente-toi ici !`)
@@ -544,15 +536,14 @@ async function sendWelcomeMessage(member) {
   }
 }
 
-// ── ACTUS MENSUELLES ─────────────────────────────────────────
-async function postActuForChannel(ch) {
+async function postActuForChannel(ch, monthStr) {
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
-    if (!channel) { pushLog('ERR', `Actus : ${ch.channelName} introuvable`, 'error'); return; }
-    if (!ANTHROPIC_API_KEY) { pushLog('ERR', 'ANTHROPIC_API_KEY manquante', 'error'); return; }
-    const month    = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
+    if (!channel) { pushLog('ERR', `Actus : ${ch.channelName} introuvable`, 'error'); return false; }
+    if (!ANTHROPIC_API_KEY) { pushLog('ERR', 'ANTHROPIC_API_KEY manquante', 'error'); return false; }
+    const month = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
     const monthCap = month.charAt(0).toUpperCase() + month.slice(1);
     const content = await callClaude(
       "Tu es un expert gaming qui résume les actualités récentes pour une communauté Discord francophone. Génère des actus réalistes et pertinentes basées sur ta connaissance.",
@@ -568,8 +559,10 @@ async function postActuForChannel(ch) {
     await channel.send({ embeds: [embed] });
     pushLog('SYS', `✅ Actus postées dans ${ch.channelName}`, 'success');
     broadcast('actuPosted', { channel: ch.channelName, time: new Date().toLocaleTimeString('fr-FR') });
+    return true;
   } catch (err) {
     pushLog('ERR', `Actus échouées pour ${ch.channelName} : ${err.message}`, 'error');
+    return false;
   }
 }
 
@@ -577,8 +570,7 @@ function postMonthlyActus() {
   const cfg = botConfig.actus;
   if (!cfg.enabled) { pushLog('SYS', 'Actus désactivées — skip'); return; }
 
-  // Anti-doublon mensuel
-  const monthStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' }).slice(0, 7); // YYYY-MM
+  const monthStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' }).slice(0, 7);
   if (cfg.lastPostedMonth === monthStr) {
     pushLog('SYS', `Actus déjà postées ce mois (${monthStr}) — skip`);
     return;
@@ -587,21 +579,20 @@ function postMonthlyActus() {
   const active = cfg.channels.filter(c => c.enabled);
   if (active.length === 0) { pushLog('SYS', 'Actus : aucun salon actif'); return; }
 
-  const windowMs = 12 * 60 * 60 * 1000; // 12h de fenêtre (10h→22h)
+  const windowMs = 12 * 60 * 60 * 1000;
   pushLog('SYS', `📅 Actus mensuelles — ${active.length} salons étalés sur 10h-22h`);
 
-  active.forEach(ch => {
-    const delayMs  = Math.floor(Math.random() * windowMs);
-    const delayMin = Math.round(delayMs / 60000);
-    const heure    = Math.floor(delayMin / 60);
-    const min      = delayMin % 60;
-    pushLog('SYS', `⏱ ${ch.channelName} → dans ${heure}h${min > 0 ? min + 'min' : ''}`);
-    setTimeout(() => postActuForChannel(ch), delayMs);
-  });
-
-  // Sauvegarder le mois pour éviter les doublons
   botConfig.actus.lastPostedMonth = monthStr;
   saveConfig();
+
+  active.forEach(ch => {
+    const delayMs = Math.floor(Math.random() * windowMs);
+    const delayMin = Math.round(delayMs / 60000);
+    const heure = Math.floor(delayMin / 60);
+    const min = delayMin % 60;
+    pushLog('SYS', `⏱ ${ch.channelName} → dans ${heure}h${min > 0 ? min + 'min' : ''}`);
+    setTimeout(() => postActuForChannel(ch, monthStr), delayMs);
+  });
 }
 
 let actusCron = null;
@@ -609,18 +600,17 @@ function startActusCron() {
   if (actusCron) { try { actusCron.stop(); } catch {} }
   const day = botConfig.actus.dayOfMonth || 1;
   actusCron = cron.schedule(`0 10 ${day} * *`, postMonthlyActus, { timezone: 'Europe/Paris' });
-  pushLog('SYS', `✅ Cron actus configuré : le ${day} du mois à 10h, étalé jusqu\'à 22h`);
+  pushLog('SYS', `✅ Cron actus configuré : le ${day} du mois à 10h, étalé jusqu'à 22h`);
 }
 
-// Rattrapage au démarrage : si on est le bon jour du mois et pas encore postées
 function checkActusMissed() {
   const cfg = botConfig.actus;
   if (!cfg.enabled) return;
-  const now      = new Date();
+  const now = new Date();
   const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
   const monthStr = parisNow.toLocaleDateString('fr-CA').slice(0, 7);
-  const dayNow   = parisNow.getDate();
-  const hourNow  = parisNow.getHours();
+  const dayNow = parisNow.getDate();
+  const hourNow = parisNow.getHours();
   const targetDay = cfg.dayOfMonth || 1;
 
   if (cfg.lastPostedMonth === monthStr) {
@@ -633,17 +623,23 @@ function checkActusMissed() {
   }
 }
 
-// ── LANCE-CONVERSATIONS ALÉATOIRES ───────────────────────────
-// Suivi du quota hebdomadaire
-let convWeeklyCount  = 0;
-let convLastPostTime = 0;
-let convWeekStart    = getWeekStart();
+function getConvWeeklyCount() { return botConfig.conversations.weeklyCount || 0; }
+function getConvLastPostTime() { return botConfig.conversations.lastPostTime || 0; }
+function getConvWeekStart() { return botConfig.conversations.weekStart || 0; }
 
-function getWeekStart() {
+function setConvStats(count, postTime, weekStart) {
+  botConfig.conversations.weeklyCount = count;
+  botConfig.conversations.lastPostTime = postTime;
+  botConfig.conversations.weekStart = weekStart;
+  saveConfig();
+}
+
+function computeWeekStart() {
   const now = new Date();
-  const day = now.getDay(); // 0=dimanche
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // lundi
-  const monday = new Date(now.setDate(diff));
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
   monday.setHours(0, 0, 0, 0);
   return monday.getTime();
 }
@@ -655,7 +651,7 @@ async function postRandomConversation() {
   if (active.length === 0) return;
   const ch = active[Math.floor(Math.random() * active.length)];
   try {
-    const guild   = await discord.guilds.fetch(GUILD_ID);
+    const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel || !ANTHROPIC_API_KEY) return;
@@ -665,10 +661,17 @@ async function postRandomConversation() {
       150
     );
     await channel.send(content);
-    convWeeklyCount++;
-    convLastPostTime = Date.now();
-    pushLog('SYS', `💬 Lance-conv postée dans ${ch.channelName} (${convWeeklyCount}/${cfg.frequencyPerWeek} cette semaine)`, 'success');
-    broadcast('conversation', { channel: ch.channelName, time: new Date().toLocaleTimeString('fr-FR'), weekCount: convWeeklyCount, weekTarget: cfg.frequencyPerWeek });
+
+    const newCount = getConvWeeklyCount() + 1;
+    setConvStats(newCount, Date.now(), getConvWeekStart());
+
+    pushLog('SYS', `💬 Lance-conv postée dans ${ch.channelName} (${newCount}/${cfg.frequencyPerWeek} cette semaine)`, 'success');
+    broadcast('conversation', {
+      channel: ch.channelName,
+      time: new Date().toLocaleTimeString('fr-FR'),
+      weekCount: newCount,
+      weekTarget: cfg.frequencyPerWeek
+    });
   } catch (err) {
     pushLog('ERR', `Lance-conversation échoué : ${err.message}`, 'error');
   }
@@ -678,44 +681,35 @@ let convCron = null;
 function startConvCron() {
   if (convCron) { try { convCron.stop(); } catch {} }
 
-  // Vérification toutes les 30 min pour plus de fiabilité
   convCron = cron.schedule('*/30 * * * *', () => {
-    const cfg  = botConfig.conversations;
+    const cfg = botConfig.conversations;
     if (!cfg.enabled) return;
 
-    // Reset du compteur chaque lundi
-    const weekStart = getWeekStart();
-    if (weekStart > convWeekStart) {
+    const currentWeekStart = computeWeekStart();
+    const storedWeekStart = getConvWeekStart();
+    if (currentWeekStart > storedWeekStart) {
       pushLog('SYS', `🔄 Reset quota conversations — nouvelle semaine`);
-      convWeeklyCount = 0;
-      convWeekStart   = weekStart;
+      setConvStats(0, getConvLastPostTime(), currentWeekStart);
     }
 
-    // Vérifier plage horaire
-    const now  = new Date();
+    const now = new Date();
     const hour = now.getHours();
     if (hour < cfg.timeStart || hour >= cfg.timeEnd) return;
 
-    // Quota semaine déjà atteint ?
-    const target = cfg.frequencyPerWeek || 5;
-    if (convWeeklyCount >= target) return;
+    const target = cfg.frequencyPerWeek || 3;
+    if (getConvWeeklyCount() >= target) return;
 
-    // Espacer les posts : minimum 1h30 entre deux posts
     const minGapMs = 90 * 60 * 1000;
-    if (Date.now() - convLastPostTime < minGapMs) return;
+    if (Date.now() - getConvLastPostTime() < minGapMs) return;
 
-    // Probabilité ajustée : on veut target posts sur ~7 jours × 12h actives
-    // Vérification toutes les 30min → 168 checks/semaine dans la plage
-    const checksInWindow = 7 * (cfg.timeEnd - cfg.timeStart) * 2; // 2 checks/heure
-    const remaining      = target - convWeeklyCount;
-    // Jours restants dans la semaine
-    const dayOfWeek      = now.getDay() || 7; // lundi=1 … dimanche=7
-    const daysLeft       = Math.max(1, 8 - dayOfWeek);
-    const checksLeft     = daysLeft * (cfg.timeEnd - cfg.timeStart) * 2;
-    const prob           = Math.min(1, remaining / Math.max(1, checksLeft));
+    const dayOfWeek = now.getDay() || 7;
+    const daysLeft = Math.max(1, 8 - dayOfWeek);
+    const checksLeft = daysLeft * (cfg.timeEnd - cfg.timeStart) * 2;
+    const remaining = target - getConvWeeklyCount();
+    const prob = Math.min(1, remaining / Math.max(1, checksLeft));
 
     if (Math.random() < prob) {
-      pushLog('SYS', `💬 Déclenchement conv (quota: ${convWeeklyCount}/${target}, jours restants: ${daysLeft})`);
+      pushLog('SYS', `💬 Déclenchement conv (quota: ${getConvWeeklyCount()}/${target}, jours restants: ${daysLeft})`);
       postRandomConversation();
     }
   }, { timezone: 'Europe/Paris' });
@@ -723,10 +717,9 @@ function startConvCron() {
   pushLog('SYS', `✅ Cron conversations : ${botConfig.conversations.frequencyPerWeek}x/semaine, ${botConfig.conversations.timeStart}h-${botConfig.conversations.timeEnd}h, check toutes les 30min`);
 }
 
-// ── BACKUP AUTO 6H ───────────────────────────────────────────
 setInterval(async () => {
   try {
-    const state    = await readGuildState();
+    const state = await readGuildState();
     const filename = `backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     fs.writeFileSync(filename, JSON.stringify(state, null, 2), 'utf8');
     pushLog('SYS', `📦 Backup auto : ${filename}`, 'success');
@@ -739,9 +732,6 @@ setInterval(async () => {
   }
 }, 6 * 60 * 60 * 1000);
 
-// ── REST API ──────────────────────────────────────────────────
-
-// GET état complet
 app.get('/api/state', async (req, res) => {
   try {
     const state = await readGuildState();
@@ -749,17 +739,14 @@ app.get('/api/state', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// GET logs
 app.get('/api/logs', (req, res) => {
   res.json({ ok: true, logs: changeLog });
 });
 
-// GET config
 app.get('/api/config', (req, res) => {
   res.json({ ok: true, config: botConfig });
 });
 
-// POST sauvegarder config
 app.post('/api/config', (req, res) => {
   try {
     const { section, data } = req.body;
@@ -767,8 +754,8 @@ app.post('/api/config', (req, res) => {
     if (!botConfig[section]) return res.status(400).json({ ok: false, error: `Section inconnue : ${section}` });
     botConfig[section] = { ...botConfig[section], ...data };
     saveConfig();
-    if (section === 'anecdote')      startAnecdoteCron();
-    if (section === 'actus')         startActusCron();
+    if (section === 'anecdote') startAnecdoteCron();
+    if (section === 'actus') startActusCron();
     if (section === 'conversations') startConvCron();
     pushLog('SYS', `Config "${section}" mise à jour via dashboard`, 'success');
     broadcast('configUpdate', { section, data: botConfig[section] });
@@ -776,29 +763,26 @@ app.post('/api/config', (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// POST sync Discord → Fichier
 app.post('/api/sync/discord-to-file', async (req, res) => {
   pushLog('SYS', 'Sync forcée Discord → Fichier');
   await syncDiscordToFile('Forced via API');
   res.json({ ok: true });
 });
 
-// POST sync Fichier → Discord
 app.post('/api/sync/file-to-discord', async (req, res) => {
   pushLog('SYS', 'Sync forcée Fichier → Discord');
   await syncFileToDiscord();
   res.json({ ok: true });
 });
 
-// POST créer un salon
 app.post('/api/channels', async (req, res) => {
   const { name, type, categoryName, topic } = req.body;
   try {
-    const guild  = await discord.guilds.fetch(GUILD_ID);
+    const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
-    const cat    = guild.channels.cache.find(c => c.name === categoryName && c.type === ChannelType.GuildCategory);
+    const cat = guild.channels.cache.find(c => c.name === categoryName && c.type === ChannelType.GuildCategory);
     const chType = type === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
-    const opts   = { name, type: chType, reason: 'Dashboard' };
+    const opts = { name, type: chType, reason: 'Dashboard' };
     if (cat) opts.parent = cat.id;
     if (topic) opts.topic = topic;
     const ch = await guild.channels.create(opts);
@@ -807,7 +791,6 @@ app.post('/api/channels', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// DELETE supprimer un salon
 app.delete('/api/channels/:id', async (req, res) => {
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
@@ -821,7 +804,6 @@ app.delete('/api/channels/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// PATCH modifier un salon
 app.patch('/api/channels/:id', async (req, res) => {
   const { name, topic } = req.body;
   try {
@@ -838,19 +820,17 @@ app.patch('/api/channels/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// POST créer un rôle
 app.post('/api/roles', async (req, res) => {
   const { name, color, hoist } = req.body;
   try {
-    const guild    = await discord.guilds.fetch(GUILD_ID);
+    const guild = await discord.guilds.fetch(GUILD_ID);
     const colorInt = parseInt((color || '#7c5cbf').replace('#', ''), 16);
-    const role     = await guild.roles.create({ name, color: colorInt, hoist: !!hoist, permissions: [], reason: 'Dashboard' });
+    const role = await guild.roles.create({ name, color: colorInt, hoist: !!hoist, permissions: [], reason: 'Dashboard' });
     pushLog('API', `Rôle créé via dashboard : ${name}`, 'success');
     res.json({ ok: true, id: role.id });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// DELETE supprimer un rôle
 app.delete('/api/roles/:id', async (req, res) => {
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
@@ -864,10 +844,9 @@ app.delete('/api/roles/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// POST backup manuel
 app.post('/api/backup', async (req, res) => {
   try {
-    const state    = await readGuildState();
+    const state = await readGuildState();
     const filename = `backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     fs.writeFileSync(filename, JSON.stringify(state, null, 2), 'utf8');
     pushLog('SYS', `Backup créé : ${filename}`, 'success');
@@ -875,12 +854,10 @@ app.post('/api/backup', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// GET auto-role
 app.get('/api/autorole', (req, res) => {
   res.json({ ok: true, roleName: AUTO_ROLE_NAME });
 });
 
-// POST changer auto-role
 app.post('/api/autorole', (req, res) => {
   const { roleName } = req.body;
   if (!roleName) return res.status(400).json({ ok: false, error: 'roleName requis' });
@@ -890,24 +867,22 @@ app.post('/api/autorole', (req, res) => {
   res.json({ ok: true, roleName: AUTO_ROLE_NAME });
 });
 
-// POST déclencher anecdote manuellement
 app.post('/api/anecdote', async (req, res) => {
   pushLog('SYS', 'Anecdote déclenchée manuellement');
   postDailyAnecdote();
   res.json({ ok: true, message: 'Génération en cours...' });
 });
 
-// POST tester welcome
 app.post('/api/welcome/test', async (req, res) => {
   const cfg = botConfig.welcome;
   if (!cfg.enabled) return res.json({ ok: false, error: 'Welcome désactivé' });
   try {
-    const guild   = await discord.guilds.fetch(GUILD_ID);
+    const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(cfg.channelId);
     if (!channel) return res.status(404).json({ ok: false, error: 'Salon introuvable' });
-    const phrase  = cfg.messages[Math.floor(Math.random() * cfg.messages.length)];
-    const embed   = new EmbedBuilder()
+    const phrase = cfg.messages[Math.floor(Math.random() * cfg.messages.length)];
+    const embed = new EmbedBuilder()
       .setColor(0x7c5cbf)
       .setTitle('👾 Bienvenue TestMembre ! [TEST]')
       .setDescription(`${phrase}\n\n📋 Lis les règles → <#1481028175474589827>\n🎭 Choisis tes rôles → <#1481028181485027471>\n💬 Présente-toi ici !`)
@@ -919,31 +894,26 @@ app.post('/api/welcome/test', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// POST déclencher actus manuellement
 app.post('/api/actus', async (req, res) => {
   pushLog('SYS', 'Actus déclenchées manuellement');
   postMonthlyActus();
   res.json({ ok: true, message: 'Actus en cours de génération...' });
 });
 
-// POST déclencher lance-conversation manuellement
 app.post('/api/conversation', async (req, res) => {
   pushLog('SYS', 'Lance-conversation déclenché manuellement');
   postRandomConversation();
   res.json({ ok: true, message: 'Lance-conversation en cours...' });
 });
 
-
-// POST envoyer un message manuel dans un salon
 app.post('/api/post', async (req, res) => {
   const { channelId, content, asEmbed, embedTitle } = req.body;
   if (!channelId || !content) return res.status(400).json({ ok: false, error: 'channelId + content requis' });
   try {
-    const guild   = await discord.guilds.fetch(GUILD_ID);
+    const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(channelId);
     if (!channel) return res.status(404).json({ ok: false, error: 'Salon introuvable' });
-
     if (asEmbed) {
       const embed = new EmbedBuilder()
         .setColor(0x7c5cbf)
@@ -955,13 +925,11 @@ app.post('/api/post', async (req, res) => {
     } else {
       await channel.send(content);
     }
-
     pushLog('API', `Post manuel envoyé dans ${channel.name}`, 'success');
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// GET liste des backups
 app.get('/api/backups', (req, res) => {
   try {
     const files = fs.readdirSync('.')
@@ -976,18 +944,17 @@ app.get('/api/backups', (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// POST timeout/mute un membre
 app.post('/api/members/:id/mute', async (req, res) => {
-  const { duration } = req.body; // durée en minutes, 0 = unmute
+  const { duration } = req.body;
   try {
-    const guild  = await discord.guilds.fetch(GUILD_ID);
+    const guild = await discord.guilds.fetch(GUILD_ID);
     const member = await guild.members.fetch(req.params.id);
     if (!member) return res.status(404).json({ ok: false, error: 'Membre introuvable' });
     if (!duration || duration <= 0) {
       await member.timeout(null, 'Dashboard — Timeout retiré');
       pushLog('API', `Timeout retiré pour ${member.user.tag}`, 'success');
     } else {
-      const maxMs      = 28 * 24 * 60 * 60 * 1000;
+      const maxMs = 28 * 24 * 60 * 60 * 1000;
       const durationMs = Math.min(duration * 60 * 1000, maxMs);
       await member.timeout(durationMs, 'Dashboard — Timeout');
       const label = duration >= 1440 ? `${Math.round(duration/1440)}j` : duration >= 60 ? `${Math.round(duration/60)}h` : `${duration}min`;
@@ -997,11 +964,10 @@ app.post('/api/members/:id/mute', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// POST kick un membre
 app.post('/api/members/:id/kick', async (req, res) => {
   const { reason } = req.body;
   try {
-    const guild  = await discord.guilds.fetch(GUILD_ID);
+    const guild = await discord.guilds.fetch(GUILD_ID);
     const member = await guild.members.fetch(req.params.id);
     if (!member) return res.status(404).json({ ok: false, error: 'Membre introuvable' });
     const tag = member.user.tag;
@@ -1011,13 +977,12 @@ app.post('/api/members/:id/kick', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// POST ban un membre
 app.post('/api/members/:id/ban', async (req, res) => {
   const { reason, deleteMessageDays } = req.body;
   try {
-    const guild  = await discord.guilds.fetch(GUILD_ID);
+    const guild = await discord.guilds.fetch(GUILD_ID);
     const member = await guild.members.fetch(req.params.id).catch(() => null);
-    const tag    = member ? member.user.tag : req.params.id;
+    const tag = member ? member.user.tag : req.params.id;
     await guild.bans.create(req.params.id, {
       reason: reason || 'Banni via dashboard BrainEXE',
       deleteMessageSeconds: Math.min((deleteMessageDays || 0) * 86400, 604800),
@@ -1027,15 +992,14 @@ app.post('/api/members/:id/ban', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// PATCH rôles d'un membre
 app.patch('/api/members/:id/roles', async (req, res) => {
   const { addRoles, removeRoles } = req.body;
   try {
-    const guild  = await discord.guilds.fetch(GUILD_ID);
+    const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.roles.fetch();
     const member = await guild.members.fetch(req.params.id);
     if (!member) return res.status(404).json({ ok: false, error: 'Membre introuvable' });
-    if (addRoles    && addRoles.length    > 0) await member.roles.add(addRoles,    'Dashboard — Ajout rôles');
+    if (addRoles && addRoles.length > 0) await member.roles.add(addRoles, 'Dashboard — Ajout rôles');
     if (removeRoles && removeRoles.length > 0) await member.roles.remove(removeRoles, 'Dashboard — Retrait rôles');
     pushLog('API', `Rôles modifiés pour ${member.user.tag} (+${(addRoles||[]).length}/-${(removeRoles||[]).length})`, 'success');
     const updatedRoles = member.roles.cache
@@ -1045,7 +1009,6 @@ app.patch('/api/members/:id/roles', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// GET membres
 app.get('/api/members', async (req, res) => {
   try {
     const state = guildCache || await readGuildState();
@@ -1053,24 +1016,22 @@ app.get('/api/members', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// ── WEBSOCKET ─────────────────────────────────────────────────
 wss.on('connection', async (ws) => {
   pushLog('SYS', 'Dashboard connecté via WebSocket');
   try {
     const state = await readGuildState();
     ws.send(JSON.stringify({ type: 'state', data: state }));
-    ws.send(JSON.stringify({ type: 'logs',  data: changeLog }));
+    ws.send(JSON.stringify({ type: 'logs', data: changeLog }));
     ws.send(JSON.stringify({ type: 'stats', data: syncStats }));
   } catch (e) {}
 });
 
-// ── DÉMARRAGE ─────────────────────────────────────────────────
 discord.once('clientReady', async () => {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('  🧠 BRAINEXE DASHBOARD — Serveur démarré');
+  console.log(' 🧠 BRAINEXE DASHBOARD — Serveur démarré');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`  ✅ Bot connecté    : ${discord.user.tag}`);
-  console.log(`  🌐 Dashboard       : http://localhost:${PORT}`);
+  console.log(` ✅ Bot connecté : ${discord.user.tag}`);
+  console.log(` 🌐 Dashboard : http://localhost:${PORT}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   registerDiscordEvents();
@@ -1079,24 +1040,21 @@ discord.once('clientReady', async () => {
   startActusCron();
   startConvCron();
 
-  // Rattrapage : vérifier si des tâches ont été manquées depuis le dernier redémarrage
   setTimeout(() => {
     checkAnecdoteMissed();
     checkActusMissed();
     pushLog('SYS', '🔍 Vérification rattrapage terminée');
-  }, 5000); // 5s après démarrage, le temps que Discord soit bien connecté
+  }, 15000);
 
   await syncDiscordToFile('Démarrage');
 });
 
-// Démarrer le serveur HTTP immédiatement (pas d'attente du bot)
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🌐 Serveur HTTP démarré sur le port ${PORT}`);
 });
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// Vérifications avant login
 console.log('🔍 DISCORD_TOKEN défini:', !!TOKEN);
 console.log('🔍 GUILD_ID:', GUILD_ID);
 
