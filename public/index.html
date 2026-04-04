@@ -3170,18 +3170,6 @@ function renderAutomationStatuses(cfg) {
 
 // ── TOGGLESYNC (supprimé — stub vide pour éviter erreurs) ──
 function toggleSyncHandler() {}
-  el.addEventListener('click', () => {
-    if (document.getElementById('page-automations')?.classList.contains('active')) {
-      collectConfig();
-    }
-  });
-});
-
-// Charger la config automations quand on entre dans la page
-// (géré directement dans les event listeners de nav)
-
-// WS event configUpdate
-// (géré dans onmessage plus bas)
 
 
 /* ══════════════════════════════════════════════
