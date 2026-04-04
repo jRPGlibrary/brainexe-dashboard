@@ -977,6 +977,61 @@ td {
 /* ═══════════════════════════════════════════════
    BARRE NAV MOBILE (cachée par défaut)
 ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════
+   MENU PLUS MOBILE
+═══════════════════════════════════════════════ */
+.plus-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 390;
+}
+.plus-overlay.open { display: block; }
+.plus-sheet {
+  position: fixed;
+  bottom: 70px;
+  left: 10px;
+  right: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  z-index: 395;
+  padding: 12px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 -4px 30px rgba(0,0,0,0.5);
+  animation: sheetUp .2s ease;
+}
+.plus-sheet.open { display: flex; }
+@keyframes sheetUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+.plus-sheet-title {
+  font-size: 0.62rem;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text3);
+  padding: 4px 8px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.plus-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .12s;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text2);
+}
+.plus-item:hover, .plus-item:active { background: var(--card); color: var(--text); }
+.plus-item-icon { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
+
 .mobile-nav { display: none; }
 .mobile-nav-item {
   flex: 1;
@@ -1224,7 +1279,6 @@ td {
   <div class="nav-item" data-page="posts"><span class="nav-icon">✏️</span> Posts manuels</div>
   <div class="nav-item" data-page="autorole"><span class="nav-icon">🤖</span> Auto-Role</div>
   <div class="nav-item" data-page="reactionroles"><span class="nav-icon">✨</span> Reaction Roles</div>
-  <div class="nav-item" data-page="welcome"><span class="nav-icon">👋</span> Bienvenue</div>
 
   <div class="nav-section">Système</div>
   <div class="nav-item" data-page="logs"><span class="nav-icon">📋</span> Logs <span class="nav-badge" id="navLogsBadge" style="display:none">0</span></div>
@@ -1612,75 +1666,6 @@ td {
     </div>
   </div>
 
-  <!-- ▸ PAGE: WELCOME ────────────────────────── -->
-  <div class="page" id="page-welcome">
-    <div class="page-head">
-      <div>
-        <div class="page-title">👋 Message de bienvenue</div>
-        <div class="page-sub">Embed envoyé à l'arrivée dans #présentations</div>
-      </div>
-    </div>
-    <div class="grid-1-1">
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span>✏️</span> Éditeur</div></div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
-          <div class="field">
-            <div class="field-label">Titre</div>
-            <input class="field-input" id="wTitle" value="Bienvenue sur BrainEXE ! 🧠" placeholder="Titre de l'embed">
-          </div>
-          <div class="field">
-            <div class="field-label">Description</div>
-            <textarea class="field-input" id="wDesc" rows="5" placeholder="Message de bienvenue..." style="resize:vertical">Hey {user} ! 👋
-
-Bienvenue dans la communauté **BrainEXE** !
-
-🎭 Va dans **#choix-des-rôles** pour accéder aux salons
-🧠 N'oublie pas de te présenter dans **#présentations**
-
-Content de t'avoir parmi nous !</textarea>
-          </div>
-          <div class="form-row">
-            <div class="field">
-              <div class="field-label">Couleur accent</div>
-              <input type="color" class="field-input" id="wColor" value="#5B7FFF">
-            </div>
-            <div class="field">
-              <div class="field-label">Salon cible</div>
-              <select class="field-input" id="wChannel"><option>#👋・présentations</option></select>
-            </div>
-          </div>
-          <div class="field">
-            <div class="field-label">Footer</div>
-            <input class="field-input" id="wFooter" value="BrainEXE • Neurodivergent Community" placeholder="Texte du footer">
-          </div>
-          <button class="btn btn-primary" id="wPreviewBtn" style="width:100%" onclick="updateWelcomePreview()">🔍 Mettre à jour l'aperçu</button>
-          <div style="padding:10px;background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-size:0.75rem;color:var(--yellow)">
-            ⚠️ Pour activer le message de bienvenue dans le bot, ajoute une route <code style="font-family:var(--mono)">/api/welcome</code> dans server.js et intègre l'événement <code style="font-family:var(--mono)">GuildMemberAdd</code>.
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span>👁</span> Aperçu</div></div>
-        <div class="card-body">
-          <div style="font-size:0.72rem;color:var(--text3);margin-bottom:10px;font-family:var(--mono)">#👋・présentations</div>
-          <div style="display:flex;gap:10px;align-items:flex-start">
-            <div style="width:36px;height:36px;background:linear-gradient(135deg,#3B4FA0,#7B4FD0);border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px">🧠</div>
-            <div style="flex:1">
-              <div style="font-size:0.75rem;font-weight:700;color:var(--text);margin-bottom:2px">Brain.EXE <span style="font-size:0.6rem;background:var(--blue);color:white;padding:1px 5px;border-radius:3px;margin-left:4px">BOT</span></div>
-              <div class="embed-preview" id="welcomePreview">
-                <div class="embed-title" id="wPrevTitle">Bienvenue sur BrainEXE ! 🧠</div>
-                <div class="embed-desc" id="wPrevDesc">Hey {user} ! 👋
-
-Bienvenue dans la communauté **BrainEXE** !</div>
-                <div class="embed-footer" id="wPrevFooter">BrainEXE • Neurodivergent Community</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ▸ PAGE: LOGS ────────────────────────────── -->
   <div class="page" id="page-logs">
     <div class="page-head">
@@ -1780,38 +1765,6 @@ Bienvenue dans la communauté **BrainEXE** !</div>
     </div>
 
     <div class="card">
-      <div class="card-head"><div class="card-title"><span>🔄</span> Synchronisation</div></div>
-      <div class="card-body">
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-title">Sync bidirectionnelle</div>
-            <div class="setting-desc">Discord ⟷ discord-template.json en temps réel</div>
-          </div>
-          <div class="setting-control">
-            <label class="toggle">
-              <input type="checkbox" checked id="toggleSync" onchange="toggleSyncHandler(this)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-title">Débounce Discord → Fichier</div>
-            <div class="setting-desc">Délai avant d'écrire le fichier après un changement Discord (ms)</div>
-          </div>
-          <input class="field-input" value="2000" style="width:100px;text-align:center">
-        </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-title">Fichier template</div>
-            <div class="setting-desc">Source de vérité de la structure</div>
-          </div>
-          <div style="font-family:var(--mono);font-size:0.75rem;color:var(--text2);background:var(--bg);padding:6px 12px;border-radius:6px;border:1px solid var(--border)">discord-template.json</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
       <div class="card-head"><div class="card-title"><span>🔗</span> Liens</div></div>
       <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap">
         <a href="https://brainexe-dashboard-production.up.railway.app" target="_blank" class="btn btn-ghost">🌐 Dashboard Railway</a>
@@ -1866,6 +1819,7 @@ Bienvenue dans la communauté **BrainEXE** !</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" id="btnTestAnecdote">⚡ Tester maintenant</button>
           <div id="anecdoteStatus" style="font-size:0.75rem;color:var(--text2)">—</div>
+          <div id="anecdoteLastStatus" style="font-size:0.72rem;color:var(--text3);font-family:var(--mono);margin-left:auto">—</div>
         </div>
         <div style="padding:10px 12px;background:var(--blue-dim);border:1px solid rgba(91,127,255,0.15);border-radius:8px;font-size:0.75rem;color:#a5baff">
           💡 Posté chaque jour à l'heure choisie + un délai aléatoire entre 0 et le délai max — pour paraître naturel
@@ -1895,64 +1849,89 @@ Bienvenue dans la communauté **BrainEXE** !</div>
       </div>
     </div>
 
-    <!-- ── ACTUS MENSUELLES ── -->
+    <!-- ── ACTUS BI-MENSUELLES ── (v1.3.0) -->
     <div class="card" id="cfgActusCard">
       <div class="card-head">
-        <div class="card-title"><span>📰</span> Actus Mensuelles</div>
+        <div class="card-title"><span>📰</span> Actus Bi-Mensuelles</div>
         <label class="toggle"><input type="checkbox" id="cfgActusEnabled"><span class="toggle-slider"></span></label>
       </div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
-        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px">
-          <div class="field">
-            <div class="field-label">Jour du mois (1–28)</div>
-            <input type="number" class="field-input" id="cfgActusDay" min="1" max="31" placeholder="1">
-          </div>
-          <div style="padding:10px 12px;background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.15);border-radius:8px;font-size:0.75rem;color:var(--yellow);align-self:end;margin-bottom:2px">
-            ⚠️ Nécessite ANTHROPIC_API_KEY — les actus sont générées par Claude IA
+
+        <!-- Cadence fixe - plus de champ jour du mois -->
+        <div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--blue-dim);border:1px solid rgba(91,127,255,0.2);border-radius:10px">
+          <span style="font-size:28px;flex-shrink:0">📅</span>
+          <div>
+            <div style="font-size:0.72rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:3px">Cadence automatique</div>
+            <div style="font-size:1rem;font-weight:800;color:#a5baff">Le 1er et le 15 de chaque mois à 10h</div>
+            <div style="font-size:0.72rem;color:var(--text2);margin-top:3px">Posts étalés aléatoirement sur 12h pour paraître naturels</div>
           </div>
         </div>
+
+        <div style="padding:10px 12px;background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.15);border-radius:8px;font-size:0.75rem;color:var(--yellow)">
+          ⚠️ Nécessite ANTHROPIC_API_KEY — actus générées par Claude IA
+        </div>
+
         <div class="field">
           <div class="field-label" style="margin-bottom:8px">Salons actifs <span style="color:var(--text2);font-weight:400">(coche/décoche pour activer/désactiver)</span></div>
           <div id="cfgActusChannels" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" id="btnTestActus">📰 Déclencher maintenant (test)</button>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary btn-sm" id="btnTestActus">📰 Poster maintenant (force)</button>
           <div id="actusTestStatus" style="font-size:0.75rem;color:var(--text2)">—</div>
+          <div id="actusLastStatus" style="font-size:0.72rem;color:var(--text3);font-family:var(--mono);margin-left:auto">—</div>
+        </div>
+        <div style="padding:10px 12px;background:var(--green-dim);border:1px solid rgba(52,211,153,0.15);border-radius:8px;font-size:0.75rem;color:var(--green)">
+          ✅ "Poster maintenant" ignore le check de date — tu peux forcer à tout moment
         </div>
       </div>
     </div>
 
-    <!-- ── LANCE-CONVERSATIONS ── -->
+    <!-- ── LANCE-CONVERSATIONS ── (v1.3.0) -->
     <div class="card" id="cfgConvCard">
       <div class="card-head">
-        <div class="card-title"><span>💬</span> Lance-Conversations Aléatoires</div>
+        <div class="card-title"><span>💬</span> Lance-Conversations + Réponses Auto</div>
         <label class="toggle"><input type="checkbox" id="cfgConvEnabled"><span class="toggle-slider"></span></label>
       </div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
           <div class="field">
-            <div class="field-label">Fréquence (fois/semaine)</div>
-            <input type="number" class="field-input" id="cfgConvFreq" min="1" max="14" placeholder="3">
+            <div class="field-label">Posts max par jour</div>
+            <input type="number" class="field-input" id="cfgConvMax" min="1" max="20" placeholder="5">
           </div>
           <div class="field">
-            <div class="field-label">Heure de début</div>
-            <input type="number" class="field-input" id="cfgConvStart" min="0" max="23" placeholder="14">
+            <div class="field-label">Heure de début (0=minuit)</div>
+            <input type="number" class="field-input" id="cfgConvStart" min="0" max="23" placeholder="0">
           </div>
           <div class="field">
             <div class="field-label">Heure de fin</div>
-            <input type="number" class="field-input" id="cfgConvEnd" min="1" max="24" placeholder="22">
+            <input type="number" class="field-input" id="cfgConvEnd" min="1" max="24" placeholder="24">
           </div>
         </div>
+
+        <!-- Toggle canReply -->
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--card2);border:1px solid var(--border);border-radius:10px">
+          <div style="flex:1">
+            <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:2px">🔁 Répondre aux conversations membres</div>
+            <div style="font-size:0.75rem;color:var(--text2)">Le bot répond naturellement aux messages récents (entre 20min et 3h, toutes les 2h max, 40% de chance)</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="cfgConvCanReply"><span class="toggle-slider"></span></label>
+        </div>
+
         <div class="field">
-          <div class="field-label" style="margin-bottom:8px">Salons participants <span style="color:var(--text2);font-weight:400">(coche/décoche — le bot choisit parmi les actifs)</span></div>
+          <div class="field-label" style="margin-bottom:8px">Salons participants <span style="color:var(--text2);font-weight:400">(le bot cible le plus calme en priorité)</span></div>
           <div id="cfgConvChannels" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" id="btnTestConv">💬 Déclencher maintenant (test)</button>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary btn-sm" id="btnTestConv">💬 Lance-conv maintenant</button>
+          <button class="btn btn-ghost btn-sm" id="btnTestConvReply">🔁 Tentative réponse</button>
           <div id="convTestStatus" style="font-size:0.75rem;color:var(--text2)">—</div>
+          <div id="convLastStatus" style="font-size:0.72rem;color:var(--text3);font-family:var(--mono);margin-left:auto">—</div>
         </div>
+
         <div style="padding:10px 12px;background:var(--green-dim);border:1px solid rgba(52,211,153,0.15);border-radius:8px;font-size:0.75rem;color:var(--green)">
-          ✅ Le bot vérifie toutes les heures si un post doit être lancé — en fonction de la fréquence et de la plage horaire
+          ✅ Check toutes les heures · cible le salon le plus calme · réponses membres toutes les 2h (40% de chance)
         </div>
       </div>
     </div>
@@ -2102,6 +2081,23 @@ Bienvenue dans la communauté **BrainEXE** !</div>
         <button class="btn btn-danger" style="width:100%" onclick="applyBan()">🔨 Bannir définitivement</button>
       </div>
       <div id="mmSanctionFeedback" style="display:none;font-size:0.75rem;padding:8px 12px;border-radius:6px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL CATEGORY ═══════════════════════ -->
+<div class="modal-wrap" id="modalCategory">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">📁 Nouvelle catégorie</div><div class="modal-close" onclick="closeModal('modalCategory')">✕</div></div>
+    <div class="modal-body">
+      <div class="field"><div class="field-label">Nom de la catégorie</div><input class="field-input" id="catName" placeholder="EX: 🎮 GAMING"></div>
+      <div style="padding:10px 12px;background:var(--blue-dim);border:1px solid rgba(91,127,255,0.2);border-radius:8px;font-size:0.75rem;color:#a5baff">
+        💡 La catégorie sera créée vide — tu pourras ensuite y ajouter des salons depuis le dashboard
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modalCategory')">Annuler</button>
+      <button class="btn btn-primary" id="btnCreateCategory">Créer la catégorie</button>
     </div>
   </div>
 </div>
@@ -2261,8 +2257,11 @@ function renderAll() {
 
   // Sidebar server card
   document.getElementById('sideServerName').textContent = state.name || 'BrainEXE';
-  document.getElementById('sideServerMeta').textContent = `${state.memberCount} membres`;
+  document.getElementById('sideServerMeta').textContent = state.memberCount + ' membres';
   document.getElementById('navMemberCount').textContent = state.memberCount;
+  // Settings bot tag
+  const tagEl = document.getElementById('settingBotTag');
+  if (tagEl && state.botTag) tagEl.textContent = state.botTag;
 
   // Subtitles
   document.getElementById('channelsSubtitle').textContent = `${state.totalChannels} salons · ${state.structure.length} catégories`;
@@ -2704,21 +2703,6 @@ function appendArrival(data) {
 }
 
 /* ══════════════════════════════════════════════
-   WELCOME PREVIEW
-══════════════════════════════════════════════ */
-function updateWelcomePreview() {
-  const title = document.getElementById('wTitle').value;
-  const desc  = document.getElementById('wDesc').value;
-  const color = document.getElementById('wColor').value;
-  const footer= document.getElementById('wFooter').value;
-
-  document.getElementById('wPrevTitle').textContent = title;
-  document.getElementById('wPrevDesc').textContent  = desc;
-  document.getElementById('wPrevFooter').textContent= footer;
-  document.getElementById('welcomePreview').style.borderLeftColor = color;
-}
-
-/* ══════════════════════════════════════════════
    NAVIGATION
 ══════════════════════════════════════════════ */
 function showPage(name) {
@@ -2845,10 +2829,6 @@ function copyText(btn, text) {
   });
 }
 
-function toggleSyncHandler(cb) {
-  toast(cb.checked ? 'Sync réactivée' : 'Sync mise en pause (redémarre le bot pour appliquer)', cb.checked ? 'success' : 'warn');
-}
-
 /* ══════════════════════════════════════════════
    BUTTON WIRING
 ══════════════════════════════════════════════ */
@@ -2927,11 +2907,17 @@ document.getElementById('btnExportLogs')?.addEventListener('click', () => {
   toast('📥 Logs exportés', 'success');
 });
 
-// Add category modal (basic version)
-document.getElementById('btnAddCat')?.addEventListener('click', () => {
-  const name = prompt('Nom de la nouvelle catégorie :');
-  if (!name) return;
-  toast(`Catégorie à créer via /api/channels en mode "category" — ajout prévu dans server.js`, 'info');
+// Add category — vrai modal
+document.getElementById('btnAddCat')?.addEventListener('click', () => openModal('modalCategory'));
+document.getElementById('btnCreateCategory')?.addEventListener('click', async () => {
+  const name = document.getElementById('catName').value.trim();
+  if (!name) return toast('Donne un nom à la catégorie !', 'error');
+  const r = await api('POST', '/api/categories', { name });
+  if (r.ok) {
+    toast('✅ Catégorie "' + name + '" créée', 'success');
+    closeModal('modalCategory');
+    document.getElementById('catName').value = '';
+  } else toast(r.error || 'Erreur', 'error');
 });
 
 // Log filters
@@ -2988,15 +2974,16 @@ function renderAutomationsConfig() {
 
   // ─ ACTUS ─
   document.getElementById('cfgActusEnabled').checked = cfg.actus.enabled;
-  document.getElementById('cfgActusDay').value        = cfg.actus.dayOfMonth;
   renderChannelToggles('cfgActusChannels', cfg.actus.channels, 'actus');
 
   // ─ CONVERSATIONS ─
   document.getElementById('cfgConvEnabled').checked = cfg.conversations.enabled;
-  document.getElementById('cfgConvFreq').value       = cfg.conversations.frequencyPerWeek;
-  document.getElementById('cfgConvStart').value      = cfg.conversations.timeStart;
-  document.getElementById('cfgConvEnd').value        = cfg.conversations.timeEnd;
+  document.getElementById('cfgConvMax').value        = cfg.conversations.maxPerDay || 5;
+  document.getElementById('cfgConvStart').value      = cfg.conversations.timeStart !== undefined ? cfg.conversations.timeStart : 0;
+  document.getElementById('cfgConvEnd').value        = cfg.conversations.timeEnd   !== undefined ? cfg.conversations.timeEnd   : 24;
+  document.getElementById('cfgConvCanReply').checked = cfg.conversations.canReply !== false;
   renderChannelToggles('cfgConvChannels', cfg.conversations.channels, 'conv');
+  renderAutomationStatuses(cfg);
 }
 
 function populateChannelSelect(selectId, currentId) {
@@ -3057,19 +3044,19 @@ function collectConfig() {
 
   // Actus
   automationsConfig.actus.enabled     = document.getElementById('cfgActusEnabled').checked;
-  automationsConfig.actus.dayOfMonth  = parseInt(document.getElementById('cfgActusDay').value) || 1;
   automationsConfig.actus.channels.forEach((ch, i) => {
-    const cb = document.getElementById(`actusCh${i}`);
+    const cb = document.getElementById('actusCh' + i);
     if (cb) ch.enabled = cb.checked;
   });
 
   // Conversations
-  automationsConfig.conversations.enabled          = document.getElementById('cfgConvEnabled').checked;
-  automationsConfig.conversations.frequencyPerWeek = parseInt(document.getElementById('cfgConvFreq').value) || 3;
-  automationsConfig.conversations.timeStart        = parseInt(document.getElementById('cfgConvStart').value) || 14;
-  automationsConfig.conversations.timeEnd          = parseInt(document.getElementById('cfgConvEnd').value) || 22;
+  automationsConfig.conversations.enabled    = document.getElementById('cfgConvEnabled').checked;
+  automationsConfig.conversations.maxPerDay  = parseInt(document.getElementById('cfgConvMax').value) || 5;
+  automationsConfig.conversations.timeStart  = parseInt(document.getElementById('cfgConvStart').value) || 0;
+  automationsConfig.conversations.timeEnd    = parseInt(document.getElementById('cfgConvEnd').value) || 24;
+  automationsConfig.conversations.canReply   = document.getElementById('cfgConvCanReply').checked;
   automationsConfig.conversations.channels.forEach((ch, i) => {
-    const cb = document.getElementById(`convCh${i}`);
+    const cb = document.getElementById('convCh' + i);
     if (cb) ch.enabled = cb.checked;
   });
 
@@ -3111,21 +3098,78 @@ document.getElementById('btnTestWelcome')?.addEventListener('click', async () =>
 
 document.getElementById('btnTestActus')?.addEventListener('click', async () => {
   document.getElementById('actusTestStatus').textContent = '⏳ Génération (peut prendre 30s+)...';
-  toast('📰 Actus en cours de génération...', 'info');
-  const r = await api('POST', '/api/actus');
+  toast('📰 Actus forcées en cours de génération...', 'info');
+  const r = await api('POST', '/api/actus', { force: true });
   document.getElementById('actusTestStatus').textContent = r.ok ? '✅ Lancé !' : '❌ ' + (r.error || 'Erreur');
 });
 
 document.getElementById('btnTestConv')?.addEventListener('click', async () => {
   document.getElementById('convTestStatus').textContent = '⏳ Génération...';
   const r = await api('POST', '/api/conversation');
-  document.getElementById('convTestStatus').textContent = r.ok ? '✅ Posté !' : '❌ ' + (r.error || 'Erreur');
+  document.getElementById('convTestStatus').textContent = r.ok ? '✅ Lance-conv postée !' : '❌ ' + (r.error || 'Erreur');
+});
+
+document.getElementById('btnTestConvReply')?.addEventListener('click', async () => {
+  document.getElementById('convTestStatus').textContent = '⏳ Tentative de réponse...';
+  const r = await api('POST', '/api/conversation/reply');
+  document.getElementById('convTestStatus').textContent = r.ok ? '✅ Tentative lancée !' : '❌ ' + (r.error || 'Erreur');
 });
 
 document.getElementById('btnSaveAllConfig')?.addEventListener('click', saveAllConfig);
 
-// Sauvegarder auto quand on quitte la page
-document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+// ── MENU PLUS MOBILE ──────────────────────────
+function openPlusMenu() {
+  document.getElementById('plusOverlay').classList.add('open');
+  document.getElementById('plusSheet').classList.add('open');
+  document.getElementById('plusNavBtn').classList.add('active');
+}
+function closePlusMenu() {
+  document.getElementById('plusOverlay').classList.remove('open');
+  document.getElementById('plusSheet').classList.remove('open');
+  document.getElementById('plusNavBtn').classList.remove('active');
+}
+function showPageAndClose(name) {
+  closePlusMenu();
+  showPage(name);
+}
+document.getElementById('plusNavBtn')?.addEventListener('click', () => {
+  const sheet = document.getElementById('plusSheet');
+  if (sheet.classList.contains('open')) closePlusMenu();
+  else openPlusMenu();
+});
+
+// ── STATUTS AUTOMATISATIONS ───────────────────
+function renderAutomationStatuses(cfg) {
+  if (!cfg) return;
+  // Anecdote
+  const anecdoteEl = document.getElementById('anecdoteLastStatus');
+  if (anecdoteEl) {
+    anecdoteEl.textContent = cfg.anecdote.lastPostedDate
+      ? 'Dernière : ' + cfg.anecdote.lastPostedDate
+      : 'Jamais postée';
+  }
+  // Actus
+  const actusEl = document.getElementById('actusLastStatus');
+  if (actusEl) {
+    const slots = Array.isArray(cfg.actus.lastPostedSlots) ? cfg.actus.lastPostedSlots : [];
+    actusEl.textContent = slots.length
+      ? 'Derniers slots : ' + slots.slice(-2).join(', ')
+      : 'Jamais postées';
+  }
+  // Conversations
+  const convEl = document.getElementById('convLastStatus');
+  if (convEl) {
+    const count = cfg.conversations.dailyCount || 0;
+    const max = cfg.conversations.maxPerDay || 5;
+    const date = cfg.conversations.lastPostDate || null;
+    convEl.textContent = date
+      ? date + ' — ' + count + '/' + max + ' posts'
+      : 'Aucune conv aujourd\'hui';
+  }
+}
+
+// ── TOGGLESYNC (supprimé — stub vide pour éviter erreurs) ──
+function toggleSyncHandler() {}
   el.addEventListener('click', () => {
     if (document.getElementById('page-automations')?.classList.contains('active')) {
       collectConfig();
@@ -3426,6 +3470,18 @@ setTimeout(async () => {
 }, 300);
 </script>
 
+<!-- ═══ OVERLAY + SHEET PLUS MOBILE ══════════ -->
+<div class="plus-overlay" id="plusOverlay" onclick="closePlusMenu()"></div>
+<div class="plus-sheet" id="plusSheet">
+  <div class="plus-sheet-title">Toutes les pages</div>
+  <div class="plus-item" onclick="showPageAndClose('members')"><span class="plus-item-icon">👥</span> Membres</div>
+  <div class="plus-item" onclick="showPageAndClose('roles')"><span class="plus-item-icon">🎭</span> Rôles</div>
+  <div class="plus-item" onclick="showPageAndClose('autorole')"><span class="plus-item-icon">🤖</span> Auto-Role</div>
+  <div class="plus-item" onclick="showPageAndClose('reactionroles')"><span class="plus-item-icon">✨</span> Reaction Roles</div>
+  <div class="plus-item" onclick="showPageAndClose('posts')"><span class="plus-item-icon">✏️</span> Posts manuels</div>
+  <div class="plus-item" onclick="showPageAndClose('backups')"><span class="plus-item-icon">📦</span> Backups</div>
+</div>
+
 <!-- ═══ NAVIGATION MOBILE ════════════════════ -->
 <nav class="mobile-nav" id="mobileNav">
   <div class="mobile-nav-item active" data-page="overview">
@@ -3440,8 +3496,8 @@ setTimeout(async () => {
   <div class="mobile-nav-item" data-page="logs">
     <span class="mn-icon">📋</span><span>Logs</span>
   </div>
-  <div class="mobile-nav-item" data-page="settings">
-    <span class="mn-icon">⚙️</span><span>Config</span>
+  <div class="mobile-nav-item" id="plusNavBtn">
+    <span class="mn-icon">⋯</span><span>Plus</span>
   </div>
 </nav>
 

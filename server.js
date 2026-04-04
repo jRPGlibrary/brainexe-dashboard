@@ -1,13 +1,15 @@
 /**
 * ================================================
-* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.2.0
+* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.3.0
 * ================================================
 * Express + Discord.js + WebSocket + node-cron
-* FIXES v1.2.0:
-*   - getWeekStart() ne mute plus `now`
-*   - convWeeklyCount + convLastPostTime persistés en config
-*   - lastPostedMonth sauvegardé APRÈS confirmation d'envoi
-*   - checkAnecdoteMissed/checkActusMissed délai 5s→15s
+* NOUVEAUTÉS v1.3.0:
+*   - Actus bi-mensuelles : 1er ET 15 de chaque mois
+*   - lastPostedSlots[] remplace dayOfMonth + lastPostedMonth
+*   - Conversations : plage 24h, salon le plus calme en priorité
+*   - canReply : le bot répond aux conversations des membres
+*   - maxPerDay remplace frequencyPerWeek
+*   - lastPostByChannel pour tracking par salon
 * ================================================
 */
 
@@ -26,6 +28,8 @@ const EmbedBuilder = discord_js.EmbedBuilder || discord_js.MessageEmbed;
 const PermissionFlagsBits = discord_js.PermissionFlagsBits;
 const INTENTS_GUILDS = discord_js.GatewayIntentBits?.Guilds ?? discord_js.Intents?.FLAGS?.GUILDS ?? 1;
 const INTENTS_GUILD_MEMBERS = discord_js.GatewayIntentBits?.GuildMembers ?? discord_js.Intents?.FLAGS?.GUILD_MEMBERS ?? 2;
+const INTENTS_GUILD_MESSAGES = discord_js.GatewayIntentBits?.GuildMessages ?? 512;
+const INTENTS_MESSAGE_CONTENT = discord_js.GatewayIntentBits?.MessageContent ?? 32768;
 
 // ── CONFIG ───────────────────────────────────────────────────
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -64,8 +68,9 @@ const DEFAULT_CONFIG = {
   },
   actus: {
     enabled: true,
-    dayOfMonth: 1,
-    lastPostedMonth: null,
+    // NOUVEAU: tableau de slots postés, format 'YYYY-MM-1' (1er) ou 'YYYY-MM-15' (15e)
+    // Remplace dayOfMonth + lastPostedMonth
+    lastPostedSlots: [],
     channels: [
       { channelId: "1481028286892081183", channelName: "📰・actus-gaming", topic: "gaming général toutes plateformes, gros titres du mois", enabled: true },
       { channelId: "1481028247415296231", channelName: "🐉・jrpg-corner", topic: "JRPG sorties, DLC, remasters, annonces", enabled: true },
@@ -80,12 +85,13 @@ const DEFAULT_CONFIG = {
   },
   conversations: {
     enabled: true,
-    frequencyPerWeek: 3,
-    timeStart: 14,
-    timeEnd: 22,
-    weeklyCount: 0,
-    weekStart: 0,
-    lastPostTime: 0,
+    maxPerDay: 5,           // NOUVEAU: remplace frequencyPerWeek
+    timeStart: 0,           // NOUVEAU: plage complète 0h-24h
+    timeEnd: 24,
+    dailyCount: 0,          // NOUVEAU: remplace weeklyCount
+    lastPostDate: null,     // NOUVEAU: YYYY-MM-DD du dernier post
+    lastPostByChannel: {},  // NOUVEAU: { channelId: timestamp } pour cibler le + calme
+    canReply: true,         // NOUVEAU: le bot répond aux conversations membres
     channels: [
       { channelId: "1481028189680570421", channelName: "💬・général", topic: "gaming général et vie communauté", enabled: true },
       { channelId: "1481028192088100977", channelName: "🧠・cerveau-en-feu", topic: "hyperfocus du moment, pensées random TDAH", enabled: true },
@@ -143,7 +149,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const discord = new Client({
-  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS],
+  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS, INTENTS_GUILD_MESSAGES, INTENTS_MESSAGE_CONTENT],
 });
 
 let AUTO_ROLE_NAME = '👁️ Lurker';
@@ -223,6 +229,7 @@ async function readGuildState() {
     id: guild.id,
     name: guild.name,
     memberCount: guild.memberCount,
+    botTag: discord.user ? discord.user.tag : '—',
     members,
     roles,
     structure,
@@ -453,7 +460,7 @@ async function postDailyAnecdote() {
     return;
   }
 
-  pushLog('SYS', 'Génération de l\'anecdote gaming du jour...');
+  pushLog('SYS', "Génération de l'anecdote gaming du jour...");
   try {
     const text = await generateAnecdote();
     const guild = await discord.guilds.fetch(GUILD_ID);
@@ -536,7 +543,7 @@ async function sendWelcomeMessage(member) {
   }
 }
 
-async function postActuForChannel(ch, monthStr) {
+async function postActuForChannel(ch, slotKey) {
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
@@ -566,24 +573,56 @@ async function postActuForChannel(ch, monthStr) {
   }
 }
 
-function postMonthlyActus() {
+// ── ACTUS BI-MENSUELLES ──────────────────────────────────────
+
+/**
+ * Retourne la clé du slot actuel : 'YYYY-MM-1' (1er du mois) ou 'YYYY-MM-15' (15 du mois)
+ * Le slot '1' couvre les jours 1-14, le slot '15' couvre les jours 15-fin du mois
+ */
+function getCurrentActusSlot() {
+  const now = new Date();
+  const paris = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+  const yyyy = paris.getFullYear();
+  const mm = String(paris.getMonth() + 1).padStart(2, '0');
+  const day = paris.getDate();
+  const slotDay = day < 15 ? '1' : '15';
+  return `${yyyy}-${mm}-${slotDay}`;
+}
+
+/**
+ * Post les actus dans tous les salons actifs.
+ * force=true : ignore le check de slot (pour déclenchement manuel)
+ */
+function postBiMonthlyActus(force) {
+  const forceMode = force === true;
   const cfg = botConfig.actus;
   if (!cfg.enabled) { pushLog('SYS', 'Actus désactivées — skip'); return; }
 
-  const monthStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' }).slice(0, 7);
-  if (cfg.lastPostedMonth === monthStr) {
-    pushLog('SYS', `Actus déjà postées ce mois (${monthStr}) — skip`);
+  const slotKey = getCurrentActusSlot();
+  const postedSlots = Array.isArray(cfg.lastPostedSlots) ? cfg.lastPostedSlots : [];
+
+  if (!forceMode && postedSlots.includes(slotKey)) {
+    pushLog('SYS', `Actus déjà postées pour ce slot (${slotKey}) — skip`);
     return;
   }
 
   const active = cfg.channels.filter(c => c.enabled);
   if (active.length === 0) { pushLog('SYS', 'Actus : aucun salon actif'); return; }
 
-  const windowMs = 12 * 60 * 60 * 1000;
-  pushLog('SYS', `📅 Actus mensuelles — ${active.length} salons étalés sur 10h-22h`);
+  const windowMs = 12 * 60 * 60 * 1000; // étalement sur 12h
+  const label = forceMode ? 'MANUEL' : slotKey;
+  pushLog('SYS', `📅 Actus bi-mensuelles (${label}) — ${active.length} salons étalés sur 12h`);
 
-  botConfig.actus.lastPostedMonth = monthStr;
-  saveConfig();
+  // Marquer le slot comme posté (sauf en mode force pour permettre re-trigger)
+  if (!forceMode) {
+    if (!Array.isArray(botConfig.actus.lastPostedSlots)) botConfig.actus.lastPostedSlots = [];
+    botConfig.actus.lastPostedSlots.push(slotKey);
+    // Garder seulement les 20 derniers slots
+    if (botConfig.actus.lastPostedSlots.length > 20) {
+      botConfig.actus.lastPostedSlots = botConfig.actus.lastPostedSlots.slice(-20);
+    }
+    saveConfig();
+  }
 
   active.forEach(ch => {
     const delayMs = Math.floor(Math.random() * windowMs);
@@ -591,16 +630,16 @@ function postMonthlyActus() {
     const heure = Math.floor(delayMin / 60);
     const min = delayMin % 60;
     pushLog('SYS', `⏱ ${ch.channelName} → dans ${heure}h${min > 0 ? min + 'min' : ''}`);
-    setTimeout(() => postActuForChannel(ch, monthStr), delayMs);
+    setTimeout(() => postActuForChannel(ch, slotKey), delayMs);
   });
 }
 
 let actusCron = null;
 function startActusCron() {
   if (actusCron) { try { actusCron.stop(); } catch {} }
-  const day = botConfig.actus.dayOfMonth || 1;
-  actusCron = cron.schedule(`0 10 ${day} * *`, postMonthlyActus, { timezone: 'Europe/Paris' });
-  pushLog('SYS', `✅ Cron actus configuré : le ${day} du mois à 10h, étalé jusqu'à 22h`);
+  // Le 1er et le 15 de chaque mois à 10h Paris
+  actusCron = cron.schedule('0 10 1,15 * *', () => postBiMonthlyActus(false), { timezone: 'Europe/Paris' });
+  pushLog('SYS', `✅ Cron actus configuré : le 1er et le 15 du mois à 10h (étalé sur 12h)`);
 }
 
 function checkActusMissed() {
@@ -608,53 +647,103 @@ function checkActusMissed() {
   if (!cfg.enabled) return;
   const now = new Date();
   const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-  const monthStr = parisNow.toLocaleDateString('fr-CA').slice(0, 7);
   const dayNow = parisNow.getDate();
   const hourNow = parisNow.getHours();
-  const targetDay = cfg.dayOfMonth || 1;
 
-  if (cfg.lastPostedMonth === monthStr) {
-    pushLog('SYS', `Actus : déjà postées ce mois — OK`);
+  const isActusDay = dayNow === 1 || dayNow === 15;
+  // Ne trigger que si on est entre 10h et 22h (après 22h les actus sont déjà toutes étalées)
+  if (!isActusDay || hourNow < 10 || hourNow >= 22) {
+    pushLog('SYS', `Actus : pas de rattrapage nécessaire — OK`);
     return;
   }
-  if (dayNow === targetDay && hourNow >= 10) {
-    pushLog('SYS', `⚠️ Actus mensuelles manquées — rattrapage dans 60s`);
-    setTimeout(postMonthlyActus, 60000);
+
+  const slotKey = getCurrentActusSlot();
+  const postedSlots = Array.isArray(cfg.lastPostedSlots) ? cfg.lastPostedSlots : [];
+
+  if (postedSlots.includes(slotKey)) {
+    pushLog('SYS', `Actus : slot ${slotKey} déjà posté — OK`);
+    return;
+  }
+
+  pushLog('SYS', `⚠️ Actus bi-mensuelles manquées (slot: ${slotKey}) — rattrapage dans 60s`);
+  setTimeout(() => postBiMonthlyActus(false), 60000);
+}
+
+// ── CONVERSATIONS ────────────────────────────────────────────
+
+function getTodayStr() {
+  return new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+}
+
+function getConvDailyCount() { return botConfig.conversations.dailyCount || 0; }
+function getConvLastPostDate() { return botConfig.conversations.lastPostDate || null; }
+function getConvMaxPerDay() { return botConfig.conversations.maxPerDay || 5; }
+
+function resetDailyCountIfNeeded() {
+  const todayStr = getTodayStr();
+  if (botConfig.conversations.lastPostDate !== todayStr) {
+    botConfig.conversations.dailyCount = 0;
+    botConfig.conversations.lastPostDate = todayStr;
+    saveConfig();
+    pushLog('SYS', `🔄 Reset quota conversations — nouveau jour (${todayStr})`);
   }
 }
 
-function getConvWeeklyCount() { return botConfig.conversations.weeklyCount || 0; }
-function getConvLastPostTime() { return botConfig.conversations.lastPostTime || 0; }
-function getConvWeekStart() { return botConfig.conversations.weekStart || 0; }
-
-function setConvStats(count, postTime, weekStart) {
-  botConfig.conversations.weeklyCount = count;
-  botConfig.conversations.lastPostTime = postTime;
-  botConfig.conversations.weekStart = weekStart;
+function updateConvStats(channelId) {
+  const todayStr = getTodayStr();
+  if (!botConfig.conversations.lastPostByChannel) botConfig.conversations.lastPostByChannel = {};
+  botConfig.conversations.lastPostByChannel[channelId] = Date.now();
+  if (botConfig.conversations.lastPostDate !== todayStr) {
+    botConfig.conversations.dailyCount = 0;
+    botConfig.conversations.lastPostDate = todayStr;
+  }
+  botConfig.conversations.dailyCount = (botConfig.conversations.dailyCount || 0) + 1;
   saveConfig();
 }
 
-function computeWeekStart() {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-  return monday.getTime();
+/** Retourne le salon actif qui a reçu le moins de posts récemment (le plus calme) */
+function getQuietestChannel() {
+  const cfg = botConfig.conversations;
+  const active = cfg.channels.filter(c => c.enabled);
+  if (!active.length) return null;
+  const lastPostByChannel = cfg.lastPostByChannel || {};
+  // Trier par timestamp de dernier post ascendant (0 = jamais posté = priorité max)
+  const sorted = [...active].sort((a, b) => {
+    const tA = lastPostByChannel[a.channelId] || 0;
+    const tB = lastPostByChannel[b.channelId] || 0;
+    return tA - tB;
+  });
+  return sorted[0];
 }
 
 async function postRandomConversation() {
   const cfg = botConfig.conversations;
   if (!cfg.enabled) return;
-  const active = cfg.channels.filter(c => c.enabled);
-  if (active.length === 0) return;
-  const ch = active[Math.floor(Math.random() * active.length)];
+
+  resetDailyCountIfNeeded();
+
+  const count = getConvDailyCount();
+  const max = getConvMaxPerDay();
+  if (count >= max) {
+    pushLog('SYS', `💬 Quota journalier atteint (${count}/${max}) — skip`);
+    return;
+  }
+
+  const ch = getQuietestChannel();
+  if (!ch) return;
+
+  // Rate limit global — 30min minimum entre n'importe quel post bot
+  if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) {
+    pushLog('SYS', `💬 Rate limit global — skip (dernier post il y a moins de 30min)`);
+    return;
+  }
+
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel || !ANTHROPIC_API_KEY) return;
+
     const content = await callClaude(
       "Tu écris pour une communauté Discord francophone neurodivergente passionnée de gaming. Tu lances des conversations naturelles et engageantes.",
       `Génère UN message court pour lancer une conversation dans un salon dédié à : ${ch.topic}. Maximum 3 phrases, ton décontracté, une question ouverte à la fin. Pas de titre, commence directement.`,
@@ -662,59 +751,141 @@ async function postRandomConversation() {
     );
     await channel.send(content);
 
-    const newCount = getConvWeeklyCount() + 1;
-    setConvStats(newCount, Date.now(), getConvWeekStart());
+    lastAnyBotPostTime = Date.now();
+    updateConvStats(ch.channelId);
+    const newCount = getConvDailyCount();
 
-    pushLog('SYS', `💬 Lance-conv postée dans ${ch.channelName} (${newCount}/${cfg.frequencyPerWeek} cette semaine)`, 'success');
+    pushLog('SYS', `💬 Lance-conv postée dans ${ch.channelName} (${newCount}/${max} aujourd'hui)`, 'success');
     broadcast('conversation', {
       channel: ch.channelName,
       time: new Date().toLocaleTimeString('fr-FR'),
-      weekCount: newCount,
-      weekTarget: cfg.frequencyPerWeek
+      dayCount: newCount,
+      dayTarget: max,
     });
   } catch (err) {
     pushLog('ERR', `Lance-conversation échoué : ${err.message}`, 'error');
   }
 }
 
+/**
+ * Parcourt un salon actif aléatoire, trouve un message humain récent sans réponse du bot,
+ * et y répond de façon naturelle.
+ */
+async function replyToConversations() {
+  const cfg = botConfig.conversations;
+  if (!cfg.enabled || !cfg.canReply) return;
+  if (!ANTHROPIC_API_KEY) return;
+
+  const active = cfg.channels.filter(c => c.enabled);
+  if (!active.length) return;
+
+  // Choisir un salon aléatoire parmi les actifs
+  const ch = active[Math.floor(Math.random() * active.length)];
+
+  try {
+    const guild = await discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.get(ch.channelId);
+    if (!channel) return;
+
+    // Récupérer les 8 derniers messages du salon
+    const messages = await channel.messages.fetch({ limit: 8 });
+    const msgArray = [...messages.values()];
+
+    if (!msgArray.length) return;
+
+    // Le message le plus récent doit être humain (pas bot)
+    const lastMsg = msgArray[0];
+    if (lastMsg.author.bot) return;
+
+    // Message doit avoir entre 20min et 3h (pas trop fresh, pas trop vieux)
+    const age = Date.now() - lastMsg.createdTimestamp;
+    const minAge = 20 * 60 * 1000;
+    const maxAge = 3 * 60 * 60 * 1000;
+    if (age < minAge || age > maxAge) return;
+
+    // Vérifier qu'on n'a pas déjà répondu récemment dans ce salon (check lastPostByChannel)
+    const lastBotPost = (cfg.lastPostByChannel || {})[ch.channelId] || 0;
+    const minGapBetweenPosts = 90 * 60 * 1000; // 1h30 min entre 2 posts bot dans le même salon
+    if (Date.now() - lastBotPost < minGapBetweenPosts) return;
+
+    // Rate limit global — 30min minimum entre n'importe quel post bot
+    if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
+
+    const msgContent = lastMsg.content;
+    if (!msgContent || msgContent.length < 5) return;
+
+    const reply = await callClaude(
+      "Tu es un membre actif d'une communauté Discord gaming francophone neurodivergente. Tu réponds de façon naturelle, courte et engageante aux messages des membres. Tu n'es jamais condescendant, tu t'intègres naturellement à la conversation.",
+      `Contexte du salon : "${ch.topic}"\nMessage d'un membre : "${msgContent}"\n\nRéponds de façon naturelle et courte (1-2 phrases max), comme un vrai membre de la communauté. Tu peux ajouter une question ou une réaction engageante. Ne commence pas par "Ah " ou "Oh " de manière forcée.`,
+      120
+    );
+
+    await lastMsg.reply(reply);
+    lastAnyBotPostTime = Date.now();
+    updateConvStats(ch.channelId);
+
+    pushLog('SYS', `💬 Réponse postée dans ${ch.channelName} (reply à ${lastMsg.author.username})`, 'success');
+    broadcast('conversation', {
+      channel: ch.channelName,
+      time: new Date().toLocaleTimeString('fr-FR'),
+      type: 'reply',
+    });
+  } catch (err) {
+    // Erreur silencieuse — salon peut ne pas avoir de messages récents, c'est normal
+    if (!err.message.includes('Missing Permissions') && !err.message.includes('Unknown Message')) {
+      pushLog('ERR', `Réponse conv échouée dans ${ch.channelName} : ${err.message}`, 'error');
+    }
+  }
+}
+
+// Rate limit global : minimum 30min entre TOUT post du bot (conv OU reply)
+let lastAnyBotPostTime = 0;
+const MIN_GAP_ANY_POST = 30 * 60 * 1000;
+
 let convCron = null;
+let replyCron = null;
+
 function startConvCron() {
   if (convCron) { try { convCron.stop(); } catch {} }
+  if (replyCron) { try { replyCron.stop(); } catch {} }
 
-  convCron = cron.schedule('*/30 * * * *', () => {
+  // Check toutes les heures pour poster une conv (plage 24h)
+  convCron = cron.schedule('0 * * * *', () => {
     const cfg = botConfig.conversations;
     if (!cfg.enabled) return;
 
-    const currentWeekStart = computeWeekStart();
-    const storedWeekStart = getConvWeekStart();
-    if (currentWeekStart > storedWeekStart) {
-      pushLog('SYS', `🔄 Reset quota conversations — nouvelle semaine`);
-      setConvStats(0, getConvLastPostTime(), currentWeekStart);
-    }
+    resetDailyCountIfNeeded();
 
-    const now = new Date();
-    const hour = now.getHours();
-    if (hour < cfg.timeStart || hour >= cfg.timeEnd) return;
+    const count = getConvDailyCount();
+    const max = getConvMaxPerDay();
+    if (count >= max) return;
 
-    const target = cfg.frequencyPerWeek || 3;
-    if (getConvWeeklyCount() >= target) return;
-
-    const minGapMs = 90 * 60 * 1000;
-    if (Date.now() - getConvLastPostTime() < minGapMs) return;
-
-    const dayOfWeek = now.getDay() || 7;
-    const daysLeft = Math.max(1, 8 - dayOfWeek);
-    const checksLeft = daysLeft * (cfg.timeEnd - cfg.timeStart) * 2;
-    const remaining = target - getConvWeeklyCount();
-    const prob = Math.min(1, remaining / Math.max(1, checksLeft));
+    // Probabilité : plus c'est tard dans la journée avec peu de posts, plus c'est probable
+    const remaining = max - count;
+    const parisHour = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' })).getHours();
+    const hoursLeft = Math.max(1, 24 - parisHour);
+    const prob = Math.min(0.85, remaining / hoursLeft);
 
     if (Math.random() < prob) {
-      pushLog('SYS', `💬 Déclenchement conv (quota: ${getConvWeeklyCount()}/${target}, jours restants: ${daysLeft})`);
+      pushLog('SYS', `💬 Déclenchement conv (${count}/${max} aujourd'hui, prob: ${Math.round(prob * 100)}%)`);
       postRandomConversation();
     }
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Cron conversations : ${botConfig.conversations.frequencyPerWeek}x/semaine, ${botConfig.conversations.timeStart}h-${botConfig.conversations.timeEnd}h, check toutes les 30min`);
+  // Tentative de réponse toutes les 2h (aléatoire à 40%)
+  replyCron = cron.schedule('0 */2 * * *', () => {
+    const cfg = botConfig.conversations;
+    if (!cfg.enabled || !cfg.canReply) return;
+    if (Math.random() < 0.4) {
+      pushLog('SYS', `💬 Tentative de réponse à une conv membre...`);
+      replyToConversations();
+    }
+  }, { timezone: 'Europe/Paris' });
+
+  const max = getConvMaxPerDay();
+  const canReply = botConfig.conversations.canReply;
+  pushLog('SYS', `✅ Cron conversations : max ${max}/jour, 24h/24, réponses membres: ${canReply ? 'ON' : 'OFF'}`);
 }
 
 setInterval(async () => {
@@ -731,6 +902,8 @@ setInterval(async () => {
     pushLog('ERR', `Backup auto échoué : ${err.message}`, 'error');
   }
 }, 6 * 60 * 60 * 1000);
+
+// ── API ROUTES ───────────────────────────────────────────────
 
 app.get('/api/state', async (req, res) => {
   try {
@@ -773,6 +946,17 @@ app.post('/api/sync/file-to-discord', async (req, res) => {
   pushLog('SYS', 'Sync forcée Fichier → Discord');
   await syncFileToDiscord();
   res.json({ ok: true });
+});
+
+app.post('/api/categories', async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ ok: false, error: 'name requis' });
+  try {
+    const guild = await discord.guilds.fetch(GUILD_ID);
+    const cat = await guild.channels.create({ name, type: ChannelType.GuildCategory, reason: 'Dashboard' });
+    pushLog('API', `Catégorie créée via dashboard : ${name}`, 'success');
+    res.json({ ok: true, id: cat.id });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.post('/api/channels', async (req, res) => {
@@ -894,9 +1078,11 @@ app.post('/api/welcome/test', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ACTUS — force:true pour déclenchement manuel (ignore le check de slot)
 app.post('/api/actus', async (req, res) => {
-  pushLog('SYS', 'Actus déclenchées manuellement');
-  postMonthlyActus();
+  const force = req.body && req.body.force === true;
+  pushLog('SYS', force ? 'Actus déclenchées manuellement (forcé)' : 'Actus déclenchées manuellement');
+  postBiMonthlyActus(force);
   res.json({ ok: true, message: 'Actus en cours de génération...' });
 });
 
@@ -904,6 +1090,13 @@ app.post('/api/conversation', async (req, res) => {
   pushLog('SYS', 'Lance-conversation déclenché manuellement');
   postRandomConversation();
   res.json({ ok: true, message: 'Lance-conversation en cours...' });
+});
+
+// Déclencher une réponse manuellement
+app.post('/api/conversation/reply', async (req, res) => {
+  pushLog('SYS', 'Réponse conv déclenchée manuellement');
+  replyToConversations();
+  res.json({ ok: true, message: 'Tentative de réponse en cours...' });
 });
 
 app.post('/api/post', async (req, res) => {
