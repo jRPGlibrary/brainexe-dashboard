@@ -2172,6 +2172,37 @@ td {
   </div>
 </div>
 
+<!-- ═══ OVERLAY + SHEET PLUS MOBILE ══════════ -->
+<div class="plus-overlay" id="plusOverlay" onclick="closePlusMenu()"></div>
+<div class="plus-sheet" id="plusSheet">
+  <div class="plus-sheet-title">Toutes les pages</div>
+  <div class="plus-item" onclick="showPageAndClose('members')"><span class="plus-item-icon">👥</span> Membres</div>
+  <div class="plus-item" onclick="showPageAndClose('roles')"><span class="plus-item-icon">🎭</span> Rôles</div>
+  <div class="plus-item" onclick="showPageAndClose('autorole')"><span class="plus-item-icon">🤖</span> Auto-Role</div>
+  <div class="plus-item" onclick="showPageAndClose('reactionroles')"><span class="plus-item-icon">✨</span> Reaction Roles</div>
+  <div class="plus-item" onclick="showPageAndClose('posts')"><span class="plus-item-icon">✏️</span> Posts manuels</div>
+  <div class="plus-item" onclick="showPageAndClose('backups')"><span class="plus-item-icon">📦</span> Backups</div>
+</div>
+
+<!-- ═══ NAVIGATION MOBILE ════════════════════ -->
+<nav class="mobile-nav" id="mobileNav">
+  <div class="mobile-nav-item active" data-page="overview">
+    <span class="mn-icon">🏠</span><span>Accueil</span>
+  </div>
+  <div class="mobile-nav-item" data-page="channels">
+    <span class="mn-icon">📁</span><span>Salons</span>
+  </div>
+  <div class="mobile-nav-item" data-page="automations">
+    <span class="mn-icon">🤖</span><span>Auto</span>
+  </div>
+  <div class="mobile-nav-item" data-page="logs">
+    <span class="mn-icon">📋</span><span>Logs</span>
+  </div>
+  <div class="mobile-nav-item" id="plusNavBtn">
+    <span class="mn-icon">⋯</span><span>Plus</span>
+  </div>
+</nav>
+
 <!-- ═══ TOASTS ════════════════════════════════ -->
 <div class="toast-stack" id="toasts"></div>
 
@@ -3457,37 +3488,6 @@ setTimeout(async () => {
   } catch(e) {}
 }, 300);
 </script>
-
-<!-- ═══ OVERLAY + SHEET PLUS MOBILE ══════════ -->
-<div class="plus-overlay" id="plusOverlay" onclick="closePlusMenu()"></div>
-<div class="plus-sheet" id="plusSheet">
-  <div class="plus-sheet-title">Toutes les pages</div>
-  <div class="plus-item" onclick="showPageAndClose('members')"><span class="plus-item-icon">👥</span> Membres</div>
-  <div class="plus-item" onclick="showPageAndClose('roles')"><span class="plus-item-icon">🎭</span> Rôles</div>
-  <div class="plus-item" onclick="showPageAndClose('autorole')"><span class="plus-item-icon">🤖</span> Auto-Role</div>
-  <div class="plus-item" onclick="showPageAndClose('reactionroles')"><span class="plus-item-icon">✨</span> Reaction Roles</div>
-  <div class="plus-item" onclick="showPageAndClose('posts')"><span class="plus-item-icon">✏️</span> Posts manuels</div>
-  <div class="plus-item" onclick="showPageAndClose('backups')"><span class="plus-item-icon">📦</span> Backups</div>
-</div>
-
-<!-- ═══ NAVIGATION MOBILE ════════════════════ -->
-<nav class="mobile-nav" id="mobileNav">
-  <div class="mobile-nav-item active" data-page="overview">
-    <span class="mn-icon">🏠</span><span>Accueil</span>
-  </div>
-  <div class="mobile-nav-item" data-page="channels">
-    <span class="mn-icon">📁</span><span>Salons</span>
-  </div>
-  <div class="mobile-nav-item" data-page="automations">
-    <span class="mn-icon">🤖</span><span>Auto</span>
-  </div>
-  <div class="mobile-nav-item" data-page="logs">
-    <span class="mn-icon">📋</span><span>Logs</span>
-  </div>
-  <div class="mobile-nav-item" id="plusNavBtn">
-    <span class="mn-icon">⋯</span><span>Plus</span>
-  </div>
-</nav>
 
 </body>
 </html>
