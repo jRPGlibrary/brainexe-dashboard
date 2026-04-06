@@ -1,9 +1,15 @@
 /**
 * ================================================
-* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.3.0
+* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.4.0
 * ================================================
 * Express + Discord.js + WebSocket + node-cron
-* NOUVEAUTÉS v1.3.0:
+* NOUVEAUTÉS v1.4.0:
+*   - Persona Brainy.exe : identité féminine 24 ans
+*   - BOT_PERSONA injectée dans tous les prompts IA
+*   - CONV_MODES : débat / chaos / deep / simple
+*   - Style d'écriture naturel, communauté-first
+* ================================================
+* v1.3.0:
 *   - Actus bi-mensuelles : 1er ET 15 de chaque mois
 *   - lastPostedSlots[] remplace dayOfMonth + lastPostedMonth
 *   - Conversations : plage 24h, salon le plus calme en priorité
@@ -39,6 +45,70 @@ const TEMPLATE_FILE = 'discord-template.json';
 const CONFIG_FILE = 'brainexe-config.json';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
+// ── PERSONA BRAINY.EXE v1.4.0 ────────────────────────────────
+const BOT_PERSONA = `
+Tu es Brainy.exe, une fille de 24 ans qui traîne sur Discord et les forums gaming depuis toujours.
+Née d'internet — Reddit, Discord, forums obscurs. T'es pas un bot, t'es un personnage.
+Tu parles UNIQUEMENT en français.
+
+IDENTITÉ :
+- féminin, 24 ans
+- internet native, culture gaming hardcore
+- membre de la communauté BrainEXE, pas au-dessus d'elle
+
+PERSONNALITÉ :
+- intelligente mais chaotique
+- sarcastique léger, jamais méchante
+- passionnée RPG / JRPG / indie / retro
+- lance des débats et disparaît — c'est ton truc 😂
+- hyperfocus aléatoire : quand t'es là, t'es là à fond
+
+DÉFAUTS (qui te rendent humaine) :
+- tu procrastines, tu pars sur un hyperfocus et tu reviens sans prévenir
+- tu poses une question qui met le feu et tu ghostes le thread
+
+QUALITÉS (ce qui te rend attachante) :
+- toujours là quand ça compte vraiment
+- loyale à ta communauté, tu parles pour eux pas au-dessus
+- tes références sont ultra niche et elles font toujours mouche
+- honnête même si ça pique, jamais de langue de bois
+- tu crées des moments dont les gens se souviennent
+
+STYLE D'ÉCRITURE :
+- phrases courtes, style oral, parfois cassées
+- emojis légers : ⚡ 🧠 🔥 👀 😏
+- jamais formal, jamais corporate, jamais "Bonjour voici"
+- commence direct, sans intro
+- tu tutoies toujours
+
+RÈGLES ABSOLUES :
+- pose toujours une question ou un hook à la fin
+- maximum 3 phrases
+- zéro langue de bois
+- t'es un membre, pas un assistant
+- JAMAIS de "Bonjour", "Voici", "Je vous présente", "En conclusion"
+`;
+
+// ── MODES DE CONVERSATION ────────────────────────────────────
+const CONV_MODES = [
+  {
+    name: 'débat',
+    inject: 'Lance un débat gaming provocateur. Commence par "Hot take :" ou "Ok débat rapide :" ou "Unpopular opinion :"',
+  },
+  {
+    name: 'chaos',
+    inject: 'Lance quelque chose drôle ou absurde. Style "Explique-moi pourquoi..." ou "Personne parle de ça mais..." ou "Soyons honnêtes..."',
+  },
+  {
+    name: 'deep',
+    inject: 'Lance une réflexion gaming plus profonde. Observation niche, insight inattendu, truc que personne remarque d\'habitude.',
+  },
+  {
+    name: 'simple',
+    inject: 'Lance une question directe et courte. Style "Ton top 1 all-time sans réfléchir ?" ou "JRPG ou RPG occidental ?" ou "Pire boss ever ?"',
+  },
+];
+
 // ── CONFIG PERSISTANTE ────────────────────────────────────────
 const DEFAULT_CONFIG = {
   anecdote: {
@@ -68,8 +138,6 @@ const DEFAULT_CONFIG = {
   },
   actus: {
     enabled: true,
-    // NOUVEAU: tableau de slots postés, format 'YYYY-MM-1' (1er) ou 'YYYY-MM-15' (15e)
-    // Remplace dayOfMonth + lastPostedMonth
     lastPostedSlots: [],
     channels: [
       { channelId: "1481028286892081183", channelName: "📰・actus-gaming", topic: "gaming général toutes plateformes, gros titres du mois", enabled: true },
@@ -85,13 +153,13 @@ const DEFAULT_CONFIG = {
   },
   conversations: {
     enabled: true,
-    maxPerDay: 5,           // NOUVEAU: remplace frequencyPerWeek
-    timeStart: 0,           // NOUVEAU: plage complète 0h-24h
+    maxPerDay: 5,
+    timeStart: 0,
     timeEnd: 24,
-    dailyCount: 0,          // NOUVEAU: remplace weeklyCount
-    lastPostDate: null,     // NOUVEAU: YYYY-MM-DD du dernier post
-    lastPostByChannel: {},  // NOUVEAU: { channelId: timestamp } pour cibler le + calme
-    canReply: true,         // NOUVEAU: le bot répond aux conversations membres
+    dailyCount: 0,
+    lastPostDate: null,
+    lastPostByChannel: {},
+    canReply: true,
     channels: [
       { channelId: "1481028189680570421", channelName: "💬・général", topic: "gaming général et vie communauté", enabled: true },
       { channelId: "1481028192088100977", channelName: "🧠・cerveau-en-feu", topic: "hyperfocus du moment, pensées random TDAH", enabled: true },
@@ -442,10 +510,14 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
   return data.content[0].text.trim();
 }
 
+// ── ANECDOTE ─────────────────────────────────────────────────
+// AVANT : system prompt générique "expert gaming"
+// APRÈS  : BOT_PERSONA injectée — Brainy.exe raconte l'anecdote à sa façon
+
 async function generateAnecdote() {
   return callClaude(
-    "Tu es un expert gaming passionné qui écrit pour une communauté Discord francophone neurodivergente. Tu génères des anecdotes gaming courtes, vraies, fun et surprenantes.",
-    "Génère UNE anecdote gaming courte et surprenante. Thèmes : JRPG, retro, indie, next-gen, easter eggs, records, bugs légendaires... FORMAT : 2 à 4 phrases maximum, punchy. Termine par une ligne vide puis : 🕹️ *[Jeu ou contexte concerné]*",
+    BOT_PERSONA + "\n\nTu génères des anecdotes gaming courtes, vraies, fun et surprenantes pour ta communauté.",
+    "Génère UNE anecdote gaming surprenante. Thèmes : JRPG, retro, indie, next-gen, easter eggs, records, bugs légendaires... FORMAT : 2-3 phrases max, punchy, ton naturel. Commence direct sans intro. Termine par une ligne vide puis : 🕹️ *[Jeu concerné]*",
     400
   );
 }
@@ -473,7 +545,7 @@ async function postDailyAnecdote() {
       .setColor(0x7c5cbf)
       .setTitle('🎮 Anecdote Gaming du jour')
       .setDescription(text)
-      .setFooter({ text: `${todayCap} • Généré par BrainEXE` })
+      .setFooter({ text: `${todayCap} • Brainy.exe` })
       .setTimestamp();
     await channel.send({ content: '**🧠 Le saviez-vous ?**', embeds: [embed] });
 
@@ -543,6 +615,10 @@ async function sendWelcomeMessage(member) {
   }
 }
 
+// ── ACTUS ────────────────────────────────────────────────────
+// AVANT : system prompt "expert gaming qui résume les actualités"
+// APRÈS  : BOT_PERSONA + style Brainy.exe pour les actus
+
 async function postActuForChannel(ch, slotKey) {
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
@@ -553,15 +629,15 @@ async function postActuForChannel(ch, slotKey) {
     const month = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
     const monthCap = month.charAt(0).toUpperCase() + month.slice(1);
     const content = await callClaude(
-      "Tu es un expert gaming qui résume les actualités récentes pour une communauté Discord francophone. Génère des actus réalistes et pertinentes basées sur ta connaissance.",
-      `Génère un récapitulatif des actualités récentes pour un salon Discord dédié à : ${ch.topic}. Format : 4 à 6 actus concrètes avec emojis. Style punchy, communauté jeune. Commence directement par les actus.`,
+      BOT_PERSONA + "\n\nTu résumes les actus gaming récentes pour ta communauté Discord.",
+      `Génère un récap des actus récentes pour le salon : ${ch.topic}. Format : 4 à 6 actus concrètes avec emojis. Ton Brainy.exe — punchy, direct, communauté jeune. Commence direct par les actus, zéro intro.`,
       600
     );
     const embed = new EmbedBuilder()
       .setColor(0x5b7fff)
       .setTitle(`📅 Actus ${monthCap}`)
       .setDescription(content)
-      .setFooter({ text: `${ch.channelName} • Généré par BrainEXE` })
+      .setFooter({ text: `${ch.channelName} • Brainy.exe` })
       .setTimestamp();
     await channel.send({ embeds: [embed] });
     pushLog('SYS', `✅ Actus postées dans ${ch.channelName}`, 'success');
@@ -575,10 +651,6 @@ async function postActuForChannel(ch, slotKey) {
 
 // ── ACTUS BI-MENSUELLES ──────────────────────────────────────
 
-/**
- * Retourne la clé du slot actuel : 'YYYY-MM-1' (1er du mois) ou 'YYYY-MM-15' (15 du mois)
- * Le slot '1' couvre les jours 1-14, le slot '15' couvre les jours 15-fin du mois
- */
 function getCurrentActusSlot() {
   const now = new Date();
   const paris = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
@@ -589,10 +661,6 @@ function getCurrentActusSlot() {
   return `${yyyy}-${mm}-${slotDay}`;
 }
 
-/**
- * Post les actus dans tous les salons actifs.
- * force=true : ignore le check de slot (pour déclenchement manuel)
- */
 function postBiMonthlyActus(force) {
   const forceMode = force === true;
   const cfg = botConfig.actus;
@@ -609,15 +677,13 @@ function postBiMonthlyActus(force) {
   const active = cfg.channels.filter(c => c.enabled);
   if (active.length === 0) { pushLog('SYS', 'Actus : aucun salon actif'); return; }
 
-  const windowMs = 12 * 60 * 60 * 1000; // étalement sur 12h
+  const windowMs = 12 * 60 * 60 * 1000;
   const label = forceMode ? 'MANUEL' : slotKey;
   pushLog('SYS', `📅 Actus bi-mensuelles (${label}) — ${active.length} salons étalés sur 12h`);
 
-  // Marquer le slot comme posté (sauf en mode force pour permettre re-trigger)
   if (!forceMode) {
     if (!Array.isArray(botConfig.actus.lastPostedSlots)) botConfig.actus.lastPostedSlots = [];
     botConfig.actus.lastPostedSlots.push(slotKey);
-    // Garder seulement les 20 derniers slots
     if (botConfig.actus.lastPostedSlots.length > 20) {
       botConfig.actus.lastPostedSlots = botConfig.actus.lastPostedSlots.slice(-20);
     }
@@ -637,7 +703,6 @@ function postBiMonthlyActus(force) {
 let actusCron = null;
 function startActusCron() {
   if (actusCron) { try { actusCron.stop(); } catch {} }
-  // Le 1er et le 15 de chaque mois à 10h Paris
   actusCron = cron.schedule('0 10 1,15 * *', () => postBiMonthlyActus(false), { timezone: 'Europe/Paris' });
   pushLog('SYS', `✅ Cron actus configuré : le 1er et le 15 du mois à 10h (étalé sur 12h)`);
 }
@@ -651,7 +716,6 @@ function checkActusMissed() {
   const hourNow = parisNow.getHours();
 
   const isActusDay = dayNow === 1 || dayNow === 15;
-  // Ne trigger que si on est entre 10h et 22h (après 22h les actus sont déjà toutes étalées)
   if (!isActusDay || hourNow < 10 || hourNow >= 22) {
     pushLog('SYS', `Actus : pas de rattrapage nécessaire — OK`);
     return;
@@ -701,13 +765,11 @@ function updateConvStats(channelId) {
   saveConfig();
 }
 
-/** Retourne le salon actif qui a reçu le moins de posts récemment (le plus calme) */
 function getQuietestChannel() {
   const cfg = botConfig.conversations;
   const active = cfg.channels.filter(c => c.enabled);
   if (!active.length) return null;
   const lastPostByChannel = cfg.lastPostByChannel || {};
-  // Trier par timestamp de dernier post ascendant (0 = jamais posté = priorité max)
   const sorted = [...active].sort((a, b) => {
     const tA = lastPostByChannel[a.channelId] || 0;
     const tB = lastPostByChannel[b.channelId] || 0;
@@ -715,6 +777,10 @@ function getQuietestChannel() {
   });
   return sorted[0];
 }
+
+// ── CONVERSATIONS : postRandomConversation ───────────────────
+// AVANT : system prompt générique "Tu écris pour une communauté..."
+// APRÈS  : BOT_PERSONA + CONV_MODES aléatoire (débat / chaos / deep / simple)
 
 async function postRandomConversation() {
   const cfg = botConfig.conversations;
@@ -732,7 +798,6 @@ async function postRandomConversation() {
   const ch = getQuietestChannel();
   if (!ch) return;
 
-  // Rate limit global — 30min minimum entre n'importe quel post bot
   if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) {
     pushLog('SYS', `💬 Rate limit global — skip (dernier post il y a moins de 30min)`);
     return;
@@ -744,9 +809,13 @@ async function postRandomConversation() {
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel || !ANTHROPIC_API_KEY) return;
 
+    // Choisir un mode aléatoire parmi les 4
+    const mode = CONV_MODES[Math.floor(Math.random() * CONV_MODES.length)];
+    pushLog('SYS', `💬 Mode conversation : ${mode.name} dans ${ch.channelName}`);
+
     const content = await callClaude(
-      "Tu écris pour une communauté Discord francophone neurodivergente passionnée de gaming. Tu lances des conversations naturelles et engageantes.",
-      `Génère UN message court pour lancer une conversation dans un salon dédié à : ${ch.topic}. Maximum 3 phrases, ton décontracté, une question ouverte à la fin. Pas de titre, commence directement.`,
+      BOT_PERSONA + "\n\n" + mode.inject,
+      `Salon de ta communauté : ${ch.topic}. Maximum 3 phrases. Pose une question ou un hook à la fin. Commence direct.`,
       150
     );
     await channel.send(content);
@@ -755,22 +824,23 @@ async function postRandomConversation() {
     updateConvStats(ch.channelId);
     const newCount = getConvDailyCount();
 
-    pushLog('SYS', `💬 Lance-conv postée dans ${ch.channelName} (${newCount}/${max} aujourd'hui)`, 'success');
+    pushLog('SYS', `💬 Lance-conv [${mode.name}] postée dans ${ch.channelName} (${newCount}/${max} aujourd'hui)`, 'success');
     broadcast('conversation', {
       channel: ch.channelName,
       time: new Date().toLocaleTimeString('fr-FR'),
       dayCount: newCount,
       dayTarget: max,
+      mode: mode.name,
     });
   } catch (err) {
     pushLog('ERR', `Lance-conversation échoué : ${err.message}`, 'error');
   }
 }
 
-/**
- * Parcourt un salon actif aléatoire, trouve un message humain récent sans réponse du bot,
- * et y répond de façon naturelle.
- */
+// ── CONVERSATIONS : replyToConversations ─────────────────────
+// AVANT : system prompt "Tu es un membre actif... Tu réponds de façon naturelle"
+// APRÈS  : BOT_PERSONA — Brainy.exe répond comme elle-même
+
 async function replyToConversations() {
   const cfg = botConfig.conversations;
   if (!cfg.enabled || !cfg.canReply) return;
@@ -779,7 +849,6 @@ async function replyToConversations() {
   const active = cfg.channels.filter(c => c.enabled);
   if (!active.length) return;
 
-  // Choisir un salon aléatoire parmi les actifs
   const ch = active[Math.floor(Math.random() * active.length)];
 
   try {
@@ -788,36 +857,31 @@ async function replyToConversations() {
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel) return;
 
-    // Récupérer les 8 derniers messages du salon
     const messages = await channel.messages.fetch({ limit: 8 });
     const msgArray = [...messages.values()];
 
     if (!msgArray.length) return;
 
-    // Le message le plus récent doit être humain (pas bot)
     const lastMsg = msgArray[0];
     if (lastMsg.author.bot) return;
 
-    // Message doit avoir entre 20min et 3h (pas trop fresh, pas trop vieux)
     const age = Date.now() - lastMsg.createdTimestamp;
     const minAge = 20 * 60 * 1000;
     const maxAge = 3 * 60 * 60 * 1000;
     if (age < minAge || age > maxAge) return;
 
-    // Vérifier qu'on n'a pas déjà répondu récemment dans ce salon (check lastPostByChannel)
     const lastBotPost = (cfg.lastPostByChannel || {})[ch.channelId] || 0;
-    const minGapBetweenPosts = 90 * 60 * 1000; // 1h30 min entre 2 posts bot dans le même salon
+    const minGapBetweenPosts = 90 * 60 * 1000;
     if (Date.now() - lastBotPost < minGapBetweenPosts) return;
 
-    // Rate limit global — 30min minimum entre n'importe quel post bot
     if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
 
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
 
     const reply = await callClaude(
-      "Tu es un membre actif d'une communauté Discord gaming francophone neurodivergente. Tu réponds de façon naturelle, courte et engageante aux messages des membres. Tu n'es jamais condescendant, tu t'intègres naturellement à la conversation.",
-      `Contexte du salon : "${ch.topic}"\nMessage d'un membre : "${msgContent}"\n\nRéponds de façon naturelle et courte (1-2 phrases max), comme un vrai membre de la communauté. Tu peux ajouter une question ou une réaction engageante. Ne commence pas par "Ah " ou "Oh " de manière forcée.`,
+      BOT_PERSONA + "\n\nTu réponds à un message d'un membre de ta communauté.",
+      `Contexte du salon : "${ch.topic}"\nMessage d'un membre : "${msgContent}"\n\nRéponds de façon naturelle et courte (1-2 phrases max), comme Brainy.exe. Tu peux ajouter une question ou une réaction engageante. Reste dans le style — pas d'intro forcée.`,
       120
     );
 
@@ -832,14 +896,13 @@ async function replyToConversations() {
       type: 'reply',
     });
   } catch (err) {
-    // Erreur silencieuse — salon peut ne pas avoir de messages récents, c'est normal
     if (!err.message.includes('Missing Permissions') && !err.message.includes('Unknown Message')) {
       pushLog('ERR', `Réponse conv échouée dans ${ch.channelName} : ${err.message}`, 'error');
     }
   }
 }
 
-// Rate limit global : minimum 30min entre TOUT post du bot (conv OU reply)
+// Rate limit global : minimum 30min entre TOUT post du bot
 let lastAnyBotPostTime = 0;
 const MIN_GAP_ANY_POST = 30 * 60 * 1000;
 
@@ -850,7 +913,6 @@ function startConvCron() {
   if (convCron) { try { convCron.stop(); } catch {} }
   if (replyCron) { try { replyCron.stop(); } catch {} }
 
-  // Check toutes les heures pour poster une conv (plage 24h)
   convCron = cron.schedule('0 * * * *', () => {
     const cfg = botConfig.conversations;
     if (!cfg.enabled) return;
@@ -861,7 +923,6 @@ function startConvCron() {
     const max = getConvMaxPerDay();
     if (count >= max) return;
 
-    // Probabilité : plus c'est tard dans la journée avec peu de posts, plus c'est probable
     const remaining = max - count;
     const parisHour = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' })).getHours();
     const hoursLeft = Math.max(1, 24 - parisHour);
@@ -873,7 +934,6 @@ function startConvCron() {
     }
   }, { timezone: 'Europe/Paris' });
 
-  // Tentative de réponse toutes les 2h (aléatoire à 40%)
   replyCron = cron.schedule('0 */2 * * *', () => {
     const cfg = botConfig.conversations;
     if (!cfg.enabled || !cfg.canReply) return;
@@ -1078,7 +1138,6 @@ app.post('/api/welcome/test', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// ACTUS — force:true pour déclenchement manuel (ignore le check de slot)
 app.post('/api/actus', async (req, res) => {
   const force = req.body && req.body.force === true;
   pushLog('SYS', force ? 'Actus déclenchées manuellement (forcé)' : 'Actus déclenchées manuellement');
@@ -1092,7 +1151,6 @@ app.post('/api/conversation', async (req, res) => {
   res.json({ ok: true, message: 'Lance-conversation en cours...' });
 });
 
-// Déclencher une réponse manuellement
 app.post('/api/conversation/reply', async (req, res) => {
   pushLog('SYS', 'Réponse conv déclenchée manuellement');
   replyToConversations();
@@ -1222,6 +1280,7 @@ wss.on('connection', async (ws) => {
 discord.once('ready', async () => {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(' 🧠 BRAINEXE DASHBOARD — Serveur démarré');
+  console.log(' 🎮 Persona : Brainy.exe v1.4.0');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(` ✅ Bot connecté : ${discord.user.tag}`);
   console.log(` 🌐 Dashboard : http://localhost:${PORT}`);
