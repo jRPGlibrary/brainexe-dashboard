@@ -975,9 +975,6 @@ td {
 }
 
 /* ═══════════════════════════════════════════════
-   BARRE NAV MOBILE (cachée par défaut)
-═══════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════
    MENU PLUS MOBILE
 ═══════════════════════════════════════════════ */
 .plus-overlay {
@@ -1058,8 +1055,6 @@ td {
 ═══════════════════════════════════════════════ */
 @media (max-width: 1000px) {
   :root { --sidebar: 60px; }
-
-  /* Sidebar réduite */
   .nav-item span:not(.nav-icon) { display: none; }
   .nav-item { justify-content: center; padding: 10px; }
   .nav-badge { display: none; }
@@ -1068,12 +1063,8 @@ td {
   .brand-name, .brand-ver { display: none; }
   .brand-icon { margin: auto; }
   .topbar-brand { justify-content: center; padding: 0 12px; }
-
-  /* Grids */
   .stats-row { grid-template-columns: 1fr 1fr; gap: 12px; }
   .grid-2-1, .grid-1-1, .grid-3 { grid-template-columns: 1fr; gap: 12px; }
-
-  /* Contenu */
   .main { padding: 20px; }
   .card-body { padding: 14px; }
   .form-row { flex-direction: column; gap: 10px; }
@@ -1088,109 +1079,64 @@ td {
     --topbar:  52px;
     --mobile-nav-h: 62px;
   }
-
-  /* ── Layout shell ── */
   .shell {
     grid-template-columns: 1fr;
     grid-template-rows: var(--topbar) 1fr;
     min-height: 100vh;
   }
   .sidebar { display: none; }
-
-  /* ── Main — padding bottom = hauteur nav mobile ── */
   .main {
     padding: 12px 12px calc(var(--mobile-nav-h) + 12px);
     overflow-x: hidden;
   }
-
-  /* ── Pages ── */
   .page { gap: 12px; }
-
-  /* ── Topbar mobile ── */
-  .topbar {
-    padding: 0 12px;
-    gap: 6px;
-    height: var(--topbar);
-  }
+  .topbar { padding: 0 12px; gap: 6px; height: var(--topbar); }
   .topbar-brand { width: auto; padding: 0; flex-shrink: 0; }
   .topbar-sep { flex: 1; }
   .topbar-btn { display: none; }
   .topbar-pills { gap: 6px; flex-wrap: nowrap; overflow: hidden; }
-  .pill {
-    font-size: 0.65rem;
-    padding: 3px 7px;
-    white-space: nowrap;
-  }
-  /* Cacher la pill sync sur mobile, garder juste le statut bot */
+  .pill { font-size: 0.65rem; padding: 3px 7px; white-space: nowrap; }
   .topbar-pills .pill:nth-child(2),
   .topbar-pills .pill:nth-child(3) { display: none; }
-
-  /* ── Stats ── */
   .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat { padding: 12px 14px; }
   .stat-value { font-size: 1.8rem; }
   .stat-icon { width: 30px; height: 30px; font-size: 14px; margin-bottom: 10px; }
-
-  /* ── Cards ── */
   .card-head { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
   .card-body { padding: 12px 14px; }
-
-  /* ── Grids ── */
   .grid-2-1, .grid-1-1, .grid-3 { grid-template-columns: 1fr; gap: 10px; }
-
-  /* ── Page headers ── */
   .page-head { flex-direction: column; align-items: flex-start; gap: 8px; }
   .page-title { font-size: 1.2rem; }
   .page-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
   .page-actions .btn { flex: 1; justify-content: center; min-width: 120px; }
-
-  /* ── Formulaires ── */
   .form-row { flex-direction: column; gap: 10px; }
-  .field-input { font-size: 16px; } /* Évite le zoom iOS au focus */
-
-  /* ── Rôles ── */
+  .field-input { font-size: 16px; }
   .role-row { flex-wrap: wrap; gap: 6px; }
-  .role-actions { opacity: 1; } /* Toujours visible sur mobile */
-
-  /* ── Tree salons ── */
+  .role-actions { opacity: 1; }
   .ch-actions { opacity: 1; }
   .ch-topic { display: none; }
   .tree-ch-row { padding-left: 28px; }
-
-  /* ── Sync bar ── */
   .sync-status { flex-direction: column; align-items: flex-start; gap: 8px; }
   .sync-btns { width: 100%; }
   .sync-btns .btn { flex: 1; justify-content: center; }
-
-  /* ── Quick actions ── */
   .qa-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .qa-btn { padding: 10px 12px; }
   .qa-label { font-size: 0.72rem; }
   .qa-desc { display: none; }
-
-  /* ── Logs ── */
   .log-stream { height: 40vh !important; }
   .log-filters { gap: 4px; }
   .log-filter-btn { padding: 3px 8px; font-size: 0.62rem; }
-
-  /* ── Settings ── */
   .setting-row { flex-direction: column; align-items: flex-start; gap: 8px; }
-
-  /* ── Automatisations — override inline styles ── */
   .card-body [style*="grid-template-columns"] {
     display: flex !important;
     flex-direction: column !important;
     gap: 10px !important;
   }
-
-  /* ── Members ── */
-  .member-roles { display: none; } /* Trop de chips sur mobile */
-
-  /* ── Modals — slide du bas ── */
+  .member-roles { display: none; }
   .modal-wrap {
     align-items: flex-end;
     padding: 0;
-    padding-top: 40px; /* espace pour fermer en cliquant derrière */
+    padding-top: 40px;
   }
   .modal {
     width: 100%;
@@ -1198,8 +1144,6 @@ td {
     border-radius: 20px 20px 0 0;
     max-height: 85vh;
   }
-
-  /* ── Toasts — au-dessus de la nav mobile ── */
   .toast-stack {
     bottom: calc(var(--mobile-nav-h) + 8px);
     right: 12px;
@@ -1207,8 +1151,6 @@ td {
     align-items: stretch;
   }
   .toast { max-width: 100%; }
-
-  /* ── Nav mobile visible ── */
   .mobile-nav {
     display: flex;
     position: fixed;
@@ -1225,9 +1167,6 @@ td {
   }
 }
 
-/* ═══════════════════════════════════════════════
-   RESPONSIVE — TRÈS PETIT (< 380px)
-═══════════════════════════════════════════════ */
 @media (max-width: 380px) {
   .stats-row { grid-template-columns: 1fr; }
   .qa-grid { grid-template-columns: 1fr; }
@@ -1306,7 +1245,6 @@ td {
         <div class="page-title" id="overviewTitle">Chargement…</div>
         <div class="page-sub" id="overviewMeta">Guild ID · membres · salons</div>
       </div>
-
     </div>
 
     <!-- Sync bar -->
@@ -1388,20 +1326,20 @@ td {
                 <div class="qa-label">Backup</div>
                 <div class="qa-desc">Snapshot JSON</div>
               </div>
-              <div class="qa-btn" onclick="showPage('channels')">
-                <div class="qa-icon">📁</div>
-                <div class="qa-label">Salons</div>
-                <div class="qa-desc">Créer / supprimer</div>
-              </div>
-              <div class="qa-btn" onclick="showPage('roles')">
-                <div class="qa-icon">🎭</div>
-                <div class="qa-label">Rôles</div>
-                <div class="qa-desc">Gérer les rôles</div>
-              </div>
-              <div class="qa-btn" onclick="showPage('autorole')">
+              <div class="qa-btn" onclick="showPage('automations')">
                 <div class="qa-icon">🤖</div>
-                <div class="qa-label">Auto-Role</div>
-                <div class="qa-desc">Rôle à l'arrivée</div>
+                <div class="qa-label">Automations</div>
+                <div class="qa-desc">Actus, convs, welcome</div>
+              </div>
+              <div class="qa-btn" onclick="showPage('posts')">
+                <div class="qa-icon">✏️</div>
+                <div class="qa-label">Post manuel</div>
+                <div class="qa-desc">Envoyer dans Discord</div>
+              </div>
+              <div class="qa-btn" onclick="showPage('members')">
+                <div class="qa-icon">👥</div>
+                <div class="qa-label">Membres</div>
+                <div class="qa-desc">Gérer la communauté</div>
               </div>
               <div class="qa-btn" onclick="showPage('logs')">
                 <div class="qa-icon">📋</div>
@@ -1465,21 +1403,9 @@ td {
               </tr>
             </thead>
             <tbody id="membersTable">
-              <tr><td colspan="4"><div class="empty" style="padding:30px"><div class="empty-icon">👥</div><div class="empty-text">Les données membres arrivent en temps réel via le bot</div></div></td></tr>
+              <tr><td colspan="5"><div class="empty" style="padding:30px"><div class="empty-icon">⏳</div><div class="empty-text">Chargement des membres…</div></div></td></tr>
             </tbody>
           </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="background:var(--blue-dim);border-color:rgba(91,127,255,0.2)">
-      <div class="card-body" style="display:flex;gap:12px;align-items:flex-start">
-        <span style="font-size:22px;flex-shrink:0">💡</span>
-        <div>
-          <div style="font-weight:700;margin-bottom:4px;color:var(--text)">Pour les données membres détaillées</div>
-          <div style="font-size:0.8rem;color:var(--text2);line-height:1.6">
-            Ajoute l'intent <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-family:var(--mono)">GuildMembers</code> dans le server.js et expose une route <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-family:var(--mono)">/api/members</code>. Les arrivées en temps réel s'affichent déjà dans le log.
-          </div>
         </div>
       </div>
     </div>
@@ -1605,11 +1531,11 @@ td {
           </div>
           <div style="display:flex;gap:14px;align-items:flex-start">
             <div style="width:28px;height:28px;background:var(--blue-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue);flex-shrink:0;font-size:0.75rem">2</div>
-            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">BrainEXE lui assigne automatiquement le rôle <strong style="color:var(--text)" id="arHelpRole">👁️ Lurker</strong></div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px"><strong style="color:var(--text)">BrainEXE</strong> lui assigne automatiquement le rôle <strong style="color:var(--text)" id="arHelpRole">👁️ Lurker</strong></div>
           </div>
           <div style="display:flex;gap:14px;align-items:flex-start">
             <div style="width:28px;height:28px;background:var(--blue-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue);flex-shrink:0;font-size:0.75rem">3</div>
-            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">Il peut voir <strong style="color:var(--text)">🎭・choix-des-rôles</strong> et choisir ses rôles via les réactions Carl-bot</div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">Il peut voir <strong style="color:var(--text)">🎭・choix-des-rôles</strong> et choisir ses rôles via les réactions BrainEXE</div>
           </div>
           <div style="display:flex;gap:14px;align-items:flex-start">
             <div style="width:28px;height:28px;background:var(--yellow-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--yellow);flex-shrink:0;font-size:14px">⚠️</div>
@@ -1642,7 +1568,7 @@ td {
     <!-- Statut global -->
     <div class="card" id="rrStatusCard">
       <div class="card-head">
-        <div class="card-title"><span>⚡</span> Statut BrainEXE Reaction Roles</div>
+        <div class="card-title"><span>⚡</span> Statut BrainEXE — Reaction Roles</div>
         <label class="toggle"><input type="checkbox" id="rrEnabled"><span class="toggle-slider"></span></label>
       </div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
@@ -1650,7 +1576,7 @@ td {
           <span style="font-size:28px">🤖</span>
           <div>
             <div style="font-size:0.65rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:3px">Système actif</div>
-            <div style="font-size:1rem;font-weight:800;color:var(--green)">BrainEXE gère les reaction roles — Carl-bot retraité 🎉</div>
+            <div style="font-size:1rem;font-weight:800;color:var(--green)">BrainEXE gère les reaction roles ✅</div>
           </div>
         </div>
         <div class="field">
@@ -1659,7 +1585,7 @@ td {
             <input class="field-input" id="rrMessageId" placeholder="ID du message Discord..." style="max-width:320px;font-family:var(--mono)">
             <button class="btn btn-ghost btn-sm" id="btnCopyMsgId">📋 Copier</button>
           </div>
-          <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Message Brain.ExE dans <strong>#choix-des-rôles</strong> — clic droit sur le message → Copier l'identifiant</div>
+          <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Message BrainEXE dans <strong>#choix-des-rôles</strong> — clic droit sur le message → Copier l'identifiant</div>
         </div>
       </div>
     </div>
@@ -1746,24 +1672,17 @@ td {
         <button class="btn btn-primary" id="btnCreateBackup">📦 Créer un backup</button>
       </div>
     </div>
-    <div class="grid-1-1">
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span>📦</span> Backups créés</div></div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:8px" id="backupsList">
-          <div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Aucun backup — crée-en un !</div></div>
-        </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span>📦</span> Backups disponibles</div>
+        <div style="font-size:0.7rem;color:var(--text3);font-family:var(--mono)">Auto toutes les 6h · max 10 gardés</div>
       </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span>💡</span> À propos des backups</div></div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:12px;font-size:0.8rem;color:var(--text2)">
-          <div>📸 Un backup est un <strong style="color:var(--text)">snapshot JSON</strong> complet de la structure Discord : rôles, catégories, salons, topics.</div>
-          <div>💾 Les fichiers sont sauvegardés localement sur le serveur Railway sous forme de <code style="font-family:var(--mono);background:var(--bg);padding:1px 5px;border-radius:4px">backup_XXXX.json</code></div>
-          <div>🔄 Pour <strong style="color:var(--text)">restaurer</strong> un backup, il faudra copier son contenu dans <code style="font-family:var(--mono);background:var(--bg);padding:1px 5px;border-radius:4px">discord-template.json</code> et lancer une sync F→D.</div>
-          <div style="padding:10px;background:var(--green-dim);border:1px solid rgba(52,211,153,0.2);border-radius:8px;color:var(--green)">
-            💡 Le README mentionne une backup auto toutes les 6h — vérifie que tu as bien implémenté le setInterval dans server.js !
-          </div>
-        </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:8px" id="backupsList">
+        <div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Aucun backup — crée-en un !</div></div>
       </div>
+    </div>
+    <div style="padding:10px 14px;background:var(--blue-dim);border:1px solid rgba(91,127,255,0.15);border-radius:8px;font-size:0.75rem;color:#a5baff">
+      💡 Pour restaurer : copie le contenu d'un backup dans <code style="background:var(--bg);padding:1px 5px;border-radius:4px;font-family:var(--mono)">discord-template.json</code> puis lance une sync F→D depuis la vue d'ensemble.
     </div>
   </div>
 
@@ -1809,7 +1728,6 @@ td {
         <a href="https://brainexe-dashboard-production.up.railway.app" target="_blank" class="btn btn-ghost">🌐 Dashboard Railway</a>
         <a href="https://github.com/jRPGlibrary/brainexe-dashboard" target="_blank" class="btn btn-ghost">🐙 GitHub Repo</a>
         <a href="https://discord.com/developers/applications" target="_blank" class="btn btn-ghost">🤖 Discord Dev Portal</a>
-        <a href="https://carl.gg" target="_blank" class="btn btn-ghost">🎭 Carl.gg</a>
       </div>
     </div>
 
@@ -1888,7 +1806,7 @@ td {
       </div>
     </div>
 
-    <!-- ── ACTUS BI-MENSUELLES ── (v1.3.0) -->
+    <!-- ── ACTUS BI-MENSUELLES ── -->
     <div class="card" id="cfgActusCard">
       <div class="card-head">
         <div class="card-title"><span>📰</span> Actus Bi-Mensuelles</div>
@@ -1896,7 +1814,6 @@ td {
       </div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
 
-        <!-- Cadence fixe - plus de champ jour du mois -->
         <div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--blue-dim);border:1px solid rgba(91,127,255,0.2);border-radius:10px">
           <span style="font-size:28px;flex-shrink:0">📅</span>
           <div>
@@ -1907,7 +1824,7 @@ td {
         </div>
 
         <div style="padding:10px 12px;background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.15);border-radius:8px;font-size:0.75rem;color:var(--yellow)">
-          ⚠️ Nécessite ANTHROPIC_API_KEY — actus générées par Claude IA
+          ⚠️ Nécessite ANTHROPIC_API_KEY — actus générées par Brainy.exe via Claude IA
         </div>
 
         <div class="field">
@@ -1926,7 +1843,7 @@ td {
       </div>
     </div>
 
-    <!-- ── LANCE-CONVERSATIONS ── (v1.3.0) -->
+    <!-- ── LANCE-CONVERSATIONS ── -->
     <div class="card" id="cfgConvCard">
       <div class="card-head">
         <div class="card-title"><span>💬</span> Lance-Conversations + Réponses Auto</div>
@@ -1948,17 +1865,16 @@ td {
           </div>
         </div>
 
-        <!-- Toggle canReply -->
         <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--card2);border:1px solid var(--border);border-radius:10px">
           <div style="flex:1">
             <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:2px">🔁 Répondre aux conversations membres</div>
-            <div style="font-size:0.75rem;color:var(--text2)">Le bot répond naturellement aux messages récents (entre 20min et 3h, toutes les 2h max, 40% de chance)</div>
+            <div style="font-size:0.75rem;color:var(--text2)">BrainEXE répond naturellement aux messages récents (entre 20min et 3h, toutes les 2h max, 40% de chance)</div>
           </div>
           <label class="toggle"><input type="checkbox" id="cfgConvCanReply"><span class="toggle-slider"></span></label>
         </div>
 
         <div class="field">
-          <div class="field-label" style="margin-bottom:8px">Salons participants <span style="color:var(--text2);font-weight:400">(le bot cible le plus calme en priorité)</span></div>
+          <div class="field-label" style="margin-bottom:8px">Salons participants <span style="color:var(--text2);font-weight:400">(BrainEXE cible le plus calme en priorité)</span></div>
           <div id="cfgConvChannels" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
 
@@ -2021,7 +1937,7 @@ td {
         </div>
 
         <div style="padding:10px 14px;background:var(--blue-dim);border:1px solid rgba(91,127,255,0.15);border-radius:8px;font-size:0.75rem;color:#a5baff">
-          💡 Le message sera envoyé par BrainEXE dans le salon choisi — parfait pour poster tes actus, annonces ou lance-conversations manuellement !
+          💡 Le message sera envoyé par BrainEXE dans le salon choisi — parfait pour tes actus, annonces ou lance-conversations manuellement !
         </div>
       </div>
     </div>
@@ -2034,7 +1950,6 @@ td {
     </div>
 
   </div>
-
 
 </main>
 </div>
@@ -2053,14 +1968,12 @@ td {
       <div class="modal-close" onclick="closeModal('modalMember')">✕</div>
     </div>
 
-    <!-- Tabs -->
     <div style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;gap:2px">
       <div class="mm-tab" data-tab="roles" onclick="switchMMTab('roles')" style="padding:10px 14px;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid var(--blue);color:var(--blue);margin-bottom:-1px;transition:all .15s">🎭 Rôles</div>
       <div class="mm-tab" data-tab="mute"  onclick="switchMMTab('mute')"  style="padding:10px 14px;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-1px;transition:all .15s">🔇 Timeout</div>
       <div class="mm-tab" data-tab="sanction" onclick="switchMMTab('sanction')" style="padding:10px 14px;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-1px;transition:all .15s">⚠️ Sanctions</div>
     </div>
 
-    <!-- Tab Rôles -->
     <div id="mmTab-roles" class="mm-tab-content" style="padding:18px 20px;display:flex;flex-direction:column;gap:12px">
       <div style="font-size:0.78rem;color:var(--text2)">Coche / décoche les rôles puis sauvegarde</div>
       <div id="mmRolesList" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto"></div>
@@ -2068,7 +1981,6 @@ td {
       <div id="mmRolesFeedback" style="display:none;font-size:0.75rem;padding:8px 12px;border-radius:6px"></div>
     </div>
 
-    <!-- Tab Timeout -->
     <div id="mmTab-mute" class="mm-tab-content" style="padding:18px 20px;display:none;flex-direction:column;gap:12px">
       <div style="padding:10px 12px;background:var(--yellow-dim);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-size:0.75rem;color:var(--yellow)">
         ⚠️ Maximum Discord : 28 jours. Le membre ne peut plus envoyer de messages pendant la durée.
@@ -2094,7 +2006,6 @@ td {
       <div id="mmMuteFeedback" style="display:none;font-size:0.75rem;padding:8px 12px;border-radius:6px"></div>
     </div>
 
-    <!-- Tab Sanctions -->
     <div id="mmTab-sanction" class="mm-tab-content" style="padding:18px 20px;display:none;flex-direction:column;gap:12px">
       <div class="field">
         <div class="field-label">Raison (optionnelle)</div>
@@ -2266,9 +2177,7 @@ function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}`);
 
-  ws.onopen = () => {
-    setStatus(true);
-  };
+  ws.onopen = () => { setStatus(true); };
 
   ws.onmessage = e => {
     const { type, data } = JSON.parse(e.data);
@@ -2313,27 +2222,22 @@ async function api(method, path, body) {
 function renderAll() {
   if (!state) return;
 
-  // Topbar / overview header
   document.getElementById('overviewTitle').textContent = state.name || 'Serveur';
   document.getElementById('overviewMeta').textContent = `// ${state.id} · ${state.memberCount} membres · ${state.totalChannels} salons · ${state.roles.length} rôles`;
   document.getElementById('syncDetail').textContent = `Dernière sync : ${new Date().toLocaleTimeString('fr-FR')} · ${state.totalChannels} salons · ${state.roles.length} rôles`;
   document.getElementById('lastSyncPill').textContent = `Sync ${new Date().toLocaleTimeString('fr-FR')}`;
 
-  // Stats
   document.getElementById('statMembers').textContent  = state.memberCount;
   document.getElementById('statChannels').textContent = state.totalChannels;
   document.getElementById('statChannelsSub').textContent = `${state.structure.length} catégories`;
   document.getElementById('statRoles').textContent    = state.roles.length;
 
-  // Sidebar server card
   document.getElementById('sideServerName').textContent = state.name || 'BrainEXE';
   document.getElementById('sideServerMeta').textContent = state.memberCount + ' membres';
   document.getElementById('navMemberCount').textContent = state.memberCount;
-  // Settings bot tag
   const tagEl = document.getElementById('settingBotTag');
   if (tagEl && state.botTag) tagEl.textContent = state.botTag;
 
-  // Subtitles
   document.getElementById('channelsSubtitle').textContent = `${state.totalChannels} salons · ${state.structure.length} catégories`;
   document.getElementById('rolesSubtitle').textContent = `${state.roles.length} rôles configurés`;
   document.getElementById('rolesCountLabel').textContent = `${state.roles.length} rôles`;
@@ -2381,7 +2285,6 @@ function renderTree(containerId, compact) {
     const chList = document.createElement('div');
     chList.className = 'tree-ch-list';
 
-    // Toggle category
     catRow.addEventListener('click', () => {
       icon.classList.toggle('open');
       chList.style.display = chList.style.display === 'none' ? '' : 'none';
@@ -2536,21 +2439,18 @@ function renderReactionRoles(cfg) {
   const rrCfg = cfg.reactionRoles;
   if (!rrCfg) return;
 
-  // Statut toggle
   const toggle = document.getElementById('rrEnabled');
   if (toggle) toggle.checked = rrCfg.enabled;
 
-  // Message ID
   const msgIdInput = document.getElementById('rrMessageId');
   if (msgIdInput) msgIdInput.value = rrCfg.messageId || '';
 
-  // Bannière statut
   const banner = document.getElementById('rrStatusBanner');
   if (banner) {
     if (rrCfg.enabled) {
       banner.style.background = 'var(--green-dim)';
       banner.style.borderColor = 'rgba(52,211,153,0.2)';
-      banner.innerHTML = `<span style="font-size:28px">🤖</span><div><div style="font-size:0.65rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:3px">Système actif</div><div style="font-size:1rem;font-weight:800;color:var(--green)">BrainEXE gère les reaction roles — Carl-bot retraité 🎉</div></div>`;
+      banner.innerHTML = `<span style="font-size:28px">🤖</span><div><div style="font-size:0.65rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:3px">Système actif</div><div style="font-size:1rem;font-weight:800;color:var(--green)">BrainEXE gère les reaction roles ✅</div></div>`;
     } else {
       banner.style.background = 'var(--red-dim)';
       banner.style.borderColor = 'rgba(248,113,113,0.2)';
@@ -2558,7 +2458,6 @@ function renderReactionRoles(cfg) {
     }
   }
 
-  // Mappings
   const list = document.getElementById('rrMappingsList');
   const countEl = document.getElementById('rrMappingsCount');
   if (!list) return;
@@ -2597,7 +2496,6 @@ function loadReactionRolesPage() {
   }
 }
 
-// Copier le message ID
 document.getElementById('btnCopyMsgId')?.addEventListener('click', () => {
   const val = document.getElementById('rrMessageId')?.value;
   if (val) {
@@ -2605,7 +2503,6 @@ document.getElementById('btnCopyMsgId')?.addEventListener('click', () => {
   }
 });
 
-// Sauvegarder les reaction roles
 document.getElementById('btnSaveReactionRoles')?.addEventListener('click', async () => {
   if (!automationsConfig) return toast('Config non chargée', 'error');
   const enabled = document.getElementById('rrEnabled')?.checked;
@@ -2794,7 +2691,6 @@ function showPage(name) {
   }
 }
 
-// Nav mobile
 document.querySelectorAll('.mobile-nav-item').forEach(el => {
   el.addEventListener('click', () => showPage(el.dataset.page));
 });
@@ -2803,7 +2699,6 @@ document.querySelectorAll('.nav-item[data-page]').forEach(el => {
   el.addEventListener('click', () => showPage(el.dataset.page));
 });
 
-// Expand/Collapse all
 document.getElementById('btnExpandAll')?.addEventListener('click', () => {
   document.querySelectorAll('#channelsTree .tree-ch-list').forEach(l => l.style.display = '');
   document.querySelectorAll('#channelsTree .tree-cat-icon').forEach(i => i.classList.add('open'));
@@ -2893,28 +2788,18 @@ function renderBackups() {
   });
 }
 
-function copyText(btn, text) {
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = '✅ Copié';
-    setTimeout(() => btn.textContent = '📋 Copier', 2000);
-  });
-}
-
 /* ══════════════════════════════════════════════
    BUTTON WIRING
 ══════════════════════════════════════════════ */
-// Backup buttons
 ['tbBackup','qa-backup','btnCreateBackup'].forEach(id =>
   document.getElementById(id)?.addEventListener('click', doBackup));
 
-// Sync buttons
 ['tbSync','qa-sync'].forEach(id =>
   document.getElementById(id)?.addEventListener('click', doForceSync));
 
 document.getElementById('btnD2F')?.addEventListener('click', () => api('POST', '/api/sync/discord-to-file'));
 document.getElementById('btnF2D')?.addEventListener('click', () => api('POST', '/api/sync/file-to-discord'));
 
-// Channel create
 document.getElementById('btnAddChannel')?.addEventListener('click', () => openModal('modalChannel'));
 document.getElementById('btnCreateChannel')?.addEventListener('click', async () => {
   const name     = document.getElementById('chName').value.trim();
@@ -2927,7 +2812,6 @@ document.getElementById('btnCreateChannel')?.addEventListener('click', async () 
   else toast(r.error, 'error');
 });
 
-// Channel edit
 document.getElementById('btnSaveEditChannel')?.addEventListener('click', async () => {
   const id    = document.getElementById('editChId').value;
   const name  = document.getElementById('editChName').value.trim();
@@ -2937,7 +2821,6 @@ document.getElementById('btnSaveEditChannel')?.addEventListener('click', async (
   else toast(r.error, 'error');
 });
 
-// Role create
 document.getElementById('btnAddRole')?.addEventListener('click', () => openModal('modalRole'));
 document.getElementById('btnCreateRole')?.addEventListener('click', async () => {
   const name  = document.getElementById('roleName').value.trim();
@@ -2949,7 +2832,6 @@ document.getElementById('btnCreateRole')?.addEventListener('click', async () => 
   else toast(r.error, 'error');
 });
 
-// Auto-role save
 document.getElementById('arSave')?.addEventListener('click', async () => {
   const name = document.getElementById('arSelect').value;
   if (!name) return toast('Sélectionne un rôle !', 'error');
@@ -2958,7 +2840,6 @@ document.getElementById('arSave')?.addEventListener('click', async () => {
   else toast(r.error, 'error');
 });
 
-// Logs clear
 document.getElementById('ovClearLog')?.addEventListener('click', () => {
   allLogs = []; renderLogs(); newLogs = 0;
   document.getElementById('navLogsBadge').style.display = 'none';
@@ -2968,7 +2849,6 @@ document.getElementById('btnClearLogs')?.addEventListener('click', () => {
   document.getElementById('navLogsBadge').style.display = 'none';
 });
 
-// Logs export
 document.getElementById('btnExportLogs')?.addEventListener('click', () => {
   const blob = new Blob([allLogs.map(l => `[${l.time}] [${l.dir}] ${l.msg}`).join('\n')], {type:'text/plain'});
   const a = document.createElement('a');
@@ -2978,7 +2858,6 @@ document.getElementById('btnExportLogs')?.addEventListener('click', () => {
   toast('📥 Logs exportés', 'success');
 });
 
-// Add category — vrai modal
 document.getElementById('btnAddCat')?.addEventListener('click', () => openModal('modalCategory'));
 document.getElementById('btnCreateCategory')?.addEventListener('click', async () => {
   const name = document.getElementById('catName').value.trim();
@@ -2991,7 +2870,6 @@ document.getElementById('btnCreateCategory')?.addEventListener('click', async ()
   } else toast(r.error || 'Erreur', 'error');
 });
 
-// Log filters
 document.querySelectorAll('.log-filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.log-filter-btn').forEach(b => b.classList.remove('active'));
@@ -3032,22 +2910,18 @@ function renderAutomationsConfig() {
   const cfg = automationsConfig;
   if (!cfg) return;
 
-  // ─ ANECDOTE ─
   document.getElementById('cfgAnecdoteEnabled').checked = cfg.anecdote.enabled;
   document.getElementById('cfgAnecdoteHour').value      = cfg.anecdote.hour;
   document.getElementById('cfgAnecdoteDelay').value     = cfg.anecdote.randomDelayMax;
   populateChannelSelect('cfgAnecdoteChannel', cfg.anecdote.channelId);
 
-  // ─ WELCOME ─
   document.getElementById('cfgWelcomeEnabled').checked = cfg.welcome.enabled;
   populateChannelSelect('cfgWelcomeChannel', cfg.welcome.channelId);
   document.getElementById('cfgWelcomeMessages').value  = (cfg.welcome.messages || []).join('\n');
 
-  // ─ ACTUS ─
   document.getElementById('cfgActusEnabled').checked = cfg.actus.enabled;
   renderChannelToggles('cfgActusChannels', cfg.actus.channels, 'actus');
 
-  // ─ CONVERSATIONS ─
   document.getElementById('cfgConvEnabled').checked = cfg.conversations.enabled;
   document.getElementById('cfgConvMax').value        = cfg.conversations.maxPerDay || 5;
   document.getElementById('cfgConvStart').value      = cfg.conversations.timeStart !== undefined ? cfg.conversations.timeStart : 0;
@@ -3095,7 +2969,6 @@ function renderChannelToggles(containerId, channels, prefix) {
 function collectConfig() {
   if (!automationsConfig) return null;
 
-  // Anecdote
   const anecdoteSel = document.getElementById('cfgAnecdoteChannel');
   const anecdoteSelName = anecdoteSel?.options[anecdoteSel.selectedIndex]?.text || automationsConfig.anecdote.channelName;
   automationsConfig.anecdote.enabled        = document.getElementById('cfgAnecdoteEnabled').checked;
@@ -3104,7 +2977,6 @@ function collectConfig() {
   automationsConfig.anecdote.hour           = parseInt(document.getElementById('cfgAnecdoteHour').value) || 12;
   automationsConfig.anecdote.randomDelayMax = parseInt(document.getElementById('cfgAnecdoteDelay').value) || 30;
 
-  // Welcome
   const welcomeSel  = document.getElementById('cfgWelcomeChannel');
   const welcomeSelName = welcomeSel?.options[welcomeSel.selectedIndex]?.text || automationsConfig.welcome.channelName;
   automationsConfig.welcome.enabled     = document.getElementById('cfgWelcomeEnabled').checked;
@@ -3113,14 +2985,12 @@ function collectConfig() {
   const rawMsgs = document.getElementById('cfgWelcomeMessages').value || '';
   automationsConfig.welcome.messages    = rawMsgs.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // Actus
   automationsConfig.actus.enabled     = document.getElementById('cfgActusEnabled').checked;
   automationsConfig.actus.channels.forEach((ch, i) => {
     const cb = document.getElementById('actusCh' + i);
     if (cb) ch.enabled = cb.checked;
   });
 
-  // Conversations
   automationsConfig.conversations.enabled    = document.getElementById('cfgConvEnabled').checked;
   automationsConfig.conversations.maxPerDay  = parseInt(document.getElementById('cfgConvMax').value) || 5;
   automationsConfig.conversations.timeStart  = parseInt(document.getElementById('cfgConvStart').value) || 0;
@@ -3134,16 +3004,6 @@ function collectConfig() {
   return automationsConfig;
 }
 
-async function saveAutomationsSection(section) {
-  collectConfig();
-  if (!automationsConfig) return;
-  try {
-    const r = await api('POST', '/api/config', { section, data: automationsConfig[section] });
-    if (r.ok) toast(`✅ Config "${section}" sauvegardée`, 'success');
-    else toast(r.error || 'Erreur', 'error');
-  } catch(e) { toast('Erreur réseau', 'error'); }
-}
-
 async function saveAllConfig() {
   collectConfig();
   if (!automationsConfig) return;
@@ -3154,7 +3014,6 @@ async function saveAllConfig() {
   toast('✅ Toute la config a été sauvegardée !', 'success');
 }
 
-// Boutons tests
 document.getElementById('btnTestAnecdote')?.addEventListener('click', async () => {
   document.getElementById('anecdoteStatus').textContent = '⏳ Génération...';
   const r = await api('POST', '/api/anecdote');
@@ -3188,7 +3047,9 @@ document.getElementById('btnTestConvReply')?.addEventListener('click', async () 
 
 document.getElementById('btnSaveAllConfig')?.addEventListener('click', saveAllConfig);
 
-// ── MENU PLUS MOBILE ──────────────────────────
+/* ══════════════════════════════════════════════
+   MENU PLUS MOBILE
+══════════════════════════════════════════════ */
 function openPlusMenu() {
   document.getElementById('plusOverlay').classList.add('open');
   document.getElementById('plusSheet').classList.add('open');
@@ -3209,17 +3070,17 @@ document.getElementById('plusNavBtn')?.addEventListener('click', () => {
   else openPlusMenu();
 });
 
-// ── STATUTS AUTOMATISATIONS ───────────────────
+/* ══════════════════════════════════════════════
+   STATUTS AUTOMATISATIONS
+══════════════════════════════════════════════ */
 function renderAutomationStatuses(cfg) {
   if (!cfg) return;
-  // Anecdote
   const anecdoteEl = document.getElementById('anecdoteLastStatus');
   if (anecdoteEl) {
     anecdoteEl.textContent = cfg.anecdote.lastPostedDate
       ? 'Dernière : ' + cfg.anecdote.lastPostedDate
       : 'Jamais postée';
   }
-  // Actus
   const actusEl = document.getElementById('actusLastStatus');
   if (actusEl) {
     const slots = Array.isArray(cfg.actus.lastPostedSlots) ? cfg.actus.lastPostedSlots : [];
@@ -3227,7 +3088,6 @@ function renderAutomationStatuses(cfg) {
       ? 'Derniers slots : ' + slots.slice(-2).join(', ')
       : 'Jamais postées';
   }
-  // Conversations
   const convEl = document.getElementById('convLastStatus');
   if (convEl) {
     const count = cfg.conversations.dailyCount || 0;
@@ -3238,10 +3098,6 @@ function renderAutomationStatuses(cfg) {
       : 'Aucune conv aujourd\'hui';
   }
 }
-
-// ── TOGGLESYNC (supprimé — stub vide pour éviter erreurs) ──
-function toggleSyncHandler() {}
-
 
 /* ══════════════════════════════════════════════
    POSTS MANUELS
@@ -3360,7 +3216,6 @@ function openMemberModal(id, name, username, avatar, tab) {
     avatarEl.style.fontSize = '13px';
   }
 
-  // Reset feedbacks
   ['mmRolesFeedback','mmMuteFeedback','mmSanctionFeedback'].forEach(fid => {
     const el = document.getElementById(fid);
     if (el) { el.style.display = 'none'; el.textContent = ''; }
@@ -3370,7 +3225,6 @@ function openMemberModal(id, name, username, avatar, tab) {
   const muteEl = document.getElementById('mmMuteDuration');
   if (muteEl) muteEl.value = '';
 
-  // Construire la liste des rôles
   const member      = state && state.members ? state.members.find(m => m.id === id) : null;
   const memberRoles = new Set((member ? member.roles || [] : []).map(r => r.id));
   currentMemberInitialRoles = {};
@@ -3506,7 +3360,6 @@ async function applyBan() {
 ══════════════════════════════════════════════ */
 connectWS();
 
-// Initial state fetch (fallback si WS lent) + chargement backups réels
 setTimeout(async () => {
   if (!state) {
     try {
@@ -3518,7 +3371,6 @@ setTimeout(async () => {
   if (logR.ok) { allLogs = logR.logs; renderLogs(); }
   loadAutoRole();
 
-  // Charger la vraie liste des backups depuis le serveur
   try {
     const bkR = await api('GET', '/api/backups');
     if (bkR.ok && bkR.backups) {
