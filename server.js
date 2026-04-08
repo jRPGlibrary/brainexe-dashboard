@@ -1,9 +1,15 @@
 /**
 * ================================================
-* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.4.0
+* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.5.1
 * ================================================
 * Express + Discord.js + WebSocket + node-cron
-* NOUVEAUTÉS v1.4.0:
+* NOUVEAUTÉS v1.5.1:
+* - Anecdote : web search natif Anthropic (web_search_20250305)
+* - Sources gaming FR/EN jusqu'en 2026, fallback automatique
+* - Anti-doublon Railway-safe : vérif historique Discord
+* - Anti-répétition : topics récents injectés dans le prompt
+* ================================================
+* v1.4.0:
 *   - Persona Brainy.exe : identité féminine 24 ans
 *   - BOT_PERSONA injectée dans tous les prompts IA
 *   - CONV_MODES : débat / chaos / deep / simple
@@ -546,6 +552,46 @@ function startFileWatcher() {
   });
 }
 
+// ── Appel Claude + web search natif Anthropic ──────────────────────
+// Claude recherche lui-même sur le web avant de répondre (jusqu'en 2026)
+async function callClaudeWithSearch(systemPrompt, userPrompt, maxTokens = 600) {
+  if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante dans Railway');
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: maxTokens,
+      tools: [{
+        type: 'web_search_20250305',
+        name: 'web_search',
+        max_uses: 2,
+        allowed_domains: [
+          'jeuxvideo.com', 'gamekult.com', 'ign.com', 'gamespot.com',
+          'kotaku.com', 'eurogamer.net', 'gematsu.com', 'destructoid.com',
+          'videogameschronicle.com', 'wikipedia.org', 'gameinformer.com',
+          'pushsquare.com', 'nintendolife.com', 'rpgsite.net',
+        ],
+        user_location: { type: 'approximate', country: 'FR', timezone: 'Europe/Paris' },
+      }],
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    }),
+  });
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(`Anthropic Search API error ${response.status}: ${errBody}`);
+  }
+  const data = await response.json();
+  const textBlocks = (data.content || []).filter(b => b.type === 'text');
+  if (!textBlocks.length) throw new Error('Aucun bloc texte dans la réponse Claude Search');
+  return textBlocks.map(b => b.text).join('\n').trim();
+}
+
 async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante dans Railway');
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -571,30 +617,100 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
 }
 
 // ── ANECDOTE ─────────────────────────────────────────────────
-// AVANT : system prompt générique "expert gaming"
-// APRÈS  : BOT_PERSONA injectée — Brainy.exe raconte l'anecdote à sa façon
+// v1.5.1 : web search natif Anthropic + anti-doublon Discord + anti-répétition
 
-async function generateAnecdote() {
-  return callClaude(
-    BOT_PERSONA + "\n\nTu génères des anecdotes gaming courtes, vraies, fun et surprenantes pour ta communauté.",
-    "Génère UNE anecdote gaming surprenante. Thèmes : JRPG, retro, indie, next-gen, easter eggs, records, bugs légendaires... FORMAT : 2-3 phrases max, punchy, ton naturel. Commence direct sans intro. Termine par une ligne vide puis : 🕹️ *[Jeu concerné]*",
-    400
-  );
+async function wasAnecdotePostedToday() {
+  try {
+    const cfg = botConfig.anecdote;
+    const guild = await discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.get(cfg.channelId);
+    if (!channel) return false;
+    const messages = await channel.messages.fetch({ limit: 20 });
+    const todayStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+    return [...messages.values()].some(msg => {
+      if (msg.author.id !== discord.user.id) return false;
+      const msgDate = msg.createdAt.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+      return msgDate === todayStr && msg.embeds?.some(e => e.title?.includes('Anecdote Gaming'));
+    });
+  } catch (err) {
+    pushLog('WARN', `wasAnecdotePostedToday : ${err.message}`, 'warn');
+    return false;
+  }
+}
+
+async function getRecentAnecdoteTopics(limit = 30) {
+  try {
+    const cfg = botConfig.anecdote;
+    const guild = await discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.get(cfg.channelId);
+    if (!channel) return [];
+    const messages = await channel.messages.fetch({ limit: 100 });
+    const topics = [];
+    for (const msg of [...messages.values()]) {
+      if (msg.author.id !== discord.user.id) continue;
+      if (!msg.embeds?.some(e => e.title?.includes('Anecdote Gaming'))) continue;
+      const embed = msg.embeds.find(e => e.title?.includes('Anecdote Gaming'));
+      if (!embed?.description) continue;
+      const lines = embed.description.split('\n').reverse();
+      const gameLine = lines.find(l => l.trim().length > 0);
+      if (gameLine) topics.push(gameLine.replace(/[*_~`]/g, '').replace(/^.*?:/, '').trim());
+      if (topics.length >= limit) break;
+    }
+    return topics;
+  } catch (err) {
+    pushLog('WARN', `getRecentAnecdoteTopics : ${err.message}`, 'warn');
+    return [];
+  }
+}
+
+async function generateAnecdote(topicsToAvoid = []) {
+  const avoidLines = topicsToAvoid.length > 0
+    ? '\n\nJeux et sujets DÉJÀ traités récemment — NE PAS répéter :\n' + topicsToAvoid.map(t => `- ${t}`).join('\n')
+    : '';
+
+  const searchPrompt = `Recherche une anecdote gaming vraie et surprenante — fait historique, coulisse de dev, easter egg, bug légendaire, record ou actu récente jusqu'en 2026.\nThèmes : JRPG, retro, indie, next-gen. Privilégie les faits peu connus et vérifiables.\nFORMAT : 2-3 phrases max, punchy, ton naturel. Commence direct sans intro. Termine par une ligne vide puis : \u{1F579}\uFE0F *[Jeu concerné]*${avoidLines}`;
+
+  try {
+    const result = await callClaudeWithSearch(
+      BOT_PERSONA + '\n\nTu génères des anecdotes gaming courtes, vraies et surprenantes. Utilise tes recherches web pour trouver des faits récents et vérifiés — évite les anecdotes trop connues.',
+      searchPrompt,
+      600
+    );
+    pushLog('SYS', '🔍 Anecdote générée avec web search', 'success');
+    return result;
+  } catch (searchErr) {
+    pushLog('WARN', `web search indisponible — fallback Claude seul : ${searchErr.message}`, 'warn');
+    return callClaude(
+      BOT_PERSONA + '\n\nTu génères des anecdotes gaming courtes, vraies, fun et surprenantes.' + avoidLines,
+      'Génère UNE anecdote gaming surprenante. Thèmes : JRPG, retro, indie, next-gen, easter eggs, records, bugs légendaires... FORMAT : 2-3 phrases max, punchy, ton naturel. Commence direct sans intro. Termine par une ligne vide puis : \u{1F579}\uFE0F *[Jeu concerné]*',
+      400
+    );
+  }
 }
 
 async function postDailyAnecdote() {
   const cfg = botConfig.anecdote;
   if (!cfg.enabled) { pushLog('SYS', 'Anecdote désactivée — skip'); return; }
 
-  const todayStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
-  if (cfg.lastPostedDate === todayStr) {
-    pushLog('SYS', `Anecdote déjà postée aujourd'hui (${todayStr}) — skip`);
+  const alreadyPosted = await wasAnecdotePostedToday();
+  if (alreadyPosted) {
+    const todayStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+    botConfig.anecdote.lastPostedDate = todayStr;
+    saveConfig();
+    pushLog('SYS', `Anecdote : déjà postée aujourd'hui (vérifiée dans Discord) — skip`);
     return;
   }
 
+  pushLog('SYS', "Récup des anecdotes récentes pour éviter les répétitions...");
+  const recentTopics = await getRecentAnecdoteTopics(30);
+  if (recentTopics.length > 0)
+    pushLog('SYS', `${recentTopics.length} sujets récents : ${recentTopics.slice(0, 5).join(', ')}...`);
+
   pushLog('SYS', "Génération de l'anecdote gaming du jour...");
   try {
-    const text = await generateAnecdote();
+    const text = await generateAnecdote(recentTopics);
     const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(cfg.channelId);
@@ -633,23 +749,30 @@ function startAnecdoteCron() {
   pushLog('SYS', `✅ Cron anecdote configuré à ${h}h (Europe/Paris)`);
 }
 
-function checkAnecdoteMissed() {
+async function checkAnecdoteMissed() {
   const cfg = botConfig.anecdote;
   if (!cfg.enabled) return;
   const now = new Date();
   const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-  const todayStr = parisNow.toLocaleDateString('fr-CA');
   const hourNow = parisNow.getHours();
   const targetH = cfg.hour || 12;
 
-  if (cfg.lastPostedDate === todayStr) {
-    pushLog('SYS', `Anecdote : déjà postée aujourd'hui — OK`);
+  if (hourNow < targetH) {
+    pushLog('SYS', `Anecdote : heure cible (${targetH}h) pas encore atteinte — OK`);
     return;
   }
-  if (hourNow >= targetH) {
-    pushLog('SYS', `⚠️ Anecdote manquée détectée (${targetH}h déjà passée) — rattrapage dans 30s`);
-    setTimeout(postDailyAnecdote, 30000);
+
+  const alreadyPosted = await wasAnecdotePostedToday();
+  if (alreadyPosted) {
+    const todayStr = parisNow.toLocaleDateString('fr-CA');
+    botConfig.anecdote.lastPostedDate = todayStr;
+    saveConfig();
+    pushLog('SYS', `Anecdote : déjà postée aujourd'hui (vérifiée dans Discord) — OK`);
+    return;
   }
+
+  pushLog('SYS', `⚠️ Anecdote manquée détectée (${targetH}h déjà passée) — rattrapage dans 30s`);
+  setTimeout(postDailyAnecdote, 30000);
 }
 
 async function sendWelcomeMessage(member) {
@@ -1354,7 +1477,7 @@ discord.once('ready', async () => {
   startConvCron();
 
   setTimeout(() => {
-    checkAnecdoteMissed();
+    checkAnecdoteMissed().catch(e => pushLog('ERR', `checkAnecdoteMissed: ${e.message}`, 'error'));
     checkActusMissed();
     pushLog('SYS', '🔍 Vérification rattrapage terminée');
   }, 15000);
