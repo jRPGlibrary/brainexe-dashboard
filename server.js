@@ -36,6 +36,8 @@ const INTENTS_GUILDS = discord_js.GatewayIntentBits?.Guilds ?? discord_js.Intent
 const INTENTS_GUILD_MEMBERS = discord_js.GatewayIntentBits?.GuildMembers ?? discord_js.Intents?.FLAGS?.GUILD_MEMBERS ?? 2;
 const INTENTS_GUILD_MESSAGES = discord_js.GatewayIntentBits?.GuildMessages ?? 512;
 const INTENTS_MESSAGE_CONTENT = discord_js.GatewayIntentBits?.MessageContent ?? 32768;
+const INTENTS_GUILD_REACTIONS = discord_js.GatewayIntentBits?.GuildMessageReactions ?? 1024;
+const Partials = discord_js.Partials;
 
 // ── CONFIG ───────────────────────────────────────────────────
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -184,6 +186,23 @@ const DEFAULT_CONFIG = {
       { channelId: "1481028297025650771", channelName: "💻・code-talk", topic: "question dev, langage favori, projet en cours", enabled: true },
     ],
   },
+  reactionRoles: {
+    enabled: true,
+    messageId: '1481033797800693790',
+    channelId: '1481028181485027471',
+    mappings: [
+      { emoji: '📱', roleName: '📱 TikToker' },
+      { emoji: '🧠', roleName: '🧠 TDAH' },
+      { emoji: '💜', roleName: '💜 Borderline' },
+      { emoji: '💻', roleName: '💻 Web Dev' },
+      { emoji: '⚔️', roleName: '⚔️ RPG Addict' },
+      { emoji: '🕹️', roleName: '🕹️ Retro Gamer' },
+      { emoji: '🌿', roleName: '🌿 Indie Explorer' },
+      { emoji: '🚀', roleName: '🚀 Next-Gen Player' },
+      { emoji: '🔔', roleName: '🔔 Notif Lives' },
+      { emoji: '👁️', roleName: '👁️ Lurker' },
+    ],
+  },
 };
 
 function loadConfig() {
@@ -195,6 +214,7 @@ function loadConfig() {
         welcome: { ...DEFAULT_CONFIG.welcome, ...(raw.welcome || {}) },
         actus: { ...DEFAULT_CONFIG.actus, ...(raw.actus || {}) },
         conversations: { ...DEFAULT_CONFIG.conversations, ...(raw.conversations || {}) },
+        reactionRoles: { ...DEFAULT_CONFIG.reactionRoles, ...(raw.reactionRoles || {}) },
       };
     }
   } catch (e) { console.error('Config load error:', e.message); }
@@ -217,7 +237,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const discord = new Client({
-  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS, INTENTS_GUILD_MESSAGES, INTENTS_MESSAGE_CONTENT],
+  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS, INTENTS_GUILD_MESSAGES, INTENTS_MESSAGE_CONTENT, INTENTS_GUILD_REACTIONS],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
 let AUTO_ROLE_NAME = '👁️ Lurker';
@@ -456,6 +477,45 @@ function registerDiscordEvents() {
   });
 }
 
+// ── REACTION ROLES ───────────────────────────────────────────
+async function handleReaction(reaction, user, add) {
+  if (user.bot) return;
+  try {
+    if (reaction.partial) await reaction.fetch();
+    if (reaction.message.partial) await reaction.message.fetch();
+    const cfg = botConfig.reactionRoles;
+    if (!cfg.enabled) return;
+    if (reaction.message.id !== cfg.messageId) return;
+
+    const emojiName = reaction.emoji.name;
+    const mapping = cfg.mappings.find(m => m.emoji === emojiName);
+    if (!mapping) return;
+
+    const guild = await discord.guilds.fetch(GUILD_ID);
+    await guild.roles.fetch();
+    const role = guild.roles.cache.find(r => r.name === mapping.roleName);
+    if (!role) {
+      pushLog('ERR', `Reaction role introuvable : "${mapping.roleName}"`, 'error');
+      return;
+    }
+    const member = await guild.members.fetch(user.id);
+    if (add) {
+      await member.roles.add(role, 'Reaction role BrainEXE');
+      pushLog('API', `✅ Rôle "${mapping.roleName}" assigné à ${user.tag}`, 'success');
+      broadcast('autorole', { user: user.tag, role: mapping.roleName });
+    } else {
+      await member.roles.remove(role, 'Reaction role BrainEXE');
+      pushLog('API', `➖ Rôle "${mapping.roleName}" retiré à ${user.tag}`, 'success');
+    }
+  } catch (err) {
+    pushLog('ERR', `Reaction role échoué : ${err.message}`, 'error');
+  }
+}
+
+discord.on(Events.MessageReactionAdd,    (reaction, user) => handleReaction(reaction, user, true));
+discord.on(Events.MessageReactionRemove, (reaction, user) => handleReaction(reaction, user, false));
+
+// ─────────────────────────────────────────────────────────────
 discord.on(Events.GuildMemberAdd, async (member) => {
   if (member.guild.id !== GUILD_ID) return;
   try {
@@ -990,6 +1050,7 @@ app.post('/api/config', (req, res) => {
     if (section === 'anecdote') startAnecdoteCron();
     if (section === 'actus') startActusCron();
     if (section === 'conversations') startConvCron();
+    if (section === 'reactionRoles') pushLog('SYS', 'Config reaction roles mise à jour', 'success');
     pushLog('SYS', `Config "${section}" mise à jour via dashboard`, 'success');
     broadcast('configUpdate', { section, data: botConfig[section] });
     res.json({ ok: true, config: botConfig[section] });

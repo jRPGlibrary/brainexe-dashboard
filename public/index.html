@@ -1632,36 +1632,75 @@ td {
     <div class="page-head">
       <div>
         <div class="page-title">✨ Reaction Roles</div>
-        <div class="page-sub">Configuration Carl-bot · salon #choix-des-rôles</div>
+        <div class="page-sub">Géré par BrainEXE · salon #choix-des-rôles</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" id="btnSaveReactionRoles">💾 Sauvegarder</button>
       </div>
     </div>
 
-    <div class="card" style="background:var(--purple-dim);border-color:rgba(167,139,250,0.2)">
-      <div class="card-body" style="display:flex;gap:14px;align-items:flex-start">
-        <span style="font-size:24px;flex-shrink:0">🤖</span>
-        <div>
-          <div style="font-weight:700;margin-bottom:4px;color:var(--text)">Carl-bot — Reaction Roles</div>
-          <div style="font-size:0.8rem;color:var(--text2);line-height:1.6;margin-bottom:10px">
-            Les reaction roles sont gérés directement par Carl-bot dans Discord.<br>
-            Copie les commandes ci-dessous dans ton serveur pour configurer rapidement tes groupes de rôles.
+    <!-- Statut global -->
+    <div class="card" id="rrStatusCard">
+      <div class="card-head">
+        <div class="card-title"><span>⚡</span> Statut BrainEXE Reaction Roles</div>
+        <label class="toggle"><input type="checkbox" id="rrEnabled"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--green-dim);border:1px solid rgba(52,211,153,0.2);border-radius:10px" id="rrStatusBanner">
+          <span style="font-size:28px">🤖</span>
+          <div>
+            <div style="font-size:0.65rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:3px">Système actif</div>
+            <div style="font-size:1rem;font-weight:800;color:var(--green)">BrainEXE gère les reaction roles — Carl-bot retraité 🎉</div>
           </div>
-          <a href="https://carl.gg" target="_blank" class="btn btn-purple btn-sm">Ouvrir Carl.gg →</a>
+        </div>
+        <div class="field">
+          <div class="field-label">ID du message de choix de rôles</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="field-input" id="rrMessageId" placeholder="ID du message Discord..." style="max-width:320px;font-family:var(--mono)">
+            <button class="btn btn-ghost btn-sm" id="btnCopyMsgId">📋 Copier</button>
+          </div>
+          <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Message Brain.ExE dans <strong>#choix-des-rôles</strong> — clic droit sur le message → Copier l'identifiant</div>
         </div>
       </div>
     </div>
 
+    <!-- Mappings actifs -->
     <div class="card">
-      <div class="card-head"><div class="card-title"><span>📋</span> Groupes de réactions configurés</div></div>
+      <div class="card-head">
+        <div class="card-title"><span>✨</span> Mappings Emoji → Rôle</div>
+        <div id="rrMappingsCount" style="font-family:var(--mono);font-size:0.68rem;color:var(--text3)">— mappings</div>
+      </div>
       <div class="card-body np">
-        <div id="rrGroups" style="display:flex;flex-direction:column"></div>
+        <div id="rrMappingsList" style="display:flex;flex-direction:column"></div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-head"><div class="card-title"><span>⌨️</span> Commandes Carl-bot à copier</div></div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
-        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:4px">Tape ces commandes dans Discord pour créer tes groupes de reaction roles :</div>
-        <div id="carlCommands" style="display:flex;flex-direction:column;gap:8px"></div>
+    <!-- Infos -->
+    <div class="card" style="background:rgba(91,127,255,0.04);border-color:rgba(91,127,255,0.2)">
+      <div class="card-head"><div class="card-title"><span>💡</span> Comment ça marche</div></div>
+      <div class="card-body">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:28px;height:28px;background:var(--blue-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue);flex-shrink:0;font-size:0.75rem">1</div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">Un membre réagit avec un emoji dans <strong style="color:var(--text)">#choix-des-rôles</strong></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:28px;height:28px;background:var(--blue-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue);flex-shrink:0;font-size:0.75rem">2</div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px"><strong style="color:var(--text)">BrainEXE</strong> détecte la réaction sur le message ID configuré</div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:28px;height:28px;background:var(--blue-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue);flex-shrink:0;font-size:0.75rem">3</div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">Le rôle correspondant est assigné automatiquement — ou retiré si la réaction est annulée</div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:28px;height:28px;background:var(--green-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--green);flex-shrink:0;font-size:14px">✅</div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">Cumul autorisé — un membre peut avoir plusieurs rôles en réagissant à plusieurs emojis</div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:28px;height:28px;background:var(--yellow-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--yellow);flex-shrink:0;font-size:14px">⚠️</div>
+            <div style="font-size:0.82rem;color:var(--text2);padding-top:4px">Les noms de rôles doivent correspondre <strong style="color:var(--text)">exactement</strong> aux rôles Discord (emojis inclus)</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2304,7 +2343,6 @@ function renderAll() {
   renderTree('channelsTree', false);
   renderRoles();
   populateCatSelect();
-  renderRRGroups();
   renderRolesBreakdown();
   loadAutoRole();
   renderMembers();
@@ -2493,91 +2531,92 @@ function renderRolesBreakdown() {
 /* ══════════════════════════════════════════════
    REACTION ROLES
 ══════════════════════════════════════════════ */
-const RR_GROUPS = [
-  {
-    name: '🧠 Neurodivergence',
-    type: 'normal',
-    roles: [
-      { emoji: '🧠', role: '🧠 TDAH' },
-      { emoji: '💜', role: '💜 Borderline' },
-    ]
-  },
-  {
-    name: '🎮 Gaming',
-    type: 'normal',
-    roles: [
-      { emoji: '⚔️', role: '⚔️ RPG Addict' },
-      { emoji: '🕹️', role: '🕹️ Retro Gamer' },
-      { emoji: '🌿', role: '🌿 Indie Explorer' },
-      { emoji: '🚀', role: '🚀 Next-Gen Player' },
-    ]
-  },
-  {
-    name: '📱 TikTok & Dev',
-    type: 'normal',
-    roles: [
-      { emoji: '📱', role: '📱 TikToker' },
-      { emoji: '💻', role: '💻 Web Dev' },
-      { emoji: '🔔', role: '🔔 Notif Lives' },
-    ]
-  },
-];
+function renderReactionRoles(cfg) {
+  if (!cfg) return;
+  const rrCfg = cfg.reactionRoles;
+  if (!rrCfg) return;
 
-function renderRRGroups() {
-  const el = document.getElementById('rrGroups');
-  const cmds = document.getElementById('carlCommands');
-  if (!el) return;
+  // Statut toggle
+  const toggle = document.getElementById('rrEnabled');
+  if (toggle) toggle.checked = rrCfg.enabled;
 
-  el.innerHTML = '';
-  cmds.innerHTML = '';
+  // Message ID
+  const msgIdInput = document.getElementById('rrMessageId');
+  if (msgIdInput) msgIdInput.value = rrCfg.messageId || '';
 
-  for (const g of RR_GROUPS) {
-    // Group header
-    const header = document.createElement('div');
-    header.style.cssText = 'padding:12px 18px 8px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.1)';
-    header.innerHTML = `<div style="font-size:0.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px">${g.name}</div>`;
-    el.appendChild(header);
-
-    const rrList = document.createElement('div');
-    rrList.className = 'rr-list';
-    rrList.style.padding = '10px 14px';
-
-    for (const r of g.roles) {
-      const item = document.createElement('div');
-      item.className = 'rr-item';
-
-      // Find role color
-      const roleData = state?.roles?.find(sr => sr.name === r.role);
-      const colorDot = roleData ? `<div class="rr-role-color" style="background:${roleData.color}"></div>` : '';
-
-      item.innerHTML = `
-        <div class="rr-emoji">${r.emoji}</div>
-        <div style="display:flex;align-items:center;gap:8px;flex:1">
-          ${colorDot}
-          <div class="rr-role-name">${r.role}</div>
-        </div>
-        <span class="tag text">ACTIF</span>
-      `;
-      rrList.appendChild(item);
+  // Bannière statut
+  const banner = document.getElementById('rrStatusBanner');
+  if (banner) {
+    if (rrCfg.enabled) {
+      banner.style.background = 'var(--green-dim)';
+      banner.style.borderColor = 'rgba(52,211,153,0.2)';
+      banner.innerHTML = `<span style="font-size:28px">🤖</span><div><div style="font-size:0.65rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:3px">Système actif</div><div style="font-size:1rem;font-weight:800;color:var(--green)">BrainEXE gère les reaction roles — Carl-bot retraité 🎉</div></div>`;
+    } else {
+      banner.style.background = 'var(--red-dim)';
+      banner.style.borderColor = 'rgba(248,113,113,0.2)';
+      banner.innerHTML = `<span style="font-size:28px">⏸️</span><div><div style="font-size:0.65rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:3px">Système désactivé</div><div style="font-size:1rem;font-weight:800;color:var(--red)">Reaction roles en pause</div></div>`;
     }
+  }
 
-    el.appendChild(rrList);
+  // Mappings
+  const list = document.getElementById('rrMappingsList');
+  const countEl = document.getElementById('rrMappingsCount');
+  if (!list) return;
+  list.innerHTML = '';
+  const mappings = rrCfg.mappings || [];
+  if (countEl) countEl.textContent = `${mappings.length} mappings`;
 
-    // Carl-bot command
-    const cmd = document.createElement('div');
-    cmd.style.cssText = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start';
-    const reactions = g.roles.map(r => `${r.emoji}:${r.role}`).join(' ');
-    const cmdText = `!rr add #choix-des-rôles ${g.name} -- ${reactions}`;
-    cmd.innerHTML = `
+  mappings.forEach((m, i) => {
+    const roleData = state?.roles?.find(r => r.name === m.roleName);
+    const color = roleData && roleData.color !== '#000000' ? roleData.color : '#7c8db5';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--border2)';
+    row.innerHTML = `
+      <div style="font-size:24px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:var(--bg);border-radius:8px;border:1px solid var(--border);flex-shrink:0">${m.emoji}</div>
+      <div style="width:3px;height:36px;border-radius:2px;background:${color};flex-shrink:0"></div>
       <div style="flex:1">
-        <div style="font-size:0.65rem;font-family:var(--mono);color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">${g.name}</div>
-        <code style="font-family:var(--mono);font-size:0.75rem;color:var(--green);word-break:break-all">${cmdText}</code>
+        <div style="font-size:0.85rem;font-weight:700;color:var(--text)">${m.roleName}</div>
+        <div style="font-size:0.7rem;color:var(--text3);font-family:var(--mono)">mapping #${i + 1}</div>
       </div>
-      <button class="btn btn-ghost btn-xs" onclick="copyText(this,'${cmdText.replace(/'/g,"\\'")}')">📋 Copier</button>
+      <span class="tag text" style="background:var(--green-dim);color:var(--green)">ACTIF</span>
     `;
-    cmds.appendChild(cmd);
+    list.appendChild(row);
+  });
+}
+
+function loadReactionRolesPage() {
+  if (automationsConfig) {
+    renderReactionRoles(automationsConfig);
+  } else {
+    api('GET', '/api/config').then(r => {
+      if (r.ok) {
+        automationsConfig = r.config;
+        renderReactionRoles(r.config);
+      }
+    });
   }
 }
+
+// Copier le message ID
+document.getElementById('btnCopyMsgId')?.addEventListener('click', () => {
+  const val = document.getElementById('rrMessageId')?.value;
+  if (val) {
+    navigator.clipboard.writeText(val).then(() => toast('📋 ID copié !', 'success'));
+  }
+});
+
+// Sauvegarder les reaction roles
+document.getElementById('btnSaveReactionRoles')?.addEventListener('click', async () => {
+  if (!automationsConfig) return toast('Config non chargée', 'error');
+  const enabled = document.getElementById('rrEnabled')?.checked;
+  const messageId = document.getElementById('rrMessageId')?.value?.trim();
+  if (!messageId) return toast('ID du message requis !', 'error');
+  automationsConfig.reactionRoles.enabled = enabled;
+  automationsConfig.reactionRoles.messageId = messageId;
+  const r = await api('POST', '/api/config', { section: 'reactionRoles', data: automationsConfig.reactionRoles });
+  if (r.ok) toast('✅ Reaction roles sauvegardés !', 'success');
+  else toast(r.error || 'Erreur', 'error');
+});
 
 /* ══════════════════════════════════════════════
    MEMBRES
@@ -2745,6 +2784,7 @@ function showPage(name) {
   document.querySelector(`.mobile-nav-item[data-page="${name}"]`)?.classList.add('active');
   if (name === 'logs') { newLogs = 0; document.getElementById('navLogsBadge').style.display = 'none'; }
   if (name === 'posts') { populatePostChannels(); }
+  if (name === 'reactionroles') { loadReactionRolesPage(); }
   if (name === 'automations') {
     if (!automationsConfig) loadAutomationsConfig();
     else {
