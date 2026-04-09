@@ -104,59 +104,69 @@ RÈGLES ABSOLUES :
 
 const CATEGORY_MODES = {
   general: [
-    { name: 'débat',  inject: 'Lance un débat gaming provocateur. Commence par "Hot take :" ou "Ok débat rapide :" ou "Unpopular opinion :"' },
-    { name: 'chaos',  inject: 'Lance quelque chose drôle ou absurde. Style "Explique-moi pourquoi..." ou "Personne parle de ça mais..." ou "Soyons honnêtes..."' },
-    { name: 'simple', inject: 'Lance une question directe et courte. Style "Ton top 1 all-time sans réfléchir ?" ou "Meilleur jeu de 2025 ?"' },
+    { name: 'débat',  inject: `Lance un débat gaming provocateur. Commence par "Hot take :" ou "Ok débat rapide :" ou "Unpopular opinion :"` },
+    { name: 'chaos',  inject: `Lance quelque chose de drôle ou absurde. Style "Explique-moi pourquoi..." ou "Personne parle de ça mais..." ou "Soyons honnêtes..."` },
+    { name: 'simple', inject: `Lance une question directe et courte. Style "Ton top 1 all-time sans réfléchir ?" ou "Meilleur jeu de 2025 ?"` },
   ],
+
   tdah: [
-    { name: 'hyperfocus', inject: 'Parle d'un hyperfocus gaming ou créatif récent. "J'ai passé 6h sur un seul truc hier, voilà lequel..." Style TDAH assumer.' },
-    { name: 'tips',       inject: 'Partage un tip focus ou prod que tu utilises toi-même. Court, pratico-pratique, sans bullshit.' },
-    { name: 'chaos',      inject: 'Lance quelque chose random sur le cerveau TDAH qui game. Question fun ou observation absurde.' },
+    { name: 'hyperfocus', inject: `Parle d'un hyperfocus gaming ou créatif récent. "J'ai passé 6h sur un seul truc hier, voilà lequel..." Style TDAH assumé.` },
+    { name: 'tips',       inject: `Partage un tip focus ou prod que tu utilises toi-même. Court, pratico-pratique, sans bullshit.` },
+    { name: 'chaos',      inject: `Lance quelque chose de random sur le cerveau TDAH qui game. Question fun ou observation absurde.` },
   ],
+
   humour: [
-    { name: 'meme',   inject: 'Lance un meme ou reference gaming absurde. Style : "Pourquoi personne parle du fait que..." ou "Rappel que dans [jeu]..."' },
-    { name: 'tier',   inject: 'Lance un tierlist improvisé absurde. "Tier list non-officielle : [truc random gaming]".' },
-    { name: 'chaos',  inject: 'Question totalement débile mais que tout le monde a forcément une réponse. Style "Combat ultimate : [A] vs [B]"' },
+    { name: 'meme',  inject: `Lance un meme ou une référence gaming absurde. Style : "Pourquoi personne parle du fait que..." ou "Rappel que dans [jeu]..."` },
+    { name: 'tier',  inject: `Lance une tier list improvisée absurde. "Tier list non-officielle : [truc random gaming]".` },
+    { name: 'chaos', inject: `Question totalement débile mais que tout le monde a forcément en stock. Style "Combat ultime : [A] vs [B]"` },
   ],
+
   rpg: [
-    { name: 'débat',  inject: 'Lance un débat RPG. Combat tour par tour vs action ? Grind vs scaling ? Lore vs gameplay ?' },
-    { name: 'deep',   inject: 'Observation niche sur les systèmes RPG. Truc que personne remarque mais qui change tout.' },
-    { name: 'simple', inject: 'Question RPG directe. "Ton système de combat préféré all-time ?" ou "RPG occidental ou JRPG ?"' },
+    { name: 'débat',  inject: `Lance un débat RPG. Combat tour par tour vs action ? Grind vs scaling ? Lore vs gameplay ?` },
+    { name: 'deep',   inject: `Observation niche sur les systèmes RPG. Le truc que personne ne remarque mais qui change tout.` },
+    { name: 'simple', inject: `Question RPG directe. "Ton système de combat préféré all-time ?" ou "RPG occidental ou JRPG ?"` },
   ],
+
   jrpg: [
-    { name: 'OST',    inject: 'Parle de la bande-son d'un JRPG. "OST qui vit rent-free dans ma tête :" ou "Piste de JRPG injustement oubliée :"' },
-    { name: 'débat',  inject: 'Lance un débat JRPG. Final Fantasy vs Persona ? Turn-based revival ? Le meilleur JRPG de chaque gen ?' },
-    { name: 'waifu',  inject: 'Lance un classement ou débat perso de JRPG. "Tier list des partys :" ou "Perso le plus iconique :"' },
+    { name: 'OST',   inject: `Parle d'une bande-son de JRPG. "OST qui vit rent-free dans ma tête :" ou "Piste de JRPG injustement oubliée :"` },
+    { name: 'débat', inject: `Lance un débat JRPG. Final Fantasy vs Persona ? Turn-based revival ? Meilleur JRPG de chaque gen ?` },
+    { name: 'waifu', inject: `Lance un classement ou débat perso de JRPG. "Tier list des partys :" ou "Perso le plus iconique :"` },
   ],
+
   retro: [
-    { name: 'souvenir', inject: 'Raconte un souvenir lié à un jeu retro ou une console. "Première fois que j'ai joué à [jeu] :" style nostalgie sincère.' },
-    { name: 'débat',    inject: 'Débat retro. "Meilleure gen de console all-time ?" ou "Jeu retro qui mériterait un remake ?"' },
-    { name: 'gem',      inject: 'Signale un jeu retro underrated que personne ne connaît. "Hidden gem que personne joue mais que tout le monde devrait :"' },
+    { name: 'souvenir', inject: `Raconte un souvenir lié à un jeu retro ou une console. "Première fois que j'ai joué à [jeu] :" style nostalgie sincère.` },
+    { name: 'débat',    inject: `Débat retro. "Meilleure gen de console all-time ?" ou "Jeu retro qui mériterait un remake ?"` },
+    { name: 'gem',      inject: `Signale un jeu retro underrated que personne ne connaît. "Hidden gem que personne joue mais que tout le monde devrait :"` },
   ],
+
   gaming: [
-    { name: 'débat',  inject: 'Lance un débat gaming large. PC vs console ? Abonnements gaming, bonne ou mauvaise idée ?' },
-    { name: 'actu',   inject: 'Commente une tendance gaming récente de façon directe. Pas d'annonce officielle, ton ressenti.' },
-    { name: 'simple', inject: 'Question gaming directe. "Jeu le plus attendu ?" ou "Séquence de boss la plus frustrante ?"' },
+    { name: 'débat',  inject: `Lance un débat gaming large. PC vs console ? Abonnements gaming, bonne ou mauvaise idée ?` },
+    { name: 'actu',   inject: `Commente une tendance gaming récente de façon directe. Pas d'annonce officielle, ton ressenti.` },
+    { name: 'simple', inject: `Question gaming directe. "Jeu le plus attendu ?" ou "Séquence de boss la plus frustrante ?"` },
   ],
+
   indie: [
-    { name: 'gem',    inject: 'Mets en avant un indie underrated. "Pépite indie que personne joue mais qui déchire :"' },
-    { name: 'débat',  inject: 'Débat indie. "Indie > AAA pour les nouvelles idées ?" ou "Meilleur indie de ces 2 dernières années ?"' },
-    { name: 'deep',   inject: 'Réflexion sur la scène indie. Ce qui rend un indie inoubliable. DA, musique, mécanique ?.' },
+    { name: 'gem',   inject: `Mets en avant un indie underrated. "Pépite indie que personne ne joue mais qui déchire :"` },
+    { name: 'débat', inject: `Débat indie. "Indie > AAA pour les nouvelles idées ?" ou "Meilleur indie de ces 2 dernières années ?"` },
+    { name: 'deep',  inject: `Réflexion sur la scène indie. Ce qui rend un indie inoubliable : DA, musique ou mécanique ?` },
   ],
+
   creative: [
-    { name: 'défi',   inject: 'Lance un mini défi créatif. "Partagez votre [dessin/screenshot/création] du moment." Encourageant, pas jugeant.' },
-    { name: 'inspo',  inject: 'Partage une source d'inspiration visuelle ou créative. "Ce qui m'inspire en ce moment :"' },
-    { name: 'deep',   inject: 'Réflexion sur la direction artistique d'un jeu. Pourquoi certains jeux marquent visuellement ?' },
+    { name: 'défi', inject: `Lance un mini défi créatif. "Partagez votre dessin, screenshot ou création du moment." Encourageant, jamais jugeant.` },
+    { name: 'inspo', inject: `Partage une source d'inspiration visuelle ou créative. "Ce qui m'inspire en ce moment :"` },
+    { name: 'deep', inject: `Réflexion sur la direction artistique d'un jeu. Pourquoi certains jeux marquent visuellement ?` },
   ],
+
   focus: [
-    { name: 'routine', inject: 'Parle de ta routine de travail ou de focus. "Ce qui marche pour moi en ce moment :"' },
-    { name: 'playlist',inject: 'Partage ou demande une playlist de focus. "Ce que j'écoute pour me concentrer :"' },
-    { name: 'tip',     inject: 'Donne un tip focus court et pratico-pratique. Testé par toi. Pas de bullshit motivationnel.' },
+    { name: 'routine',  inject: `Parle de ta routine de travail ou de focus. "Ce qui marche pour moi en ce moment :"` },
+    { name: 'playlist', inject: `Partage ou demande une playlist de focus. "Ce que j'écoute pour me concentrer :"` },
+    { name: 'tip',      inject: `Donne un tip focus court et pratico-pratique. Testé par toi. Pas de bullshit motivationnel.` },
   ],
+
   dev: [
-    { name: 'question', inject: 'Pose une question dev concrète ou ouvre un débat tech. "Vous utilisez quoi pour [truc] ?" ou "Unpopular opinion dev :"' },
-    { name: 'outil',    inject: 'Partage un outil ou une ressource dev utile. "Tool underrated que j'utilise :"' },
-    { name: 'deep',     inject: 'Réflexion sur le dev ou la création. Ce qui rend un projet fun vs chiant à coder.' },
+    { name: 'question', inject: `Pose une question dev concrète ou ouvre un débat tech. "Vous utilisez quoi pour [truc] ?" ou "Unpopular opinion dev :"` },
+    { name: 'outil',    inject: `Partage un outil ou une ressource dev utile. "Tool underrated que j'utilise :"` },
+    { name: 'deep',     inject: `Réflexion sur le dev ou la création. Ce qui rend un projet fun vs chiant à coder.` },
   ],
 };
 
