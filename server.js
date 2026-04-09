@@ -1,18 +1,10 @@
 /**
 * ================================================
-* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.6.0
+* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.4.0
 * ================================================
 * Express + Discord.js + WebSocket + node-cron
-* NOUVEAUTÉS v1.6.0:
-* - Brainee.exe (renommée)
-* - CATEGORY_MODES : catégories par salon
-* - callClaudeWithSearch : web search Anthropic natif
-* - Anecdotes : anti-doublon Discord + anti-répétition
-* - postSmartConversation : re-engage membres
-* - Scheduler 8h-22h récursif, délai 1h-3h30
-* - @mention listener
 * NOUVEAUTÉS v1.4.0:
-*   - Persona Brainee.exe : identité féminine 24 ans
+*   - Persona Brainy.exe : identité féminine 24 ans
 *   - BOT_PERSONA injectée dans tous les prompts IA
 *   - CONV_MODES : débat / chaos / deep / simple
 *   - Style d'écriture naturel, communauté-first
@@ -57,7 +49,7 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // ── PERSONA BRAINY.EXE v1.4.0 ────────────────────────────────
 const BOT_PERSONA = `
-Tu es Brainee.exe, une fille de 24 ans qui traîne sur Discord et les forums gaming depuis toujours.
+Tu es Brainy.exe, une fille de 24 ans qui traîne sur Discord et les forums gaming depuis toujours.
 Née d'internet — Reddit, Discord, forums obscurs. T'es pas un bot, t'es un personnage.
 Tu parles UNIQUEMENT en français.
 
@@ -99,76 +91,25 @@ RÈGLES ABSOLUES :
 - JAMAIS de "Bonjour", "Voici", "Je vous présente", "En conclusion"
 `;
 
-// ── CATEGORY_MODES v1.6.0 ────────────────────────────────
-// Modes de conversation par catégorie de salon
-
-const CATEGORY_MODES = {
-  general: [
-    { name: 'débat',  inject: `Lance un débat gaming provocateur. Commence par "Hot take :" ou "Ok débat rapide :" ou "Unpopular opinion :"` },
-    { name: 'chaos',  inject: `Lance quelque chose de drôle ou absurde. Style "Explique-moi pourquoi..." ou "Personne parle de ça mais..." ou "Soyons honnêtes..."` },
-    { name: 'simple', inject: `Lance une question directe et courte. Style "Ton top 1 all-time sans réfléchir ?" ou "Meilleur jeu de 2025 ?"` },
-  ],
-
-  tdah: [
-    { name: 'hyperfocus', inject: `Parle d'un hyperfocus gaming ou créatif récent. "J'ai passé 6h sur un seul truc hier, voilà lequel..." Style TDAH assumé.` },
-    { name: 'tips',       inject: `Partage un tip focus ou prod que tu utilises toi-même. Court, pratico-pratique, sans bullshit.` },
-    { name: 'chaos',      inject: `Lance quelque chose de random sur le cerveau TDAH qui game. Question fun ou observation absurde.` },
-  ],
-
-  humour: [
-    { name: 'meme',  inject: `Lance un meme ou une référence gaming absurde. Style : "Pourquoi personne parle du fait que..." ou "Rappel que dans [jeu]..."` },
-    { name: 'tier',  inject: `Lance une tier list improvisée absurde. "Tier list non-officielle : [truc random gaming]".` },
-    { name: 'chaos', inject: `Question totalement débile mais que tout le monde a forcément en stock. Style "Combat ultime : [A] vs [B]"` },
-  ],
-
-  rpg: [
-    { name: 'débat',  inject: `Lance un débat RPG. Combat tour par tour vs action ? Grind vs scaling ? Lore vs gameplay ?` },
-    { name: 'deep',   inject: `Observation niche sur les systèmes RPG. Le truc que personne ne remarque mais qui change tout.` },
-    { name: 'simple', inject: `Question RPG directe. "Ton système de combat préféré all-time ?" ou "RPG occidental ou JRPG ?"` },
-  ],
-
-  jrpg: [
-    { name: 'OST',   inject: `Parle d'une bande-son de JRPG. "OST qui vit rent-free dans ma tête :" ou "Piste de JRPG injustement oubliée :"` },
-    { name: 'débat', inject: `Lance un débat JRPG. Final Fantasy vs Persona ? Turn-based revival ? Meilleur JRPG de chaque gen ?` },
-    { name: 'waifu', inject: `Lance un classement ou débat perso de JRPG. "Tier list des partys :" ou "Perso le plus iconique :"` },
-  ],
-
-  retro: [
-    { name: 'souvenir', inject: `Raconte un souvenir lié à un jeu retro ou une console. "Première fois que j'ai joué à [jeu] :" style nostalgie sincère.` },
-    { name: 'débat',    inject: `Débat retro. "Meilleure gen de console all-time ?" ou "Jeu retro qui mériterait un remake ?"` },
-    { name: 'gem',      inject: `Signale un jeu retro underrated que personne ne connaît. "Hidden gem que personne joue mais que tout le monde devrait :"` },
-  ],
-
-  gaming: [
-    { name: 'débat',  inject: `Lance un débat gaming large. PC vs console ? Abonnements gaming, bonne ou mauvaise idée ?` },
-    { name: 'actu',   inject: `Commente une tendance gaming récente de façon directe. Pas d'annonce officielle, ton ressenti.` },
-    { name: 'simple', inject: `Question gaming directe. "Jeu le plus attendu ?" ou "Séquence de boss la plus frustrante ?"` },
-  ],
-
-  indie: [
-    { name: 'gem',   inject: `Mets en avant un indie underrated. "Pépite indie que personne ne joue mais qui déchire :"` },
-    { name: 'débat', inject: `Débat indie. "Indie > AAA pour les nouvelles idées ?" ou "Meilleur indie de ces 2 dernières années ?"` },
-    { name: 'deep',  inject: `Réflexion sur la scène indie. Ce qui rend un indie inoubliable : DA, musique ou mécanique ?` },
-  ],
-
-  creative: [
-    { name: 'défi', inject: `Lance un mini défi créatif. "Partagez votre dessin, screenshot ou création du moment." Encourageant, jamais jugeant.` },
-    { name: 'inspo', inject: `Partage une source d'inspiration visuelle ou créative. "Ce qui m'inspire en ce moment :"` },
-    { name: 'deep', inject: `Réflexion sur la direction artistique d'un jeu. Pourquoi certains jeux marquent visuellement ?` },
-  ],
-
-  focus: [
-    { name: 'routine',  inject: `Parle de ta routine de travail ou de focus. "Ce qui marche pour moi en ce moment :"` },
-    { name: 'playlist', inject: `Partage ou demande une playlist de focus. "Ce que j'écoute pour me concentrer :"` },
-    { name: 'tip',      inject: `Donne un tip focus court et pratico-pratique. Testé par toi. Pas de bullshit motivationnel.` },
-  ],
-
-  dev: [
-    { name: 'question', inject: `Pose une question dev concrète ou ouvre un débat tech. "Vous utilisez quoi pour [truc] ?" ou "Unpopular opinion dev :"` },
-    { name: 'outil',    inject: `Partage un outil ou une ressource dev utile. "Tool underrated que j'utilise :"` },
-    { name: 'deep',     inject: `Réflexion sur le dev ou la création. Ce qui rend un projet fun vs chiant à coder.` },
-  ],
-};
+// ── MODES DE CONVERSATION ────────────────────────────────────
+const CONV_MODES = [
+  {
+    name: 'débat',
+    inject: 'Lance un débat gaming provocateur. Commence par "Hot take :" ou "Ok débat rapide :" ou "Unpopular opinion :"',
+  },
+  {
+    name: 'chaos',
+    inject: 'Lance quelque chose drôle ou absurde. Style "Explique-moi pourquoi..." ou "Personne parle de ça mais..." ou "Soyons honnêtes..."',
+  },
+  {
+    name: 'deep',
+    inject: 'Lance une réflexion gaming plus profonde. Observation niche, insight inattendu, truc que personne remarque d\'habitude.',
+  },
+  {
+    name: 'simple',
+    inject: 'Lance une question directe et courte. Style "Ton top 1 all-time sans réfléchir ?" ou "JRPG ou RPG occidental ?" ou "Pire boss ever ?"',
+  },
+];
 
 // ── CONFIG PERSISTANTE ────────────────────────────────────────
 const DEFAULT_CONFIG = {
@@ -202,14 +143,14 @@ const DEFAULT_CONFIG = {
     lastPostedSlots: [],
     channels: [
       { channelId: "1481028286892081183", channelName: "📰・actus-gaming", topic: "gaming général toutes plateformes, gros titres du mois", enabled: true },
-      { channelId: "1481028247415296231", category: "jrpg", channelName: "🐉・jrpg-corner", topic: "JRPG sorties, DLC, remasters, annonces", enabled: true },
-      { channelId: "1481028244500385946", category: "rpg", channelName: "⚔️・rpg-général", topic: "RPG large action-RPG, tactique, ARPG", enabled: true },
-      { channelId: "1481028272090386584", category: "indie", channelName: "🌿・indie-général", topic: "indie sorties notables et pépites du mois", enabled: true },
-      { channelId: "1481028274590322850", category: "gaming", channelName: "🔭・à-découvrir", topic: "kickstarters en cours et jeux annoncés à venir", enabled: true },
-      { channelId: "1481028283486175245", category: "gaming", channelName: "🚀・next-gen-général", topic: "PS5 Xbox Series PC actus next-gen", enabled: true },
-      { channelId: "1481028291094904995", category: "gaming", channelName: "🎮・game-of-the-moment", topic: "le jeu que tout le monde joue en ce moment", enabled: true },
-      { channelId: "1481028260753051739", category: "retro", channelName: "🕹️・retro-général", topic: "retro remasters, collections, anniversaires", enabled: true },
-      { channelId: "1481028304206041243", category: "dev", channelName: "🤖・ia-et-tools", topic: "IA et outils devs créateurs actus du mois", enabled: true },
+      { channelId: "1481028247415296231", channelName: "🐉・jrpg-corner", topic: "JRPG sorties, DLC, remasters, annonces", enabled: true },
+      { channelId: "1481028244500385946", channelName: "⚔️・rpg-général", topic: "RPG large action-RPG, tactique, ARPG", enabled: true },
+      { channelId: "1481028272090386584", channelName: "🌿・indie-général", topic: "indie sorties notables et pépites du mois", enabled: true },
+      { channelId: "1481028274590322850", channelName: "🔭・à-découvrir", topic: "kickstarters en cours et jeux annoncés à venir", enabled: true },
+      { channelId: "1481028283486175245", channelName: "🚀・next-gen-général", topic: "PS5 Xbox Series PC actus next-gen", enabled: true },
+      { channelId: "1481028291094904995", channelName: "🎮・game-of-the-moment", topic: "le jeu que tout le monde joue en ce moment", enabled: true },
+      { channelId: "1481028260753051739", channelName: "🕹️・retro-général", topic: "retro remasters, collections, anniversaires", enabled: true },
+      { channelId: "1481028304206041243", channelName: "🤖・ia-et-tools", topic: "IA et outils devs créateurs actus du mois", enabled: true },
     ],
   },
   conversations: {
@@ -222,27 +163,27 @@ const DEFAULT_CONFIG = {
     lastPostByChannel: {},
     canReply: true,
     channels: [
-      { channelId: "1481028189680570421", category: "general", channelName: "💬・général", topic: "gaming général et vie communauté", enabled: true },
-      { channelId: "1481028192088100977", category: "tdah", channelName: "🧠・cerveau-en-feu", topic: "hyperfocus du moment, pensées random TDAH", enabled: true },
-      { channelId: "1481028195032760531", category: "humour", channelName: "😂・memes-et-chaos", topic: "humour, memes, questions fun", enabled: true },
-      { channelId: "1481028197515788360", category: "general", channelName: "🎲・off-topic", topic: "questions insolites et random", enabled: true },
-      { channelId: "1481028199948222584", category: "creative", channelName: "🖼️・partage-créations", topic: "défi créatif et inspiration", enabled: true },
-      { channelId: "1481028244500385946", category: "rpg", channelName: "⚔️・rpg-général", topic: "débats RPG, système de combat, perso préféré", enabled: true },
-      { channelId: "1481028247415296231", category: "jrpg", channelName: "🐉・jrpg-corner", topic: "questions JRPG, OST, waifu tier list", enabled: true },
-      { channelId: "1481028250741506189", category: "rpg", channelName: "🗺️・open-world-rpg", topic: "exploration vs histoire, open world favori", enabled: true },
-      { channelId: "1481028254721773588", category: "rpg", channelName: "🃏・lore-et-théories", topic: "théorie du moment, lore deep-dive", enabled: true },
-      { channelId: "1481028260753051739", category: "retro", channelName: "🕹️・retro-général", topic: "console et souvenirs de jeux retro", enabled: true },
-      { channelId: "1481028264410484837", category: "indie", channelName: "🏆・hidden-gems", topic: "hidden gem à partager", enabled: true },
-      { channelId: "1481028266830860340", category: "retro", channelName: "📼・nostalgie", topic: "souvenirs de jeux et nostalgie gaming", enabled: true },
-      { channelId: "1481028272090386584", category: "indie", channelName: "🌿・indie-général", topic: "indie chouchou, indie underrated", enabled: true },
-      { channelId: "1481028274590322850", category: "gaming", channelName: "🔭・à-découvrir", topic: "jeux attendus et futures sorties", enabled: true },
-      { channelId: "1481028277182402701", category: "creative", channelName: "🎨・pixel-art-love", topic: "coup de coeur visuel, DA préférée", enabled: true },
-      { channelId: "1481028283486175245", category: "gaming", channelName: "🚀・next-gen-général", topic: "next-gen vs génération précédente", enabled: true },
-      { channelId: "1481028291094904995", category: "gaming", channelName: "🎮・game-of-the-moment", topic: "avancement dans le jeu du moment", enabled: true },
-      { channelId: "1481028228515631307", category: "focus", channelName: "⚡・tips-focus", topic: "tips productivité, routine, technique focus", enabled: true },
-      { channelId: "1481028238955249796", category: "focus", channelName: "🎧・playlist-focus", topic: "playlist du moment et musique de focus", enabled: true },
-      { channelId: "1481028304206041243", category: "dev", channelName: "🤖・ia-et-tools", topic: "outils IA utilisés en ce moment", enabled: true },
-      { channelId: "1481028297025650771", category: "dev", channelName: "💻・code-talk", topic: "question dev, langage favori, projet en cours", enabled: true },
+      { channelId: "1481028189680570421", channelName: "💬・général", topic: "gaming général et vie communauté", enabled: true },
+      { channelId: "1481028192088100977", channelName: "🧠・cerveau-en-feu", topic: "hyperfocus du moment, pensées random TDAH", enabled: true },
+      { channelId: "1481028195032760531", channelName: "😂・memes-et-chaos", topic: "humour, memes, questions fun", enabled: true },
+      { channelId: "1481028197515788360", channelName: "🎲・off-topic", topic: "questions insolites et random", enabled: true },
+      { channelId: "1481028199948222584", channelName: "🖼️・partage-créations", topic: "défi créatif et inspiration", enabled: true },
+      { channelId: "1481028244500385946", channelName: "⚔️・rpg-général", topic: "débats RPG, système de combat, perso préféré", enabled: true },
+      { channelId: "1481028247415296231", channelName: "🐉・jrpg-corner", topic: "questions JRPG, OST, waifu tier list", enabled: true },
+      { channelId: "1481028250741506189", channelName: "🗺️・open-world-rpg", topic: "exploration vs histoire, open world favori", enabled: true },
+      { channelId: "1481028254721773588", channelName: "🃏・lore-et-théories", topic: "théorie du moment, lore deep-dive", enabled: true },
+      { channelId: "1481028260753051739", channelName: "🕹️・retro-général", topic: "console et souvenirs de jeux retro", enabled: true },
+      { channelId: "1481028264410484837", channelName: "🏆・hidden-gems", topic: "hidden gem à partager", enabled: true },
+      { channelId: "1481028266830860340", channelName: "📼・nostalgie", topic: "souvenirs de jeux et nostalgie gaming", enabled: true },
+      { channelId: "1481028272090386584", channelName: "🌿・indie-général", topic: "indie chouchou, indie underrated", enabled: true },
+      { channelId: "1481028274590322850", channelName: "🔭・à-découvrir", topic: "jeux attendus et futures sorties", enabled: true },
+      { channelId: "1481028277182402701", channelName: "🎨・pixel-art-love", topic: "coup de coeur visuel, DA préférée", enabled: true },
+      { channelId: "1481028283486175245", channelName: "🚀・next-gen-général", topic: "next-gen vs génération précédente", enabled: true },
+      { channelId: "1481028291094904995", channelName: "🎮・game-of-the-moment", topic: "avancement dans le jeu du moment", enabled: true },
+      { channelId: "1481028228515631307", channelName: "⚡・tips-focus", topic: "tips productivité, routine, technique focus", enabled: true },
+      { channelId: "1481028238955249796", channelName: "🎧・playlist-focus", topic: "playlist du moment et musique de focus", enabled: true },
+      { channelId: "1481028304206041243", channelName: "🤖・ia-et-tools", topic: "outils IA utilisés en ce moment", enabled: true },
+      { channelId: "1481028297025650771", channelName: "💻・code-talk", topic: "question dev, langage favori, projet en cours", enabled: true },
     ],
   },
   reactionRoles: {
@@ -536,45 +477,6 @@ function registerDiscordEvents() {
   });
 }
 
-
-// ── RÉPONSE AUX @MENTIONS ─────────────────────────────────────
-discord.on(Events.MessageCreate, async (message) => {
-  if (message.author.bot) return;
-  if (message.guildId !== GUILD_ID) return;
-  if (!discord.user) return;
-  if (!message.mentions.has(discord.user.id)) return;
-  if (!ANTHROPIC_API_KEY) return;
-
-  const lastBot = (botConfig.conversations.lastPostByChannel || {})[message.channelId] || 0;
-  if (Date.now() - lastBot < 2 * 60 * 1000) return;
-
-  try {
-    const cleanContent = message.content
-      .replace(/<@!?\d+>/g, '')
-      .trim()
-      .slice(0, 400);
-    if (!cleanContent) return;
-
-    const ch = (botConfig.conversations.channels || []).find(c => c.channelId === message.channelId);
-    const topic = ch ? ch.topic : 'discussions générales';
-
-    const reply = await callClaude(
-      BOT_PERSONA + `\n\nContexte : salon "${message.channel?.name || 'Discord'}". Sujet : ${topic}.`,
-      `${message.author.username} te mentionne et dit : "${cleanContent}"\n\nRéponds naturellement en 1-2 phrases max, style Brainee.exe. Commence direct.`,
-      150
-    );
-
-    await message.reply(reply);
-    lastAnyBotPostTime = Date.now();
-    updateConvStats(message.channelId);
-    pushLog('SYS', `🔔 Réponse @mention → ${message.author.username} dans #${message.channel?.name}`, 'success');
-  } catch (err) {
-    if (!err.message.includes('Missing Permissions')) {
-      pushLog('ERR', `@mention échoué : ${err.message}`, 'error');
-    }
-  }
-});
-
 // ── REACTION ROLES ───────────────────────────────────────────
 async function handleReaction(reaction, user, add) {
   if (user.bot) return;
@@ -644,45 +546,6 @@ function startFileWatcher() {
   });
 }
 
-// ── WEB SEARCH — Anthropic native tool ──────────────────────
-async function callClaudeWithSearch(systemPrompt, userPrompt, maxTokens = 600) {
-  if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante dans Railway');
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: maxTokens,
-      tools: [{
-        type: 'web_search_20250305',
-        name: 'web_search',
-        max_uses: 2,
-        allowed_domains: [
-          'jeuxvideo.com','gamekult.com','ign.com','gamespot.com','kotaku.com',
-          'eurogamer.net','gematsu.com','destructoid.com','rpgsite.net',
-          'videogameschronicle.com','pushsquare.com','nintendolife.com',
-          'gameinformer.com','wikipedia.org',
-        ],
-        user_location: { type: 'approximate', country: 'FR', timezone: 'Europe/Paris' },
-      }],
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    }),
-  });
-  if (!response.ok) {
-    const errBody = await response.text();
-    throw new Error(`Anthropic Search API ${response.status}: ${errBody}`);
-  }
-  const data = await response.json();
-  const textBlocks = (data.content || []).filter(b => b.type === 'text');
-  if (!textBlocks.length) throw new Error('Aucun bloc texte dans la réponse Search');
-  return textBlocks.map(b => b.text).join('\n').trim();
-}
-
 async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante dans Railway');
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -707,94 +570,31 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
   return data.content[0].text.trim();
 }
 
-// ── ANECDOTE v1.6.0 ──────────────────────────────────────────
-// Web search Anthropic + anti-doublon Discord + anti-répétition
+// ── ANECDOTE ─────────────────────────────────────────────────
+// AVANT : system prompt générique "expert gaming"
+// APRÈS  : BOT_PERSONA injectée — Brainy.exe raconte l'anecdote à sa façon
 
-async function wasAnecdotePostedToday() {
-  try {
-    const cfg = botConfig.anecdote;
-    const guild = await discord.guilds.fetch(GUILD_ID);
-    await guild.channels.fetch();
-    const channel = guild.channels.cache.get(cfg.channelId);
-    if (!channel) return false;
-    const messages = await channel.messages.fetch({ limit: 20 });
-    const todayStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
-    return [...messages.values()].some(msg => {
-      if (msg.author.id !== discord.user.id) return false;
-      const msgDate = msg.createdAt.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
-      return msgDate === todayStr && msg.embeds?.some(e => e.title?.includes('Anecdote Gaming'));
-    });
-  } catch (err) {
-    pushLog('WARN', `wasAnecdotePostedToday : ${err.message}`, 'warn');
-    return false;
-  }
+async function generateAnecdote() {
+  return callClaude(
+    BOT_PERSONA + "\n\nTu génères des anecdotes gaming courtes, vraies, fun et surprenantes pour ta communauté.",
+    "Génère UNE anecdote gaming surprenante. Thèmes : JRPG, retro, indie, next-gen, easter eggs, records, bugs légendaires... FORMAT : 2-3 phrases max, punchy, ton naturel. Commence direct sans intro. Termine par une ligne vide puis : 🕹️ *[Jeu concerné]*",
+    400
+  );
 }
 
-async function getRecentAnecdoteTopics(limit = 30) {
-  try {
-    const cfg = botConfig.anecdote;
-    const guild = await discord.guilds.fetch(GUILD_ID);
-    await guild.channels.fetch();
-    const channel = guild.channels.cache.get(cfg.channelId);
-    if (!channel) return [];
-    const messages = await channel.messages.fetch({ limit: 100 });
-    const topics = [];
-    for (const msg of [...messages.values()]) {
-      if (msg.author.id !== discord.user.id) continue;
-      if (!msg.embeds?.some(e => e.title?.includes('Anecdote Gaming'))) continue;
-      const embed = msg.embeds.find(e => e.title?.includes('Anecdote Gaming'));
-      if (!embed?.description) continue;
-      const lines = embed.description.split('\n').reverse();
-      const gameLine = lines.find(l => l.trim().length > 0);
-      if (gameLine) topics.push(gameLine.replace(/[*_~`]/g, '').replace(/^.*?:/, '').trim().slice(0, 60));
-      if (topics.length >= limit) break;
-    }
-    return topics;
-  } catch { return []; }
-}
-
-async function generateAnecdote(topicsToAvoid = []) {
-  const avoidBlock = topicsToAvoid.length > 0
-    ? '\n\nSujets/jeux DÉJÀ traités récemment — NE PAS répéter :\n' + topicsToAvoid.map(t => `- ${t}`).join('\n')
-    : '';
-  const searchPrompt = `Recherche une anecdote gaming vraie et surprenante — fait historique, coulisse de dev, easter egg, bug légendaire, record insolite ou actu récente (jusqu\'en 2026).\nFORMAT : 2-3 phrases max, punchy, ton naturel. Commence direct sans intro. Termine par une ligne vide puis : 🕹️ *[Jeu concerné]*${avoidBlock}`;
-  try {
-    const result = await callClaudeWithSearch(
-      BOT_PERSONA + '\n\nTu génères des anecdotes gaming courtes, vraies et surprenantes pour ta communauté. Utilise tes recherches web pour trouver des faits récents ou peu connus.',
-      searchPrompt, 600
-    );
-    pushLog('SYS', '🔍 Anecdote générée avec web search', 'success');
-    return result;
-  } catch (searchErr) {
-    pushLog('WARN', `Web search indisponible — fallback Claude : ${searchErr.message}`, 'warn');
-    return callClaude(
-      BOT_PERSONA + '\n\nTu génères des anecdotes gaming courtes, vraies et surprenantes.' + avoidBlock,
-      'Génère UNE anecdote gaming surprenante. FORMAT : 2-3 phrases max. Commence direct. Termine par : 🕹️ *[Jeu concerné]*',
-      400
-    );
-  }
-}
 async function postDailyAnecdote() {
   const cfg = botConfig.anecdote;
   if (!cfg.enabled) { pushLog('SYS', 'Anecdote désactivée — skip'); return; }
 
-  // Double-check Discord (anti-doublon redémarrage Railway)
-  const alreadyPosted = await wasAnecdotePostedToday();
-  if (alreadyPosted) {
-    const todayStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
-    botConfig.anecdote.lastPostedDate = todayStr;
-    saveConfig();
-    pushLog('SYS', "Anecdote : déjà postée aujourd'hui (vérifié Discord) — skip");
+  const todayStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+  if (cfg.lastPostedDate === todayStr) {
+    pushLog('SYS', `Anecdote déjà postée aujourd'hui (${todayStr}) — skip`);
     return;
   }
 
-  const recentTopics = await getRecentAnecdoteTopics(30);
-  if (recentTopics.length > 0)
-    pushLog('SYS', `Anti-répétition : ${recentTopics.length} sujets récents lus`);
-
   pushLog('SYS', "Génération de l'anecdote gaming du jour...");
   try {
-    const text = await generateAnecdote(recentTopics);
+    const text = await generateAnecdote();
     const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(cfg.channelId);
@@ -805,7 +605,7 @@ async function postDailyAnecdote() {
       .setColor(0x7c5cbf)
       .setTitle('🎮 Anecdote Gaming du jour')
       .setDescription(text)
-      .setFooter({ text: `${todayCap} • Brainee.exe` })
+      .setFooter({ text: `${todayCap} • Brainy.exe` })
       .setTimestamp();
     await channel.send({ content: '**🧠 Le saviez-vous ?**', embeds: [embed] });
 
@@ -877,7 +677,7 @@ async function sendWelcomeMessage(member) {
 
 // ── ACTUS ────────────────────────────────────────────────────
 // AVANT : system prompt "expert gaming qui résume les actualités"
-// APRÈS  : BOT_PERSONA + style Brainee.exe pour les actus
+// APRÈS  : BOT_PERSONA + style Brainy.exe pour les actus
 
 async function postActuForChannel(ch, slotKey) {
   try {
@@ -888,26 +688,16 @@ async function postActuForChannel(ch, slotKey) {
     if (!ANTHROPIC_API_KEY) { pushLog('ERR', 'ANTHROPIC_API_KEY manquante', 'error'); return false; }
     const month = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
     const monthCap = month.charAt(0).toUpperCase() + month.slice(1);
-    let content;
-    try {
-      content = await callClaudeWithSearch(
-        BOT_PERSONA + '\n\nTu résumes les actus gaming récentes du mois pour ta communauté Discord. Utilise tes recherches web pour des actus à jour (2026).',
-        `Recherche les actus récentes (jusqu'en 2026) pour ce salon : ${ch.topic}.\nFormat : 4 à 6 actus concrètes avec emojis, dates si dispo. Ton Brainee.exe — punchy, direct. Commence direct, zéro intro.`,
-        700
-      );
-    } catch (searchFallback) {
-      pushLog('WARN', `Actus web search indisponible — fallback : ${searchFallback.message}`, 'warn');
-      content = await callClaude(
-        BOT_PERSONA + '\n\nTu résumes les actus gaming récentes pour ta communauté Discord.',
-        `Génère un récap des actus récentes pour le salon : ${ch.topic}. Format : 4 à 6 actus concrètes avec emojis. Ton Brainee.exe — punchy, direct. Commence direct, zéro intro.`,
-        600
-      );
-    }
+    const content = await callClaude(
+      BOT_PERSONA + "\n\nTu résumes les actus gaming récentes pour ta communauté Discord.",
+      `Génère un récap des actus récentes pour le salon : ${ch.topic}. Format : 4 à 6 actus concrètes avec emojis. Ton Brainy.exe — punchy, direct, communauté jeune. Commence direct par les actus, zéro intro.`,
+      600
+    );
     const embed = new EmbedBuilder()
       .setColor(0x5b7fff)
       .setTitle(`📅 Actus ${monthCap}`)
       .setDescription(content)
-      .setFooter({ text: `${ch.channelName} • Brainee.exe` })
+      .setFooter({ text: `${ch.channelName} • Brainy.exe` })
       .setTimestamp();
     await channel.send({ embeds: [embed] });
     pushLog('SYS', `✅ Actus postées dans ${ch.channelName}`, 'success');
@@ -1048,67 +838,30 @@ function getQuietestChannel() {
   return sorted[0];
 }
 
-// ── CONVERSATIONS v1.6.0 ─────────────────────────────────────
-// postSmartConversation : analyse le salon, re-engage les membres
-// Scheduler récursif 8h-22h — min 1h entre posts, délai aléatoire
+// ── CONVERSATIONS : postRandomConversation ───────────────────
+// AVANT : system prompt générique "Tu écris pour une communauté..."
+// APRÈS  : BOT_PERSONA + CONV_MODES aléatoire (débat / chaos / deep / simple)
 
-// Rate limit global : minimum 1h entre TOUT post du bot
-let lastAnyBotPostTime = 0;
-const MIN_GAP_ANY_POST = 60 * 60 * 1000;  // 1h
-
-// ── Analyse salon avant de poster ─────────────────────────────
-async function analyzeChannelForReengage(channel, botUserId) {
-  try {
-    const messages = await channel.messages.fetch({ limit: 50 });
-    const msgArray = [...messages.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp);
-    const now = Date.now();
-    const HOURS_48 = 48 * 60 * 60 * 1000;
-
-    for (const msg of msgArray) {
-      if (msg.author.bot) continue;
-      if (now - msg.createdTimestamp > HOURS_48) continue;
-      if (msg.content.length < 10) continue;
-      const hasReply = msgArray.some(m =>
-        m.author.id === botUserId && m.reference?.messageId === msg.id
-      );
-      if (hasReply) continue;
-      const lastBotInChan = msgArray.find(m => m.author.id === botUserId);
-      if (lastBotInChan && (now - lastBotInChan.createdTimestamp) < 30 * 60 * 1000) continue;
-      return { type: 'reply', message: msg };
-    }
-
-    const recentHuman = msgArray.filter(m => !m.author.bot && (now - m.createdTimestamp) < HOURS_48);
-    if (recentHuman.length > 0 && recentHuman.length <= 3) {
-      const context = recentHuman.slice(0, 3)
-        .map(m => `${m.author.username}: ${m.content.slice(0, 100)}`)
-        .join('\n');
-      return { type: 'relance', context };
-    }
-    return { type: 'new' };
-  } catch { return { type: 'new' }; }
-}
-
-// ── postSmartConversation ──────────────────────────────────────
-async function postSmartConversation() {
+async function postRandomConversation() {
   const cfg = botConfig.conversations;
   if (!cfg.enabled) return;
 
   resetDailyCountIfNeeded();
+
   const count = getConvDailyCount();
-  const max   = getConvMaxPerDay();
+  const max = getConvMaxPerDay();
   if (count >= max) {
     pushLog('SYS', `💬 Quota journalier atteint (${count}/${max}) — skip`);
     return;
   }
 
-  if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) {
-    const wait = Math.round((MIN_GAP_ANY_POST - (Date.now() - lastAnyBotPostTime)) / 60000);
-    pushLog('SYS', `💬 Rate limit global — skip (encore ${wait} min à attendre)`);
-    return;
-  }
-
   const ch = getQuietestChannel();
   if (!ch) return;
+
+  if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) {
+    pushLog('SYS', `💬 Rate limit global — skip (dernier post il y a moins de 30min)`);
+    return;
+  }
 
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
@@ -1116,123 +869,145 @@ async function postSmartConversation() {
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel || !ANTHROPIC_API_KEY) return;
 
-    const analysis = await analyzeChannelForReengage(channel, discord.user.id);
-    const category = ch.category || 'general';
-    const modes    = CATEGORY_MODES[category] || CATEGORY_MODES.general;
-    const mode     = modes[Math.floor(Math.random() * modes.length)];
-    let postType   = analysis.type;
+    // Choisir un mode aléatoire parmi les 4
+    const mode = CONV_MODES[Math.floor(Math.random() * CONV_MODES.length)];
+    pushLog('SYS', `💬 Mode conversation : ${mode.name} dans ${ch.channelName}`);
 
-    if (analysis.type === 'reply' && analysis.message) {
-      const target = analysis.message;
-      const content = await callClaude(
-        BOT_PERSONA + `\n\nTu es dans le salon "${ch.channelName}". SUJET OBLIGATOIRE : ${ch.topic}.`,
-        `Un membre a posté sans réponse. Tu reviens dessus naturellement.\nMessage de ${target.author.username} : "${target.content.slice(0, 300)}"\n\nRéponds en 1-2 phrases max, style Brainee.exe. Tu peux le taguer avec <@${target.author.id}>. Reste dans le sujet du salon.`,
-        150
-      );
-      await target.reply(content);
-      pushLog('SYS', `💬 Re-engage → reply à ${target.author.username} dans ${ch.channelName}`, 'success');
-
-    } else if (analysis.type === 'relance' && analysis.context) {
-      const content = await callClaude(
-        BOT_PERSONA + `\n\nTu es dans le salon "${ch.channelName}". SUJET OBLIGATOIRE : ${ch.topic}.\nRÈGLE : reste DANS ce sujet. ${mode.inject}`,
-        `Contexte récent du salon :\n${analysis.context}\n\nRelance la conv en t'appuyant sur ce qui a été dit. 2-3 phrases max, termine par un hook ou une question.`,
-        180
-      );
-      await channel.send(content);
-      pushLog('SYS', `💬 Relance [${mode.name}] dans ${ch.channelName}`, 'success');
-
-    } else {
-      const content = await callClaude(
-        BOT_PERSONA + `\n\nTu es dans le salon "${ch.channelName}". SUJET OBLIGATOIRE : ${ch.topic}.\nRÈGLE ABSOLUE : ne parle QUE de ce sujet. ${mode.inject}`,
-        'Lance une conversation. 3 phrases max. Termine TOUJOURS par un hook ou une question. Commence direct.',
-        150
-      );
-      await channel.send(content);
-      pushLog('SYS', `💬 Conv [${mode.name}/${category}] dans ${ch.channelName}`, 'success');
-    }
+    const content = await callClaude(
+      BOT_PERSONA + "\n\n" + mode.inject,
+      `Salon de ta communauté : ${ch.topic}. Maximum 3 phrases. Pose une question ou un hook à la fin. Commence direct.`,
+      150
+    );
+    await channel.send(content);
 
     lastAnyBotPostTime = Date.now();
     updateConvStats(ch.channelId);
     const newCount = getConvDailyCount();
 
+    pushLog('SYS', `💬 Lance-conv [${mode.name}] postée dans ${ch.channelName} (${newCount}/${max} aujourd'hui)`, 'success');
     broadcast('conversation', {
       channel: ch.channelName,
       time: new Date().toLocaleTimeString('fr-FR'),
       dayCount: newCount,
       dayTarget: max,
       mode: mode.name,
-      category,
-      type: postType,
     });
-
   } catch (err) {
-    pushLog('ERR', `postSmartConversation échoué dans ${ch.channelName} : ${err.message}`, 'error');
+    pushLog('ERR', `Lance-conversation échoué : ${err.message}`, 'error');
   }
 }
 
-// ── Scheduler récursif 8h-22h ──────────────────────────────────
-const CONV_HOUR_MIN  = 8;
-const CONV_HOUR_MAX  = 22;
-const CONV_DELAY_MIN = 60  * 60 * 1000;  // 1h
-const CONV_DELAY_MAX = 210 * 60 * 1000;  // 3h30
+// ── CONVERSATIONS : replyToConversations ─────────────────────
+// AVANT : system prompt "Tu es un membre actif... Tu réponds de façon naturelle"
+// APRÈS  : BOT_PERSONA — Brainy.exe répond comme elle-même
 
-let convSchedulerTimeout = null;
+async function replyToConversations() {
+  const cfg = botConfig.conversations;
+  if (!cfg.enabled || !cfg.canReply) return;
+  if (!ANTHROPIC_API_KEY) return;
 
-function getParisHour() {
-  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' })).getHours();
-}
-function msUntilWindowOpen() {
-  const now   = new Date();
-  const paris = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-  const h     = paris.getHours();
-  if (h < CONV_HOUR_MIN) {
-    const open = new Date(paris);
-    open.setHours(CONV_HOUR_MIN, 5 + Math.floor(Math.random() * 20), 0, 0);
-    return open - paris;
-  }
-  if (h >= CONV_HOUR_MAX) {
-    const open = new Date(paris);
-    open.setDate(open.getDate() + 1);
-    open.setHours(CONV_HOUR_MIN, 5 + Math.floor(Math.random() * 20), 0, 0);
-    return open - paris;
-  }
-  return 0;
-}
+  const active = cfg.channels.filter(c => c.enabled);
+  if (!active.length) return;
 
-function scheduleNextConv() {
-  if (convSchedulerTimeout) clearTimeout(convSchedulerTimeout);
-  const windowWait = msUntilWindowOpen();
-  if (windowWait > 0) {
-    const h = (windowWait / 3600000).toFixed(1);
-    pushLog('SYS', `💬 Hors plage 8h-22h — prochaine conv dans ${h}h`);
-    convSchedulerTimeout = setTimeout(scheduleNextConv, windowWait);
-    return;
-  }
-  const delay      = CONV_DELAY_MIN + Math.floor(Math.random() * (CONV_DELAY_MAX - CONV_DELAY_MIN));
-  const targetMs   = Date.now() + delay;
-  const targetHour = new Date(new Date(targetMs).toLocaleString('en-US', { timeZone: 'Europe/Paris' })).getHours();
-  if (targetHour >= CONV_HOUR_MAX) {
-    convSchedulerTimeout = setTimeout(scheduleNextConv, msUntilWindowOpen() || delay);
-    pushLog('SYS', `💬 Post prévu après 22h — reporté à demain 8h`);
-    return;
-  }
-  const min = Math.round(delay / 60000);
-  pushLog('SYS', `💬 Prochaine conv dans ${min} min (~${Math.floor(min/60)}h${min%60}m)`);
-  convSchedulerTimeout = setTimeout(async () => {
-    try { await postSmartConversation(); } catch (err) {
-      pushLog('ERR', `scheduleNextConv exec : ${err.message}`, 'error');
+  const ch = active[Math.floor(Math.random() * active.length)];
+
+  try {
+    const guild = await discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.get(ch.channelId);
+    if (!channel) return;
+
+    const messages = await channel.messages.fetch({ limit: 8 });
+    const msgArray = [...messages.values()];
+
+    if (!msgArray.length) return;
+
+    const lastMsg = msgArray[0];
+    if (lastMsg.author.bot) return;
+
+    const age = Date.now() - lastMsg.createdTimestamp;
+    const minAge = 20 * 60 * 1000;
+    const maxAge = 3 * 60 * 60 * 1000;
+    if (age < minAge || age > maxAge) return;
+
+    const lastBotPost = (cfg.lastPostByChannel || {})[ch.channelId] || 0;
+    const minGapBetweenPosts = 90 * 60 * 1000;
+    if (Date.now() - lastBotPost < minGapBetweenPosts) return;
+
+    if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
+
+    const msgContent = lastMsg.content;
+    if (!msgContent || msgContent.length < 5) return;
+
+    const reply = await callClaude(
+      BOT_PERSONA + "\n\nTu réponds à un message d'un membre de ta communauté.",
+      `Contexte du salon : "${ch.topic}"\nMessage d'un membre : "${msgContent}"\n\nRéponds de façon naturelle et courte (1-2 phrases max), comme Brainy.exe. Tu peux ajouter une question ou une réaction engageante. Reste dans le style — pas d'intro forcée.`,
+      120
+    );
+
+    await lastMsg.reply(reply);
+    lastAnyBotPostTime = Date.now();
+    updateConvStats(ch.channelId);
+
+    pushLog('SYS', `💬 Réponse postée dans ${ch.channelName} (reply à ${lastMsg.author.username})`, 'success');
+    broadcast('conversation', {
+      channel: ch.channelName,
+      time: new Date().toLocaleTimeString('fr-FR'),
+      type: 'reply',
+    });
+  } catch (err) {
+    if (!err.message.includes('Missing Permissions') && !err.message.includes('Unknown Message')) {
+      pushLog('ERR', `Réponse conv échouée dans ${ch.channelName} : ${err.message}`, 'error');
     }
-    scheduleNextConv();
-  }, delay);
+  }
 }
 
-function startConvScheduler() {
-  if (convSchedulerTimeout) clearTimeout(convSchedulerTimeout);
-  const max      = getConvMaxPerDay();
+// Rate limit global : minimum 30min entre TOUT post du bot
+let lastAnyBotPostTime = 0;
+const MIN_GAP_ANY_POST = 30 * 60 * 1000;
+
+let convCron = null;
+let replyCron = null;
+
+function startConvCron() {
+  if (convCron) { try { convCron.stop(); } catch {} }
+  if (replyCron) { try { replyCron.stop(); } catch {} }
+
+  convCron = cron.schedule('0 * * * *', () => {
+    const cfg = botConfig.conversations;
+    if (!cfg.enabled) return;
+
+    resetDailyCountIfNeeded();
+
+    const count = getConvDailyCount();
+    const max = getConvMaxPerDay();
+    if (count >= max) return;
+
+    const remaining = max - count;
+    const parisHour = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' })).getHours();
+    const hoursLeft = Math.max(1, 24 - parisHour);
+    const prob = Math.min(0.85, remaining / hoursLeft);
+
+    if (Math.random() < prob) {
+      pushLog('SYS', `💬 Déclenchement conv (${count}/${max} aujourd'hui, prob: ${Math.round(prob * 100)}%)`);
+      postRandomConversation();
+    }
+  }, { timezone: 'Europe/Paris' });
+
+  replyCron = cron.schedule('0 */2 * * *', () => {
+    const cfg = botConfig.conversations;
+    if (!cfg.enabled || !cfg.canReply) return;
+    if (Math.random() < 0.4) {
+      pushLog('SYS', `💬 Tentative de réponse à une conv membre...`);
+      replyToConversations();
+    }
+  }, { timezone: 'Europe/Paris' });
+
+  const max = getConvMaxPerDay();
   const canReply = botConfig.conversations.canReply;
-  pushLog('SYS', `✅ Scheduler conversations : 8h-22h, max ${max}/jour, ré-engage membres: ${canReply ? 'ON' : 'OFF'}`);
-  scheduleNextConv();
+  pushLog('SYS', `✅ Cron conversations : max ${max}/jour, 24h/24, réponses membres: ${canReply ? 'ON' : 'OFF'}`);
 }
+
 setInterval(async () => {
   try {
     const state = await readGuildState();
@@ -1274,7 +1049,7 @@ app.post('/api/config', (req, res) => {
     saveConfig();
     if (section === 'anecdote') startAnecdoteCron();
     if (section === 'actus') startActusCron();
-    if (section === 'conversations') startConvScheduler();
+    if (section === 'conversations') startConvCron();
     if (section === 'reactionRoles') pushLog('SYS', 'Config reaction roles mise à jour', 'success');
     pushLog('SYS', `Config "${section}" mise à jour via dashboard`, 'success');
     broadcast('configUpdate', { section, data: botConfig[section] });
@@ -1433,13 +1208,13 @@ app.post('/api/actus', async (req, res) => {
 
 app.post('/api/conversation', async (req, res) => {
   pushLog('SYS', 'Lance-conversation déclenché manuellement');
-  postSmartConversation();
+  postRandomConversation();
   res.json({ ok: true, message: 'Lance-conversation en cours...' });
 });
 
 app.post('/api/conversation/reply', async (req, res) => {
   pushLog('SYS', 'Réponse conv déclenchée manuellement');
-  // reply intégré dans postSmartConversation
+  replyToConversations();
   res.json({ ok: true, message: 'Tentative de réponse en cours...' });
 });
 
@@ -1566,7 +1341,7 @@ wss.on('connection', async (ws) => {
 discord.once('ready', async () => {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(' 🧠 BRAINEXE DASHBOARD — Serveur démarré');
-  console.log(' 🎮 Persona : Brainee.exe v1.4.0');
+  console.log(' 🎮 Persona : Brainy.exe v1.4.0');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(` ✅ Bot connecté : ${discord.user.tag}`);
   console.log(` 🌐 Dashboard : http://localhost:${PORT}`);
@@ -1576,7 +1351,7 @@ discord.once('ready', async () => {
   startFileWatcher();
   startAnecdoteCron();
   startActusCron();
-  startConvScheduler();
+  startConvCron();
 
   setTimeout(() => {
     checkAnecdoteMissed();
