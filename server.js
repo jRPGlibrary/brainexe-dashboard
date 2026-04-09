@@ -1,6 +1,6 @@
 /**
 * ================================================
-* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.4.0
+* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.7.0
 * ================================================
 * Express + Discord.js + WebSocket + node-cron
 * NOUVEAUTÉS v1.4.0:
@@ -46,6 +46,11 @@ const PORT = process.env.PORT || 3000;
 const TEMPLATE_FILE = 'discord-template.json';
 const CONFIG_FILE = 'brainexe-config.json';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+
+// Mots-clés déclenchant une recherche YouTube dans les @mentions
+const YOUTUBE_KEYWORDS = ['vidéo', 'video', 'trailer', 'gameplay', 'ost', 'musique', 'music',
+  'montre', 'lien', 'youtube', 'regarder', 'écouter', 'écoute', 'cherche', 'trouve', 'extrait'];
 
 // ── PERSONA BRAINY.EXE v1.4.0 ────────────────────────────────
 const BOT_PERSONA = `
@@ -115,11 +120,18 @@ const CONV_MODES = [
 const DEFAULT_CONFIG = {
   anecdote: {
     enabled: true,
-    channelId: '1481028189680570421',
-    channelName: '💬・général',
     hour: 12,
     randomDelayMax: 30,
     lastPostedDate: null,
+    channels: [
+      { channelId: '1481028260753051739', channelName: '🕹️・retro-général',   topic: 'jeux rétro, consoles classiques, années 80/90/2000, bugs légendaires retro', enabled: true },
+      { channelId: '1481028247415296231', channelName: '🐉・jrpg-corner',      topic: 'JRPG, Final Fantasy, Persona, Dragon Quest, secrets de développement JRPG', enabled: true },
+      { channelId: '1481028244500385946', channelName: '⚔️・rpg-général',      topic: 'RPG toutes catégories, systèmes de jeu innovants, mécaniques surprenantes', enabled: true },
+      { channelId: '1481028272090386584', channelName: '🌿・indie-général',    topic: 'jeux indépendants, histoires de dev solo, pépites cachées', enabled: true },
+      { channelId: '1481028283486175245', channelName: '🚀・next-gen-général', topic: 'jeux PS5, Xbox Series, PC, innovations techniques, records next-gen', enabled: true },
+      { channelId: '1481028264410484837', channelName: '🏆・hidden-gems',      topic: 'jeux méconnus, hidden gems oubliés, trésors cachés du gaming', enabled: true },
+      { channelId: '1481028254721773588', channelName: '🃏・lore-et-théories', topic: 'lore gaming, easter eggs cachés, secrets de développement, mystères', enabled: true },
+    ],
   },
   welcome: {
     enabled: true,
@@ -203,18 +215,33 @@ const DEFAULT_CONFIG = {
       { emoji: '👁️', roleName: '👁️ Lurker' },
     ],
   },
+  tiktokLive: {
+    enabled: true,
+    username: process.env.TIKTOK_USERNAME || 'brain.exe_modded',
+    channelId: '1481028204897501273',
+    channelName: '🔴・alertes-live',
+    pingRoleName: '🔔 Notif Lives',
+  },
 };
 
 function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const raw = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+      // v1.7.0 : migration automatique ancien format anecdote → channels[]
+      let anecdoteMerged = { ...DEFAULT_CONFIG.anecdote, ...(raw.anecdote || {}) };
+      if (!Array.isArray(anecdoteMerged.channels)) {
+        anecdoteMerged.channels = DEFAULT_CONFIG.anecdote.channels;
+        delete anecdoteMerged.channelId;
+        delete anecdoteMerged.channelName;
+      }
       return {
-        anecdote: { ...DEFAULT_CONFIG.anecdote, ...(raw.anecdote || {}) },
+        anecdote: anecdoteMerged,
         welcome: { ...DEFAULT_CONFIG.welcome, ...(raw.welcome || {}) },
         actus: { ...DEFAULT_CONFIG.actus, ...(raw.actus || {}) },
         conversations: { ...DEFAULT_CONFIG.conversations, ...(raw.conversations || {}) },
         reactionRoles: { ...DEFAULT_CONFIG.reactionRoles, ...(raw.reactionRoles || {}) },
+        tiktokLive: { ...DEFAULT_CONFIG.tiktokLive, ...(raw.tiktokLive || {}) },
       };
     }
   } catch (e) { console.error('Config load error:', e.message); }
@@ -534,6 +561,56 @@ discord.on(Events.GuildMemberAdd, async (member) => {
   }
 });
 
+// ── @BRAINEE MENTION DIRECTE ────────────────────────────────────
+// v1.7.0 : Brainee lit le contexte du salon + cherche sur YouTube si besoin
+
+discord.on(Events.MessageCreate, async (message) => {
+  if (message.author.bot) return;
+  if (!message.guild || message.guild.id !== GUILD_ID) return;
+  if (!discord.user || !message.mentions.has(discord.user)) return;
+
+  const userQuery = message.content.replace(/<@!?\d+>/g, '').trim();
+  if (!userQuery) return;
+
+  try {
+    // Contexte : 20 derniers messages du salon (hors le message actuel)
+    const fetched = await message.channel.messages.fetch({ limit: 25 });
+    const contextLines = [...fetched.values()]
+      .filter(m => m.id !== message.id)
+      .reverse()
+      .slice(-20)
+      .map(m => `${m.author.bot ? '[Brainee]' : m.author.username}: ${m.content.slice(0, 120)}`)
+      .join('\n');
+
+    // Détection YouTube
+    const needsYoutube = YOUTUBE_KEYWORDS.some(kw => userQuery.toLowerCase().includes(kw));
+    let youtubeBlock = '';
+
+    if (needsYoutube && YOUTUBE_API_KEY) {
+      pushLog('SYS', `🎬 @mention YouTube détectée — recherche : "${userQuery}"`);
+      const results = await searchYoutube(userQuery, 3);
+      if (results.length) {
+        youtubeBlock = '\n\n🎬 **Vidéos trouvées :**\n' +
+          results.map(r => `• [${r.title}](${r.url}) — *${r.channel}*`).join('\n');
+      }
+    }
+
+    const channelTopic = botConfig.conversations.channels.find(c => c.channelId === message.channelId)?.topic || message.channel.name;
+
+    const reply = await callClaude(
+      BOT_PERSONA + `\n\nContexte récent du salon #${message.channel.name} (${channelTopic}) :\n${contextLines}`,
+      `Un membre vient de te mentionner directement. Son message : "${userQuery}"\n\nRéponds-lui naturellement. Max 3 phrases. Style Brainee. Commence direct, pas d'intro.`,
+      250
+    );
+
+    await message.reply(reply + youtubeBlock);
+    pushLog('SYS', `💬 @mention Brainee répondue dans #${message.channel.name} (YouTube: ${needsYoutube && youtubeBlock ? 'OUI' : 'NON'})`, 'success');
+
+  } catch (err) {
+    pushLog('ERR', `@mention Brainee échouée : ${err.message}`, 'error');
+  }
+});
+
 function startFileWatcher() {
   const watcher = chokidar.watch(TEMPLATE_FILE, {
     persistent: true, ignoreInitial: true,
@@ -570,14 +647,33 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
   return data.content[0].text.trim();
 }
 
+// ── YOUTUBE SEARCH ──────────────────────────────────────────────
+async function searchYoutube(query, maxResults = 3) {
+  if (!YOUTUBE_API_KEY) return [];
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=${maxResults}&type=video&key=${YOUTUBE_API_KEY}&relevanceLanguage=fr`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.items || !data.items.length) return [];
+    return data.items.map(item => ({
+      title: item.snippet.title,
+      url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+      channel: item.snippet.channelTitle,
+    }));
+  } catch (err) {
+    pushLog('ERR', `YouTube search échoué : ${err.message}`, 'error');
+    return [];
+  }
+}
+
 // ── ANECDOTE ─────────────────────────────────────────────────
 // AVANT : system prompt générique "expert gaming"
 // APRÈS  : BOT_PERSONA injectée — Brainy.exe raconte l'anecdote à sa façon
 
-async function generateAnecdote() {
+async function generateAnecdote(ch) {
   return callClaude(
     BOT_PERSONA + "\n\nTu génères des anecdotes gaming courtes, vraies, fun et surprenantes pour ta communauté.",
-    "Génère UNE anecdote gaming surprenante. Thèmes : JRPG, retro, indie, next-gen, easter eggs, records, bugs légendaires... FORMAT : 2-3 phrases max, punchy, ton naturel. Commence direct sans intro. Termine par une ligne vide puis : 🕹️ *[Jeu concerné]*",
+    `Génère UNE anecdote gaming surprenante sur le thème : ${ch.topic}. FORMAT : 2-3 phrases max, punchy, ton naturel. Commence direct sans intro. Termine par une ligne vide puis : 🕹️ *[Jeu concerné]*`,
     400
   );
 }
@@ -592,28 +688,31 @@ async function postDailyAnecdote() {
     return;
   }
 
-  pushLog('SYS', "Génération de l'anecdote gaming du jour...");
+  const activeChannels = (cfg.channels || []).filter(c => c.enabled);
+  if (!activeChannels.length) { pushLog('ERR', 'Anecdote : aucun salon actif', 'error'); return; }
+  const ch = activeChannels[Math.floor(Math.random() * activeChannels.length)];
+  pushLog('SYS', `🎲 Anecdote du jour → #${ch.channelName} (thème : ${ch.topic.split(',')[0]})`);
   try {
-    const text = await generateAnecdote();
+    const text = await generateAnecdote(ch);
     const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
-    const channel = guild.channels.cache.get(cfg.channelId);
-    if (!channel) { pushLog('ERR', `Anecdote : salon introuvable (ID: ${cfg.channelId})`, 'error'); return; }
+    const channel = guild.channels.cache.get(ch.channelId);
+    if (!channel) { pushLog('ERR', `Anecdote : salon introuvable (ID: ${ch.channelId})`, 'error'); return; }
     const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
     const todayCap = today.charAt(0).toUpperCase() + today.slice(1);
     const embed = new EmbedBuilder()
       .setColor(0x7c5cbf)
       .setTitle('🎮 Anecdote Gaming du jour')
       .setDescription(text)
-      .setFooter({ text: `${todayCap} • Brainy.exe` })
+      .setFooter({ text: `${todayCap} • Brainee` })
       .setTimestamp();
     await channel.send({ content: '**🧠 Le saviez-vous ?**', embeds: [embed] });
 
     botConfig.anecdote.lastPostedDate = todayStr;
     saveConfig();
 
-    pushLog('SYS', `✅ Anecdote postée dans ${cfg.channelName}`, 'success');
-    broadcast('anecdote', { status: 'posted', time: new Date().toLocaleTimeString('fr-FR') });
+    pushLog('SYS', `✅ Anecdote postée dans #${ch.channelName}`, 'success');
+    broadcast('anecdote', { status: 'posted', time: new Date().toLocaleTimeString('fr-FR'), channel: ch.channelName });
   } catch (err) {
     pushLog('ERR', `Anecdote échouée : ${err.message}`, 'error');
     broadcast('anecdote', { status: 'error', error: err.message });
@@ -697,7 +796,7 @@ async function postActuForChannel(ch, slotKey) {
       .setColor(0x5b7fff)
       .setTitle(`📅 Actus ${monthCap}`)
       .setDescription(content)
-      .setFooter({ text: `${ch.channelName} • Brainy.exe` })
+      .setFooter({ text: `${ch.channelName} • Brainee` })
       .setTimestamp();
     await channel.send({ embeds: [embed] });
     pushLog('SYS', `✅ Actus postées dans ${ch.channelName}`, 'success');
@@ -873,9 +972,16 @@ async function postRandomConversation() {
     const mode = CONV_MODES[Math.floor(Math.random() * CONV_MODES.length)];
     pushLog('SYS', `💬 Mode conversation : ${mode.name} dans ${ch.channelName}`);
 
+    let convContextBlock = '';
+    try {
+      const recentConvMsgs = await channel.messages.fetch({ limit: 15 });
+      const convContext = [...recentConvMsgs.values()].reverse().slice(-10)
+        .map(m => `${m.author.bot ? '[Brainee]' : m.author.username}: ${m.content.slice(0, 80)}`).join('\n');
+      if (convContext.length > 20) convContextBlock = `\n\nContexte récent (évite de répéter) :\n${convContext}`;
+    } catch (_) {}
     const content = await callClaude(
-      BOT_PERSONA + "\n\n" + mode.inject,
-      `Salon de ta communauté : ${ch.topic}. Maximum 3 phrases. Pose une question ou un hook à la fin. Commence direct.`,
+      BOT_PERSONA + '\n\n' + mode.inject + convContextBlock,
+      `Salon : ${ch.topic}. Maximum 3 phrases. Pose un hook à la fin. Commence direct. Angle frais.`,
       150
     );
     await channel.send(content);
@@ -939,10 +1045,18 @@ async function replyToConversations() {
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
 
+    // v1.7.0 : fetch contexte étendu du salon avant de répondre
+    const recentMsgs = await channel.messages.fetch({ limit: 20 });
+    const recentContext = [...recentMsgs.values()]
+      .reverse()
+      .slice(-15)
+      .map(m => `${m.author.bot ? '[Brainee]' : m.author.username}: ${m.content.slice(0, 100)}`)
+      .join('\n');
+
     const reply = await callClaude(
-      BOT_PERSONA + "\n\nTu réponds à un message d'un membre de ta communauté.",
-      `Contexte du salon : "${ch.topic}"\nMessage d'un membre : "${msgContent}"\n\nRéponds de façon naturelle et courte (1-2 phrases max), comme Brainy.exe. Tu peux ajouter une question ou une réaction engageante. Reste dans le style — pas d'intro forcée.`,
-      120
+      BOT_PERSONA + `\n\nContexte récent du salon #${channel.name} (${ch.topic}) :\n${recentContext}`,
+      `Message auquel tu réponds : "${msgContent}"\n\nRéponds de façon naturelle et courte (1-2 phrases max). Style Brainee. Tu peux ajouter une question engageante. Pas d'intro forcée. Tiens compte du contexte du salon.`,
+      150
     );
 
     await lastMsg.reply(reply);
@@ -1206,6 +1320,11 @@ app.post('/api/actus', async (req, res) => {
   res.json({ ok: true, message: 'Actus en cours de génération...' });
 });
 
+app.post('/api/tiktok/test', async (req, res) => {
+  connectToTikTokLive();
+  res.json({ ok: true, message: 'Tentative connexion TikTok lancée...' });
+});
+
 app.post('/api/conversation', async (req, res) => {
   pushLog('SYS', 'Lance-conversation déclenché manuellement');
   postRandomConversation();
@@ -1341,7 +1460,7 @@ wss.on('connection', async (ws) => {
 discord.once('ready', async () => {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(' 🧠 BRAINEXE DASHBOARD — Serveur démarré');
-  console.log(' 🎮 Persona : Brainy.exe v1.4.0');
+  console.log(' 🎮 Persona : Brainee v1.7.0');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(` ✅ Bot connecté : ${discord.user.tag}`);
   console.log(` 🌐 Dashboard : http://localhost:${PORT}`);
@@ -1359,12 +1478,145 @@ discord.once('ready', async () => {
     pushLog('SYS', '🔍 Vérification rattrapage terminée');
   }, 15000);
 
+  startTikTokLiveWatcher();
   await syncDiscordToFile('Démarrage');
 });
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🌐 Serveur HTTP démarré sur le port ${PORT}`);
 });
+
+
+// ── TIKTOK LIVE → DISCORD ────────────────────────────────────
+let tiktokConnection = null;
+let liveActive = false;
+let liveStartTime = null;
+let liveStats = { peakViewers: 0, totalLikes: 0, totalGifts: 0, giftDetails: {} };
+
+async function generateLiveIntro(title) {
+  if (!ANTHROPIC_API_KEY) return 'Le live vient de démarrer — viens vite 🔥';
+  return callClaude(
+    BOT_PERSONA + '\n\nTu annonces le live TikTok de brain.exe_modded à ta communauté Discord.',
+    `Le titre du live TikTok est : "${title}". Génère UN message d\'accroche (2 phrases max) pour annoncer ce live. Style Brainee — direct, fun, qui donne envie de venir. Pas d\'intro. Termine avec 🔥`,
+    150
+  );
+}
+
+async function sendLiveStartEmbed(title, viewerCount) {
+  try {
+    const cfg = botConfig.tiktokLive;
+    const guild = await discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    await guild.roles.fetch();
+    const channel = guild.channels.cache.get(cfg.channelId);
+    if (!channel) { pushLog('ERR', `TikTok Live : salon introuvable (${cfg.channelId})`, 'error'); return; }
+    const hook = await generateLiveIntro(title);
+    const liveUrl = `https://www.tiktok.com/@${cfg.username}/live`;
+    const now = new Date().toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
+    const embed = new EmbedBuilder()
+      .setColor(0xff0050)
+      .setTitle('🔴  brain.exe_modded EST EN LIVE !')
+      .setDescription(`*"${hook}"*`)
+      .addFields(
+        { name: '🎮 Jeu / Titre', value: title || 'Live en cours', inline: true },
+        { name: '👥 Viewers', value: `${viewerCount || 0}`, inline: true },
+        { name: '\u200b', value: '\u200b', inline: true },
+        { name: '✨ Soutiens le live', value: '👏 **Tapote** le stream  •  📤 **Partage** à tes amis  •  ➕ **Abonne-toi**', inline: false },
+        { name: '🔗 Rejoindre', value: `[👉 Clique ici pour rejoindre le live](${liveUrl})`, inline: false },
+      )
+      .setFooter({ text: `Brainee • alertes-live • ${now}` })
+      .setTimestamp();
+    const pingRole = guild.roles.cache.find(r => r.name === cfg.pingRoleName);
+    const pingContent = pingRole ? `<@&${pingRole.id}> 🔴 **Live démarré !**` : '🔴 **Live démarré !**';
+    await channel.send({ content: pingContent, embeds: [embed] });
+    pushLog('SYS', `📺 Live start → #${channel.name} | "${title}"`, 'success');
+    broadcast('tiktokLive', { status: 'started', title, viewers: viewerCount });
+  } catch (err) {
+    pushLog('ERR', `TikTok Live embed start : ${err.message}`, 'error');
+  }
+}
+
+async function sendLiveEndEmbed(title) {
+  try {
+    const cfg = botConfig.tiktokLive;
+    const guild = await discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.get(cfg.channelId);
+    if (!channel) return;
+    const durationMs = liveStartTime ? Date.now() - liveStartTime : 0;
+    const durationMin = Math.floor(durationMs / 60000);
+    const durationStr = durationMin >= 60 ? `${Math.floor(durationMin/60)}h ${durationMin%60}min` : `${durationMin}min`;
+    const topGifts = Object.entries(liveStats.giftDetails)
+      .sort((a, b) => b[1] - a[1]).slice(0, 3)
+      .map(([name, count]) => `**${name}** ×${count}`).join(' • ') || 'Aucun gift cette session';
+    const embed = new EmbedBuilder()
+      .setColor(0x36393f)
+      .setTitle('⚫  Live terminé — brain.exe_modded')
+      .addFields(
+        { name: '🎮 Jeu / Titre', value: title || 'Live', inline: true },
+        { name: '⏱️ Durée', value: durationStr, inline: true },
+        { name: '\u200b', value: '\u200b', inline: true },
+        { name: '👥 Pic viewers', value: `${liveStats.peakViewers}`, inline: true },
+        { name: '❤️ Likes totaux', value: `${liveStats.totalLikes}`, inline: true },
+        { name: '🎁 Gifts reçus', value: `${liveStats.totalGifts}`, inline: true },
+        { name: '🏆 Top gifts de la session', value: topGifts, inline: false },
+        { name: '💜 Merci à tous', value: 'Merci à chacun qui était là — vous assurez 🙏', inline: false },
+      )
+      .setFooter({ text: 'Brainee • alertes-live' })
+      .setTimestamp();
+    await channel.send({ embeds: [embed] });
+    pushLog('SYS', `📺 Live end → durée: ${durationStr}, gifts: ${liveStats.totalGifts}`, 'success');
+    broadcast('tiktokLive', { status: 'ended', duration: durationStr, gifts: liveStats.totalGifts });
+  } catch (err) {
+    pushLog('ERR', `TikTok Live embed end : ${err.message}`, 'error');
+  }
+}
+
+function connectToTikTokLive() {
+  const cfg = botConfig.tiktokLive;
+  if (!cfg.enabled || liveActive) return;
+  let WebcastPushConnection;
+  try { WebcastPushConnection = require('tiktok-live-connector').WebcastPushConnection; }
+  catch (e) { pushLog('ERR', 'tiktok-live-connector non installé — npm install tiktok-live-connector', 'error'); return; }
+  const conn = new WebcastPushConnection(`@${cfg.username}`);
+  let currentTitle = `${cfg.username} est en live`;
+  conn.connect().then(state => {
+    tiktokConnection = conn;
+    liveActive = true;
+    liveStartTime = Date.now();
+    liveStats = { peakViewers: 0, totalLikes: 0, totalGifts: 0, giftDetails: {} };
+    currentTitle = state.roomInfo?.title || currentTitle;
+    pushLog('SYS', `📺 TikTok live détecté : "${currentTitle}"`, 'success');
+    sendLiveStartEmbed(currentTitle, state.roomInfo?.userCount || 0);
+  }).catch(() => {});
+  conn.on('roomUser', data => { if ((data.viewerCount||0) > liveStats.peakViewers) liveStats.peakViewers = data.viewerCount; });
+  conn.on('like', data => { if (data.totalLikeCount) liveStats.totalLikes = data.totalLikeCount; });
+  conn.on('gift', data => {
+    if (data.giftType === 1 && !data.repeatEnd) return;
+    if ((data.diamondCount||0) > 0 || data.giftName) {
+      liveStats.totalGifts += (data.repeatCount||1);
+      const g = data.giftName || 'Gift';
+      liveStats.giftDetails[g] = (liveStats.giftDetails[g]||0) + (data.repeatCount||1);
+    }
+  });
+  const onEnd = () => {
+    if (!liveActive) return;
+    sendLiveEndEmbed(currentTitle);
+    liveActive = false; liveStartTime = null; tiktokConnection = null;
+  };
+  conn.on('streamEnd', onEnd);
+  conn.on('disconnected', onEnd);
+  conn.on('error', err => pushLog('ERR', `TikTok Live : ${err.message}`, 'error'));
+}
+
+let tiktokCron = null;
+function startTikTokLiveWatcher() {
+  const cfg = botConfig.tiktokLive;
+  if (!cfg.enabled) { pushLog('SYS', 'TikTok Live watcher désactivé'); return; }
+  if (tiktokCron) { try { tiktokCron.stop(); } catch {} }
+  tiktokCron = cron.schedule('*/2 * * * *', () => connectToTikTokLive(), { timezone: 'Europe/Paris' });
+  pushLog('SYS', `✅ TikTok Live watcher → @${cfg.username} (check toutes les 2min)`);
+}
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
