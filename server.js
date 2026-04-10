@@ -1,15 +1,17 @@
 /**
 * ================================================
-* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.8.0
+* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.9.0
 * ================================================
-* v1.8.0 — Brainee LevelUP
-*   - MongoDB Atlas : persistance complète
-*   - Profils membres : toneScore, topics, historique
-*   - Détection d'humeur et adaptation du ton
-*   - Conclusions naturelles (plus de question forcée)
-*   - Contexte enrichi à 100 messages
-*   - Identification précise des speakers
-*   - Fix TikTok Live error logging
+* v1.9.0 — MongoDB State Migration
+*   - getBotState / setBotState : état persistant entre redeploys
+*   - checkAnecdoteMissed async : vérifie MongoDB avant rattrapage
+*   - checkActusMissed async : vérifie slots MongoDB
+*   - postDailyAnecdote → setBotState après post
+*   - postBiMonthlyActus → setBotState après post
+*   - resetDailyCountIfNeeded async + MongoDB
+*   - updateConvStats async → setBotState quota survit aux redeploys
+*   - replyToConversations : fix double-fetch (1 seul fetch 100 msgs)
+*   - Boot : await check fonctions async + délai 25s
 * ================================================
 */
 
@@ -71,7 +73,8 @@ async function connectMongoDB() {
     mongoDb = client.db('brainexe');
     // Créer l'index userId si pas déjà là
     await mongoDb.collection('memberProfiles').createIndex({ userId: 1 }, { unique: true });
-    pushLog('SYS', '✅ MongoDB Atlas connecté — profils membres actifs', 'success');
+    await mongoDb.collection('botState').createIndex({ _id: 1 });
+    pushLog('SYS', '✅ MongoDB Atlas connecté — profils membres + botState actifs', 'success');
   } catch (err) {
     pushLog('ERR', `MongoDB connexion échouée : ${err.message}`, 'error');
   }
@@ -163,6 +166,28 @@ ${topicsStr}
 ${toneRule}
 RÈGLE NON NÉGOCIABLE : si le message exprime une difficulté, de la fatigue, un problème perso ou un sujet sensible (santé mentale, stress...) — ignore le score complètement et sois douce et bienveillante, point.
   `.trim();
+}
+
+// ── BOT STATE (MongoDB) ───────────────────────────────────────
+// v1.9.0 : persistance de l'état bot entre les redeploys Railway
+async function getBotState() {
+  if (!mongoDb) return {};
+  try {
+    return await mongoDb.collection('botState').findOne({ _id: 'main' }) || {};
+  } catch { return {}; }
+}
+
+async function setBotState(patch) {
+  if (!mongoDb) return;
+  try {
+    await mongoDb.collection('botState').updateOne(
+      { _id: 'main' },
+      { $set: { ...patch, updatedAt: new Date() } },
+      { upsert: true }
+    );
+  } catch (err) {
+    pushLog('ERR', `setBotState échoué : ${err.message}`, 'error');
+  }
 }
 
 // ── FORMATAGE CONTEXTE ENRICHI ────────────────────────────────
@@ -880,6 +905,7 @@ async function postDailyAnecdote() {
     await channel.send({ content: '**🧠 Le saviez-vous ?**', embeds: [embed] });
     botConfig.anecdote.lastPostedDate = todayStr;
     saveConfig();
+    await setBotState({ anecdoteLastPostedDate: todayStr });
     pushLog('SYS', `✅ Anecdote postée dans #${ch.channelName}`, 'success');
     broadcast('anecdote', { status: 'posted', time: new Date().toLocaleTimeString('fr-FR'), channel: ch.channelName });
   } catch (err) {
@@ -901,15 +927,17 @@ function startAnecdoteCron() {
   pushLog('SYS', `✅ Cron anecdote configuré à ${h}h (Europe/Paris)`);
 }
 
-function checkAnecdoteMissed() {
+async function checkAnecdoteMissed() {
   const cfg = botConfig.anecdote;
   if (!cfg.enabled) return;
+  const state = await getBotState();
   const now = new Date();
   const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
   const todayStr = parisNow.toLocaleDateString('fr-CA');
   const hourNow = parisNow.getHours();
   const targetH = cfg.hour || 12;
-  if (cfg.lastPostedDate === todayStr) { pushLog('SYS', `Anecdote : déjà postée aujourd'hui — OK`); return; }
+  const lastPosted = state.anecdoteLastPostedDate || cfg.lastPostedDate;
+  if (lastPosted === todayStr) { pushLog('SYS', `Anecdote : déjà postée aujourd'hui (MongoDB) — OK`); return; }
   if (hourNow >= targetH) {
     pushLog('SYS', `⚠️ Anecdote manquée détectée (${targetH}h déjà passée) — rattrapage dans 30s`);
     setTimeout(postDailyAnecdote, 30000);
@@ -997,6 +1025,7 @@ function postBiMonthlyActus(force) {
     botConfig.actus.lastPostedSlots.push(slotKey);
     if (botConfig.actus.lastPostedSlots.length > 20) botConfig.actus.lastPostedSlots = botConfig.actus.lastPostedSlots.slice(-20);
     saveConfig();
+    setBotState({ actusLastPostedSlots: botConfig.actus.lastPostedSlots }).catch(() => {});
   }
   active.forEach(ch => {
     const delayMs = Math.floor(Math.random() * windowMs);
@@ -1015,9 +1044,10 @@ function startActusCron() {
   pushLog('SYS', `✅ Cron actus configuré : le 1er et le 15 du mois à 10h (étalé sur 12h)`);
 }
 
-function checkActusMissed() {
+async function checkActusMissed() {
   const cfg = botConfig.actus;
   if (!cfg.enabled) return;
+  const state = await getBotState();
   const now = new Date();
   const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
   const dayNow = parisNow.getDate();
@@ -1025,8 +1055,10 @@ function checkActusMissed() {
   const isActusDay = dayNow === 1 || dayNow === 15;
   if (!isActusDay || hourNow < 10 || hourNow >= 22) { pushLog('SYS', `Actus : pas de rattrapage nécessaire — OK`); return; }
   const slotKey = getCurrentActusSlot();
-  const postedSlots = Array.isArray(cfg.lastPostedSlots) ? cfg.lastPostedSlots : [];
-  if (postedSlots.includes(slotKey)) { pushLog('SYS', `Actus : slot ${slotKey} déjà posté — OK`); return; }
+  const mongoSlots = state.actusLastPostedSlots || [];
+  const localSlots = Array.isArray(cfg.lastPostedSlots) ? cfg.lastPostedSlots : [];
+  const allSlots = [...new Set([...mongoSlots, ...localSlots])];
+  if (allSlots.includes(slotKey)) { pushLog('SYS', `Actus : slot ${slotKey} déjà posté (MongoDB) — OK`); return; }
   pushLog('SYS', `⚠️ Actus bi-mensuelles manquées (slot: ${slotKey}) — rattrapage dans 60s`);
   setTimeout(() => postBiMonthlyActus(false), 60000);
 }
@@ -1038,17 +1070,26 @@ function getTodayStr() {
 function getConvDailyCount() { return botConfig.conversations.dailyCount || 0; }
 function getConvMaxPerDay() { return botConfig.conversations.maxPerDay || 5; }
 
-function resetDailyCountIfNeeded() {
+async function resetDailyCountIfNeeded() {
   const todayStr = getTodayStr();
   if (botConfig.conversations.lastPostDate !== todayStr) {
+    const state = await getBotState();
+    if (state.convLastPostDate === todayStr) {
+      // Railway a restarté aujourd'hui — on récupère le quota MongoDB
+      botConfig.conversations.lastPostDate = todayStr;
+      botConfig.conversations.dailyCount = state.convDailyCount || 0;
+      pushLog('SYS', `♻️ Quota conversations récupéré depuis MongoDB (${botConfig.conversations.dailyCount}/${getConvMaxPerDay()})`);
+      return;
+    }
     botConfig.conversations.dailyCount = 0;
     botConfig.conversations.lastPostDate = todayStr;
     saveConfig();
+    await setBotState({ convDailyCount: 0, convLastPostDate: todayStr });
     pushLog('SYS', `🔄 Reset quota conversations — nouveau jour (${todayStr})`);
   }
 }
 
-function updateConvStats(channelId) {
+async function updateConvStats(channelId) {
   const todayStr = getTodayStr();
   if (!botConfig.conversations.lastPostByChannel) botConfig.conversations.lastPostByChannel = {};
   botConfig.conversations.lastPostByChannel[channelId] = Date.now();
@@ -1058,6 +1099,11 @@ function updateConvStats(channelId) {
   }
   botConfig.conversations.dailyCount = (botConfig.conversations.dailyCount || 0) + 1;
   saveConfig();
+  setBotState({
+    convDailyCount: botConfig.conversations.dailyCount,
+    convLastPostDate: todayStr,
+    convLastPostByChannel: botConfig.conversations.lastPostByChannel,
+  }).catch(() => {});
 }
 
 function getQuietestChannel() {
@@ -1078,7 +1124,7 @@ function getQuietestChannel() {
 async function postRandomConversation() {
   const cfg = botConfig.conversations;
   if (!cfg.enabled) return;
-  resetDailyCountIfNeeded();
+  await resetDailyCountIfNeeded();
   const count = getConvDailyCount();
   const max = getConvMaxPerDay();
   if (count >= max) { pushLog('SYS', `💬 Quota journalier atteint (${count}/${max}) — skip`); return; }
@@ -1108,7 +1154,7 @@ async function postRandomConversation() {
     );
     await channel.send(content);
     lastAnyBotPostTime = Date.now();
-    updateConvStats(ch.channelId);
+    await updateConvStats(ch.channelId);
     const newCount = getConvDailyCount();
     pushLog('SYS', `💬 Lance-conv [${mode.name}] postée dans ${ch.channelName} (${newCount}/${max} aujourd'hui)`, 'success');
     broadcast('conversation', {
@@ -1137,8 +1183,9 @@ async function replyToConversations() {
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel) return;
-    const messages = await channel.messages.fetch({ limit: 8 });
-    const msgArray = [...messages.values()];
+    // v1.9.0 : un seul fetch 100 msgs (fix double-fetch v1.8.0)
+    const recentMsgs = await channel.messages.fetch({ limit: 100 });
+    const msgArray = [...recentMsgs.values()];
     if (!msgArray.length) return;
     const lastMsg = msgArray[0];
     if (lastMsg.author.bot) return;
@@ -1152,9 +1199,6 @@ async function replyToConversations() {
     if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
-
-    // v1.8.0 : contexte enrichi 100 messages + profil membre
-    const recentMsgs = await channel.messages.fetch({ limit: 100 });
     const recentContext = formatContext(recentMsgs, null, 80);
 
     const profile = await getMemberProfile(lastMsg.author.id);
@@ -1176,7 +1220,7 @@ Réponds naturellement. 1-2 phrases max. Conclus si c'est le bon moment, relance
     const reply = await callClaude(systemPrompt, userPrompt, 150);
     await lastMsg.reply(reply);
     lastAnyBotPostTime = Date.now();
-    updateConvStats(ch.channelId);
+    await updateConvStats(ch.channelId);
 
     // Mise à jour profil membre
     await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
@@ -1202,7 +1246,7 @@ function startConvCron() {
   convCron = cron.schedule('0 * * * *', () => {
     const cfg = botConfig.conversations;
     if (!cfg.enabled) return;
-    resetDailyCountIfNeeded();
+    resetDailyCountIfNeeded().catch(() => {});
     const count = getConvDailyCount();
     const max = getConvMaxPerDay();
     if (count >= max) return;
@@ -1723,7 +1767,7 @@ if (!TOKEN) {
 discord.once('ready', async () => {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(' 🧠 BRAINEXE DASHBOARD — Serveur démarré');
-  console.log(' 🎮 Persona : Brainee v1.8.0 — LevelUP');
+  console.log(' 🎮 Persona : Brainee v1.9.0 — LevelUP');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(` ✅ Bot connecté : ${discord.user.tag}`);
   console.log(` 🌐 Dashboard : http://localhost:${PORT}`);
@@ -1739,11 +1783,11 @@ discord.once('ready', async () => {
   // MongoDB Atlas — connexion en arrière-plan (non bloquant)
   connectMongoDB().catch(err => pushLog('ERR', `MongoDB init : ${err.message}`, 'error'));
 
-  setTimeout(() => {
-    checkAnecdoteMissed();
-    checkActusMissed();
-    pushLog('SYS', '🔍 Vérification rattrapage terminée');
-  }, 15000);
+  setTimeout(async () => {
+    await checkAnecdoteMissed();
+    await checkActusMissed();
+    pushLog('SYS', '🔍 Vérification rattrapage terminée (MongoDB)');
+  }, 25000);
 
   await syncDiscordToFile('Démarrage');
 });
