@@ -228,8 +228,7 @@ STYLE D'ÉCRITURE :
 - tu tutoies toujours
 
 RÈGLES ABSOLUES :
-- conclus naturellement quand c'est le bon moment — relance uniquement si c'est vraiment justifié
-- NE pose PAS une question à chaque fin de message, c'est artificiel
+- pose toujours une question ou un hook à la fin
 - maximum 3 phrases
 - zéro langue de bois
 - t'es un membre, pas un assistant
@@ -1103,7 +1102,7 @@ async function postRandomConversation() {
 
     const content = await callClaude(
       BOT_PERSONA + '\n\n' + mode.inject + convContextBlock,
-      `Salon : ${ch.topic}. Maximum 3 phrases. Commence direct. Angle frais. Conclus si c'est le bon moment — pas de question forcée.`,
+      `Salon : ${ch.topic}. Maximum 3 phrases. Pose un hook à la fin. Commence direct. Angle frais.`,
       150
     );
     await channel.send(content);
