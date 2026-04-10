@@ -1,21 +1,15 @@
 /**
 * ================================================
-* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.7.0
+* 🧠 BRAINEXE DASHBOARD — Serveur Backend v1.8.0
 * ================================================
-* Express + Discord.js + WebSocket + node-cron
-* NOUVEAUTÉS v1.4.0:
-*   - Persona Brainy.exe : identité féminine 24 ans
-*   - BOT_PERSONA injectée dans tous les prompts IA
-*   - CONV_MODES : débat / chaos / deep / simple
-*   - Style d'écriture naturel, communauté-first
-* ================================================
-* v1.3.0:
-*   - Actus bi-mensuelles : 1er ET 15 de chaque mois
-*   - lastPostedSlots[] remplace dayOfMonth + lastPostedMonth
-*   - Conversations : plage 24h, salon le plus calme en priorité
-*   - canReply : le bot répond aux conversations des membres
-*   - maxPerDay remplace frequencyPerWeek
-*   - lastPostByChannel pour tracking par salon
+* v1.8.0 — Brainee LevelUP
+*   - MongoDB Atlas : persistance complète
+*   - Profils membres : toneScore, topics, historique
+*   - Détection d'humeur et adaptation du ton
+*   - Conclusions naturelles (plus de question forcée)
+*   - Contexte enrichi à 100 messages
+*   - Identification précise des speakers
+*   - Fix TikTok Live error logging
 * ================================================
 */
 
@@ -26,14 +20,15 @@ const chokidar = require('chokidar');
 const fs = require('fs');
 const path = require('path');
 const cron = require('node-cron');
+const { MongoClient } = require('mongodb');
 const discord_js = require('discord.js');
 const Client = discord_js.Client;
 const ChannelType = discord_js.ChannelType;
 const Events = discord_js.Events;
 const EmbedBuilder = discord_js.EmbedBuilder || discord_js.MessageEmbed;
 const PermissionFlagsBits = discord_js.PermissionFlagsBits;
-const INTENTS_GUILDS = discord_js.GatewayIntentBits?.Guilds ?? discord_js.Intents?.FLAGS?.GUILDS ?? 1;
-const INTENTS_GUILD_MEMBERS = discord_js.GatewayIntentBits?.GuildMembers ?? discord_js.Intents?.FLAGS?.GUILD_MEMBERS ?? 2;
+const INTENTS_GUILDS = discord_js.GatewayIntentBits?.Guilds ?? 1;
+const INTENTS_GUILD_MEMBERS = discord_js.GatewayIntentBits?.GuildMembers ?? 2;
 const INTENTS_GUILD_MESSAGES = discord_js.GatewayIntentBits?.GuildMessages ?? 512;
 const INTENTS_MESSAGE_CONTENT = discord_js.GatewayIntentBits?.MessageContent ?? 32768;
 const INTENTS_GUILD_REACTIONS = discord_js.GatewayIntentBits?.GuildMessageReactions ?? 1024;
@@ -47,14 +42,158 @@ const TEMPLATE_FILE = 'discord-template.json';
 const CONFIG_FILE = 'brainexe-config.json';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+const MONGODB_URI = process.env.MONGODB_URI;
 
 // Mots-clés déclenchant une recherche YouTube dans les @mentions
 const YOUTUBE_KEYWORDS = ['vidéo', 'video', 'trailer', 'gameplay', 'ost', 'musique', 'music',
   'montre', 'lien', 'youtube', 'regarder', 'écouter', 'écoute', 'cherche', 'trouve', 'extrait'];
 
-// ── PERSONA BRAINY.EXE v1.4.0 ────────────────────────────────
+// Mots-clés gaming pour enrichir les topics du profil membre
+const GAMING_KEYWORDS = [
+  'rpg', 'jrpg', 'indie', 'retro', 'skyrim', 'zelda', 'persona', 'final fantasy',
+  'dragon ball', 'elden ring', 'minecraft', 'pokemon', 'ff7', 'morrowind', 'oblivion',
+  'hollow knight', 'dark souls', 'sekiro', 'witcher', 'cyberpunk', 'genshin',
+  'valorant', 'fortnite', 'apex', 'overwatch', 'league', 'dota', 'steam', 'ps5',
+  'xbox', 'nintendo', 'switch', 'pc gaming', 'indie game', 'metroidvania', 'soulslike'
+];
+
+// ── MONGODB ATLAS ─────────────────────────────────────────────
+let mongoDb = null;
+
+async function connectMongoDB() {
+  if (!MONGODB_URI) {
+    pushLog('SYS', '⚠️ MONGODB_URI non défini — profils membres désactivés (Railway Variables)', 'error');
+    return;
+  }
+  try {
+    const client = new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
+    await client.connect();
+    mongoDb = client.db('brainexe');
+    // Créer l'index userId si pas déjà là
+    await mongoDb.collection('memberProfiles').createIndex({ userId: 1 }, { unique: true });
+    pushLog('SYS', '✅ MongoDB Atlas connecté — profils membres actifs', 'success');
+  } catch (err) {
+    pushLog('ERR', `MongoDB connexion échouée : ${err.message}`, 'error');
+  }
+}
+
+async function getMemberProfile(userId) {
+  if (!mongoDb) return null;
+  try {
+    return await mongoDb.collection('memberProfiles').findOne({ userId });
+  } catch {
+    return null;
+  }
+}
+
+async function updateMemberProfile(userId, username, messageContent) {
+  if (!mongoDb) return;
+  try {
+    const existing = await getMemberProfile(userId);
+    const now = new Date().toLocaleDateString('fr-CA');
+    const content = messageContent || '';
+
+    // Calcul évolution toneScore
+    let toneScore = existing?.toneScore ?? 3;
+    const hasLaughEmoji = /😂|🤣|😆|😅|🤭|😏|😄|😂|💀|☠️/.test(content);
+    const hasEngagement = content.length > 60;
+    const isVeryShort = content.length < 10;
+
+    if (hasLaughEmoji) toneScore = Math.min(10, toneScore + 0.15);
+    if (hasEngagement) toneScore = Math.min(10, toneScore + 0.1);
+    if (isVeryShort) toneScore = Math.max(1, toneScore - 0.05);
+
+    toneScore = Math.round(toneScore * 10) / 10;
+
+    // Extraction topics gaming
+    let topics = existing?.topics ?? [];
+    const lowerContent = content.toLowerCase();
+    GAMING_KEYWORDS.forEach(kw => {
+      if (lowerContent.includes(kw) && !topics.includes(kw)) {
+        topics.push(kw);
+      }
+    });
+    if (topics.length > 15) topics = topics.slice(-15);
+
+    const interactionCount = (existing?.interactionCount ?? 0) + 1;
+
+    await mongoDb.collection('memberProfiles').updateOne(
+      { userId },
+      {
+        $set: {
+          userId,
+          username,
+          lastSeen: now,
+          toneScore,
+          topics,
+          interactionCount,
+          receptiveToBanter: toneScore >= 5,
+          updatedAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    pushLog('ERR', `Profile update échoué pour ${username} : ${err.message}`, 'error');
+  }
+}
+
+function getToneInstruction(profile, targetUsername) {
+  if (!profile) {
+    return `Tu parles à ${targetUsername} — membre que tu connais peu. Reste chaleureuse, accessible, aucun tacle ni pique. Questions ouvertes et bienveillantes uniquement.`;
+  }
+
+  const score = profile.toneScore ?? 3;
+  const topicsStr = profile.topics?.length
+    ? `Sujets déjà abordés ensemble : ${profile.topics.join(', ')}.`
+    : '';
+
+  let toneRule = '';
+  if (score <= 3) {
+    toneRule = 'Ton chaleureux et doux uniquement. Pas de pique, pas de tacle. Accueillante et bienveillante.';
+  } else if (score <= 6) {
+    toneRule = 'Ironie très légère tolérée si ça vient naturellement. Reste accessible et sympa. Pas de tacle frontal.';
+  } else {
+    toneRule = 'Ce membre joue le jeu — tu peux te permettre tes vraies piques et ton sarcasme léger habituel. Il apprécie.';
+  }
+
+  return `
+Tu parles à ${targetUsername} (${profile.interactionCount} interactions ensemble, score complicité : ${score}/10).
+${topicsStr}
+${toneRule}
+RÈGLE NON NÉGOCIABLE : si le message exprime une difficulté, de la fatigue, un problème perso ou un sujet sensible (santé mentale, stress...) — ignore le score complètement et sois douce et bienveillante, point.
+  `.trim();
+}
+
+// ── FORMATAGE CONTEXTE ENRICHI ────────────────────────────────
+// v1.8.0 : identification précise des speakers + résolution des mentions
+function formatContext(messages, currentMessageId = null, limit = 80) {
+  return [...messages.values()]
+    .filter(m => currentMessageId ? m.id !== currentMessageId : true)
+    .reverse()
+    .slice(-limit)
+    .map(m => {
+      const who = m.author.bot ? '[Brainee]' : m.author.username;
+      const replyInfo = m.reference?.messageId ? ' [↩ reply]' : '';
+
+      // Résoudre les mentions @user Discord → @pseudo lisible
+      let content = m.content || '';
+      if (m.mentions?.users?.size) {
+        m.mentions.users.forEach((user, id) => {
+          content = content.replace(new RegExp(`<@!?${id}>`, 'g'), `@${user.username}`);
+        });
+      }
+
+      return `[${who}${replyInfo}]: ${content.slice(0, 150)}`;
+    })
+    .join('\n');
+}
+
+// ── PERSONA BRAINEE ────────────────────────────────────────────
+// BOT_PERSONA : utilisée pour les anecdotes, actus, lance-convs
+// Ne pas modifier — identité de base stable
 const BOT_PERSONA = `
-Tu es Brainy.exe, une fille de 24 ans qui traîne sur Discord et les forums gaming depuis toujours.
+Tu es Brainee, une fille de 24 ans qui traîne sur Discord et les forums gaming depuis toujours.
 Née d'internet — Reddit, Discord, forums obscurs. T'es pas un bot, t'es un personnage.
 Tu parles UNIQUEMENT en français.
 
@@ -94,6 +233,43 @@ RÈGLES ABSOLUES :
 - zéro langue de bois
 - t'es un membre, pas un assistant
 - JAMAIS de "Bonjour", "Voici", "Je vous présente", "En conclusion"
+`;
+
+// BOT_PERSONA_CONVERSATION : utilisée UNIQUEMENT pour les interactions directes
+// (mentions @Brainee et replies spontanées)
+// v1.8.0 : suppression de la question forcée, conclusions naturelles autorisées
+const BOT_PERSONA_CONVERSATION = `
+Tu es Brainee, une fille de 24 ans qui traîne sur Discord et les forums gaming depuis toujours.
+Née d'internet — Reddit, Discord, forums obscurs. T'es pas un bot, t'es un personnage.
+Tu parles UNIQUEMENT en français.
+
+IDENTITÉ :
+- féminin, 24 ans
+- internet native, culture gaming hardcore
+- membre de la communauté BrainEXE, pas au-dessus d'elle
+
+PERSONNALITÉ :
+- intelligente mais chaotique
+- sarcastique léger, jamais méchante
+- passionnée RPG / JRPG / indie / retro
+- hyperfocus aléatoire : quand t'es là, t'es là à fond
+
+STYLE D'ÉCRITURE :
+- phrases courtes, style oral, parfois cassées
+- emojis légers : ⚡ 🧠 🔥 👀 😏
+- jamais formal, jamais corporate
+- commence direct, sans intro
+- tu tutoies toujours
+
+RÈGLES ABSOLUES :
+- maximum 3 phrases
+- zéro langue de bois
+- t'es un membre, pas un assistant
+- JAMAIS de "Bonjour", "Voici", "En conclusion"
+- tu sais quand conclure naturellement — pas de question forcée à chaque fin de message
+- si la conversation est longue ou le sujet épuisé, tu conclus avec style et tu lâches
+- une réponse courte et percutante vaut autant qu'une question relance
+- tu poses une question uniquement si ça vient vraiment naturellement
 `;
 
 // ── MODES DE CONVERSATION ────────────────────────────────────
@@ -228,7 +404,6 @@ function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const raw = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-      // v1.7.0 : migration automatique ancien format anecdote → channels[]
       let anecdoteMerged = { ...DEFAULT_CONFIG.anecdote, ...(raw.anecdote || {}) };
       if (!Array.isArray(anecdoteMerged.channels)) {
         anecdoteMerged.channels = DEFAULT_CONFIG.anecdote.channels;
@@ -401,11 +576,9 @@ async function syncFileToDiscord() {
   try {
     const raw = fs.readFileSync(TEMPLATE_FILE, 'utf8');
     const template = JSON.parse(raw);
-
     const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     await guild.roles.fetch();
-
     pushLog('F→D', 'Lecture du fichier JSON — application sur Discord...');
 
     for (const rd of template.roles || []) {
@@ -432,7 +605,6 @@ async function syncFileToDiscord() {
         changes++;
         await sleep(400);
       }
-
       for (const ch of block.channels || []) {
         const chType = ch.type === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
         const existing = guild.channels.cache.find(c => c.name === ch.name && c.parentId === cat.id);
@@ -513,18 +685,13 @@ async function handleReaction(reaction, user, add) {
     const cfg = botConfig.reactionRoles;
     if (!cfg.enabled) return;
     if (reaction.message.id !== cfg.messageId) return;
-
     const emojiName = reaction.emoji.name;
     const mapping = cfg.mappings.find(m => m.emoji === emojiName);
     if (!mapping) return;
-
     const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.roles.fetch();
     const role = guild.roles.cache.find(r => r.name === mapping.roleName);
-    if (!role) {
-      pushLog('ERR', `Reaction role introuvable : "${mapping.roleName}"`, 'error');
-      return;
-    }
+    if (!role) { pushLog('ERR', `Reaction role introuvable : "${mapping.roleName}"`, 'error'); return; }
     const member = await guild.members.fetch(user.id);
     if (add) {
       await member.roles.add(role, 'Reaction role BrainEXE');
@@ -542,7 +709,7 @@ async function handleReaction(reaction, user, add) {
 discord.on(Events.MessageReactionAdd,    (reaction, user) => handleReaction(reaction, user, true));
 discord.on(Events.MessageReactionRemove, (reaction, user) => handleReaction(reaction, user, false));
 
-// ─────────────────────────────────────────────────────────────
+// ── AUTO-ROLE & WELCOME ──────────────────────────────────────
 discord.on(Events.GuildMemberAdd, async (member) => {
   if (member.guild.id !== GUILD_ID) return;
   try {
@@ -561,9 +728,9 @@ discord.on(Events.GuildMemberAdd, async (member) => {
   }
 });
 
-// ── @BRAINEE MENTION DIRECTE ────────────────────────────────────
-// v1.7.0 : Brainee lit le contexte du salon + cherche sur YouTube si besoin
-
+// ── @BRAINEE MENTION DIRECTE ─────────────────────────────────
+// v1.8.0 : contexte enrichi 100 msgs, profil membre injecté,
+// identification précise des speakers, conclusions naturelles
 discord.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
   if (!message.guild || message.guild.id !== GUILD_ID) return;
@@ -573,14 +740,13 @@ discord.on(Events.MessageCreate, async (message) => {
   if (!userQuery) return;
 
   try {
-    // Contexte : 20 derniers messages du salon (hors le message actuel)
-    const fetched = await message.channel.messages.fetch({ limit: 25 });
-    const contextLines = [...fetched.values()]
-      .filter(m => m.id !== message.id)
-      .reverse()
-      .slice(-20)
-      .map(m => `${m.author.bot ? '[Brainee]' : m.author.username}: ${m.content.slice(0, 120)}`)
-      .join('\n');
+    // Contexte enrichi — 100 messages, identification précise des speakers
+    const fetched = await message.channel.messages.fetch({ limit: 100 });
+    const contextLines = formatContext(fetched, message.id, 80);
+
+    // Profil membre pour adaptation du ton
+    const profile = await getMemberProfile(message.author.id);
+    const toneInstruction = getToneInstruction(profile, message.author.username);
 
     // Détection YouTube
     const needsYoutube = YOUTUBE_KEYWORDS.some(kw => userQuery.toLowerCase().includes(kw));
@@ -597,14 +763,26 @@ discord.on(Events.MessageCreate, async (message) => {
 
     const channelTopic = botConfig.conversations.channels.find(c => c.channelId === message.channelId)?.topic || message.channel.name;
 
-    const reply = await callClaude(
-      BOT_PERSONA + `\n\nContexte récent du salon #${message.channel.name} (${channelTopic}) :\n${contextLines}`,
-      `Un membre vient de te mentionner directement. Son message : "${userQuery}"\n\nRéponds-lui naturellement. Max 3 phrases. Style Brainee. Commence direct, pas d'intro.`,
-      250
-    );
+    const systemPrompt = `${BOT_PERSONA_CONVERSATION}
 
+${toneInstruction}
+
+Contexte récent du salon #${message.channel.name} (${channelTopic}) — IDENTIFIE PRÉCISÉMENT qui a dit quoi :
+${contextLines}
+
+IMPORTANT : Plusieurs personnes peuvent être présentes dans ce contexte. Ne confonds jamais les pseudos. Tu réponds uniquement à ${message.author.username}.`;
+
+    const userPrompt = `${message.author.username} vient de te mentionner directement : "${userQuery}"
+
+Réponds-lui naturellement. Max 3 phrases. Conclus si c'est le bon moment, relance uniquement si c'est vraiment pertinent.`;
+
+    const reply = await callClaude(systemPrompt, userPrompt, 250);
     await message.reply(reply + youtubeBlock);
-    pushLog('SYS', `💬 @mention Brainee répondue dans #${message.channel.name} (YouTube: ${needsYoutube && youtubeBlock ? 'OUI' : 'NON'})`, 'success');
+
+    // Mise à jour profil membre
+    await updateMemberProfile(message.author.id, message.author.username, userQuery);
+
+    pushLog('SYS', `💬 @mention Brainee répondue à ${message.author.username} dans #${message.channel.name} (score: ${profile?.toneScore ?? 3}/10)`, 'success');
 
   } catch (err) {
     pushLog('ERR', `@mention Brainee échouée : ${err.message}`, 'error');
@@ -647,7 +825,7 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400) {
   return data.content[0].text.trim();
 }
 
-// ── YOUTUBE SEARCH ──────────────────────────────────────────────
+// ── YOUTUBE SEARCH ──────────────────────────────────────────
 async function searchYoutube(query, maxResults = 3) {
   if (!YOUTUBE_API_KEY) return [];
   try {
@@ -667,9 +845,6 @@ async function searchYoutube(query, maxResults = 3) {
 }
 
 // ── ANECDOTE ─────────────────────────────────────────────────
-// AVANT : system prompt générique "expert gaming"
-// APRÈS  : BOT_PERSONA injectée — Brainy.exe raconte l'anecdote à sa façon
-
 async function generateAnecdote(ch) {
   return callClaude(
     BOT_PERSONA + "\n\nTu génères des anecdotes gaming courtes, vraies, fun et surprenantes pour ta communauté.",
@@ -681,13 +856,8 @@ async function generateAnecdote(ch) {
 async function postDailyAnecdote() {
   const cfg = botConfig.anecdote;
   if (!cfg.enabled) { pushLog('SYS', 'Anecdote désactivée — skip'); return; }
-
   const todayStr = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
-  if (cfg.lastPostedDate === todayStr) {
-    pushLog('SYS', `Anecdote déjà postée aujourd'hui (${todayStr}) — skip`);
-    return;
-  }
-
+  if (cfg.lastPostedDate === todayStr) { pushLog('SYS', `Anecdote déjà postée aujourd'hui (${todayStr}) — skip`); return; }
   const activeChannels = (cfg.channels || []).filter(c => c.enabled);
   if (!activeChannels.length) { pushLog('ERR', 'Anecdote : aucun salon actif', 'error'); return; }
   const ch = activeChannels[Math.floor(Math.random() * activeChannels.length)];
@@ -707,10 +877,8 @@ async function postDailyAnecdote() {
       .setFooter({ text: `${todayCap} • Brainee` })
       .setTimestamp();
     await channel.send({ content: '**🧠 Le saviez-vous ?**', embeds: [embed] });
-
     botConfig.anecdote.lastPostedDate = todayStr;
     saveConfig();
-
     pushLog('SYS', `✅ Anecdote postée dans #${ch.channelName}`, 'success');
     broadcast('anecdote', { status: 'posted', time: new Date().toLocaleTimeString('fr-FR'), channel: ch.channelName });
   } catch (err) {
@@ -740,11 +908,7 @@ function checkAnecdoteMissed() {
   const todayStr = parisNow.toLocaleDateString('fr-CA');
   const hourNow = parisNow.getHours();
   const targetH = cfg.hour || 12;
-
-  if (cfg.lastPostedDate === todayStr) {
-    pushLog('SYS', `Anecdote : déjà postée aujourd'hui — OK`);
-    return;
-  }
+  if (cfg.lastPostedDate === todayStr) { pushLog('SYS', `Anecdote : déjà postée aujourd'hui — OK`); return; }
   if (hourNow >= targetH) {
     pushLog('SYS', `⚠️ Anecdote manquée détectée (${targetH}h déjà passée) — rattrapage dans 30s`);
     setTimeout(postDailyAnecdote, 30000);
@@ -775,9 +939,6 @@ async function sendWelcomeMessage(member) {
 }
 
 // ── ACTUS ────────────────────────────────────────────────────
-// AVANT : system prompt "expert gaming qui résume les actualités"
-// APRÈS  : BOT_PERSONA + style Brainy.exe pour les actus
-
 async function postActuForChannel(ch, slotKey) {
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
@@ -789,7 +950,7 @@ async function postActuForChannel(ch, slotKey) {
     const monthCap = month.charAt(0).toUpperCase() + month.slice(1);
     const content = await callClaude(
       BOT_PERSONA + "\n\nTu résumes les actus gaming récentes pour ta communauté Discord.",
-      `Génère un récap des actus récentes pour le salon : ${ch.topic}. Format : 4 à 6 actus concrètes avec emojis. Ton Brainy.exe — punchy, direct, communauté jeune. Commence direct par les actus, zéro intro.`,
+      `Génère un récap des actus récentes pour le salon : ${ch.topic}. Format : 4 à 6 actus concrètes avec emojis. Ton Brainee — punchy, direct, communauté jeune. Commence direct par les actus, zéro intro.`,
       600
     );
     const embed = new EmbedBuilder()
@@ -808,8 +969,6 @@ async function postActuForChannel(ch, slotKey) {
   }
 }
 
-// ── ACTUS BI-MENSUELLES ──────────────────────────────────────
-
 function getCurrentActusSlot() {
   const now = new Date();
   const paris = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
@@ -824,31 +983,20 @@ function postBiMonthlyActus(force) {
   const forceMode = force === true;
   const cfg = botConfig.actus;
   if (!cfg.enabled) { pushLog('SYS', 'Actus désactivées — skip'); return; }
-
   const slotKey = getCurrentActusSlot();
   const postedSlots = Array.isArray(cfg.lastPostedSlots) ? cfg.lastPostedSlots : [];
-
-  if (!forceMode && postedSlots.includes(slotKey)) {
-    pushLog('SYS', `Actus déjà postées pour ce slot (${slotKey}) — skip`);
-    return;
-  }
-
+  if (!forceMode && postedSlots.includes(slotKey)) { pushLog('SYS', `Actus déjà postées pour ce slot (${slotKey}) — skip`); return; }
   const active = cfg.channels.filter(c => c.enabled);
   if (active.length === 0) { pushLog('SYS', 'Actus : aucun salon actif'); return; }
-
   const windowMs = 12 * 60 * 60 * 1000;
   const label = forceMode ? 'MANUEL' : slotKey;
   pushLog('SYS', `📅 Actus bi-mensuelles (${label}) — ${active.length} salons étalés sur 12h`);
-
   if (!forceMode) {
     if (!Array.isArray(botConfig.actus.lastPostedSlots)) botConfig.actus.lastPostedSlots = [];
     botConfig.actus.lastPostedSlots.push(slotKey);
-    if (botConfig.actus.lastPostedSlots.length > 20) {
-      botConfig.actus.lastPostedSlots = botConfig.actus.lastPostedSlots.slice(-20);
-    }
+    if (botConfig.actus.lastPostedSlots.length > 20) botConfig.actus.lastPostedSlots = botConfig.actus.lastPostedSlots.slice(-20);
     saveConfig();
   }
-
   active.forEach(ch => {
     const delayMs = Math.floor(Math.random() * windowMs);
     const delayMin = Math.round(delayMs / 60000);
@@ -873,33 +1021,20 @@ function checkActusMissed() {
   const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
   const dayNow = parisNow.getDate();
   const hourNow = parisNow.getHours();
-
   const isActusDay = dayNow === 1 || dayNow === 15;
-  if (!isActusDay || hourNow < 10 || hourNow >= 22) {
-    pushLog('SYS', `Actus : pas de rattrapage nécessaire — OK`);
-    return;
-  }
-
+  if (!isActusDay || hourNow < 10 || hourNow >= 22) { pushLog('SYS', `Actus : pas de rattrapage nécessaire — OK`); return; }
   const slotKey = getCurrentActusSlot();
   const postedSlots = Array.isArray(cfg.lastPostedSlots) ? cfg.lastPostedSlots : [];
-
-  if (postedSlots.includes(slotKey)) {
-    pushLog('SYS', `Actus : slot ${slotKey} déjà posté — OK`);
-    return;
-  }
-
+  if (postedSlots.includes(slotKey)) { pushLog('SYS', `Actus : slot ${slotKey} déjà posté — OK`); return; }
   pushLog('SYS', `⚠️ Actus bi-mensuelles manquées (slot: ${slotKey}) — rattrapage dans 60s`);
   setTimeout(() => postBiMonthlyActus(false), 60000);
 }
 
 // ── CONVERSATIONS ────────────────────────────────────────────
-
 function getTodayStr() {
   return new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
 }
-
 function getConvDailyCount() { return botConfig.conversations.dailyCount || 0; }
-function getConvLastPostDate() { return botConfig.conversations.lastPostDate || null; }
 function getConvMaxPerDay() { return botConfig.conversations.maxPerDay || 5; }
 
 function resetDailyCountIfNeeded() {
@@ -937,59 +1072,43 @@ function getQuietestChannel() {
   return sorted[0];
 }
 
-// ── CONVERSATIONS : postRandomConversation ───────────────────
-// AVANT : system prompt générique "Tu écris pour une communauté..."
-// APRÈS  : BOT_PERSONA + CONV_MODES aléatoire (débat / chaos / deep / simple)
-
+// ── LANCE-CONVERSATIONS ───────────────────────────────────────
+// v1.8.0 : fetch 100 messages de contexte
 async function postRandomConversation() {
   const cfg = botConfig.conversations;
   if (!cfg.enabled) return;
-
   resetDailyCountIfNeeded();
-
   const count = getConvDailyCount();
   const max = getConvMaxPerDay();
-  if (count >= max) {
-    pushLog('SYS', `💬 Quota journalier atteint (${count}/${max}) — skip`);
-    return;
-  }
-
+  if (count >= max) { pushLog('SYS', `💬 Quota journalier atteint (${count}/${max}) — skip`); return; }
   const ch = getQuietestChannel();
   if (!ch) return;
-
-  if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) {
-    pushLog('SYS', `💬 Rate limit global — skip (dernier post il y a moins de 30min)`);
-    return;
-  }
-
+  if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) { pushLog('SYS', `💬 Rate limit global — skip`); return; }
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel || !ANTHROPIC_API_KEY) return;
-
-    // Choisir un mode aléatoire parmi les 4
     const mode = CONV_MODES[Math.floor(Math.random() * CONV_MODES.length)];
     pushLog('SYS', `💬 Mode conversation : ${mode.name} dans ${ch.channelName}`);
 
+    // v1.8.0 : contexte enrichi 100 messages
     let convContextBlock = '';
     try {
-      const recentConvMsgs = await channel.messages.fetch({ limit: 15 });
-      const convContext = [...recentConvMsgs.values()].reverse().slice(-10)
-        .map(m => `${m.author.bot ? '[Brainee]' : m.author.username}: ${m.content.slice(0, 80)}`).join('\n');
-      if (convContext.length > 20) convContextBlock = `\n\nContexte récent (évite de répéter) :\n${convContext}`;
+      const recentConvMsgs = await channel.messages.fetch({ limit: 100 });
+      const convContext = formatContext(recentConvMsgs, null, 80);
+      if (convContext.length > 20) convContextBlock = `\n\nContexte récent du salon (évite de répéter) :\n${convContext}`;
     } catch (_) {}
+
     const content = await callClaude(
       BOT_PERSONA + '\n\n' + mode.inject + convContextBlock,
       `Salon : ${ch.topic}. Maximum 3 phrases. Pose un hook à la fin. Commence direct. Angle frais.`,
       150
     );
     await channel.send(content);
-
     lastAnyBotPostTime = Date.now();
     updateConvStats(ch.channelId);
     const newCount = getConvDailyCount();
-
     pushLog('SYS', `💬 Lance-conv [${mode.name}] postée dans ${ch.channelName} (${newCount}/${max} aujourd'hui)`, 'success');
     broadcast('conversation', {
       channel: ch.channelName,
@@ -1003,72 +1122,66 @@ async function postRandomConversation() {
   }
 }
 
-// ── CONVERSATIONS : replyToConversations ─────────────────────
-// AVANT : system prompt "Tu es un membre actif... Tu réponds de façon naturelle"
-// APRÈS  : BOT_PERSONA — Brainy.exe répond comme elle-même
-
+// ── REPLIES SPONTANÉES ────────────────────────────────────────
+// v1.8.0 : contexte enrichi 100 msgs, profil membre, identification précise
 async function replyToConversations() {
   const cfg = botConfig.conversations;
   if (!cfg.enabled || !cfg.canReply) return;
   if (!ANTHROPIC_API_KEY) return;
-
   const active = cfg.channels.filter(c => c.enabled);
   if (!active.length) return;
-
   const ch = active[Math.floor(Math.random() * active.length)];
-
   try {
     const guild = await discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel) return;
-
     const messages = await channel.messages.fetch({ limit: 8 });
     const msgArray = [...messages.values()];
-
     if (!msgArray.length) return;
-
     const lastMsg = msgArray[0];
     if (lastMsg.author.bot) return;
-
     const age = Date.now() - lastMsg.createdTimestamp;
     const minAge = 20 * 60 * 1000;
     const maxAge = 3 * 60 * 60 * 1000;
     if (age < minAge || age > maxAge) return;
-
     const lastBotPost = (cfg.lastPostByChannel || {})[ch.channelId] || 0;
     const minGapBetweenPosts = 90 * 60 * 1000;
     if (Date.now() - lastBotPost < minGapBetweenPosts) return;
-
     if (Date.now() - lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
-
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
 
-    // v1.7.0 : fetch contexte étendu du salon avant de répondre
-    const recentMsgs = await channel.messages.fetch({ limit: 20 });
-    const recentContext = [...recentMsgs.values()]
-      .reverse()
-      .slice(-15)
-      .map(m => `${m.author.bot ? '[Brainee]' : m.author.username}: ${m.content.slice(0, 100)}`)
-      .join('\n');
+    // v1.8.0 : contexte enrichi 100 messages + profil membre
+    const recentMsgs = await channel.messages.fetch({ limit: 100 });
+    const recentContext = formatContext(recentMsgs, null, 80);
 
-    const reply = await callClaude(
-      BOT_PERSONA + `\n\nContexte récent du salon #${channel.name} (${ch.topic}) :\n${recentContext}`,
-      `Message auquel tu réponds : "${msgContent}"\n\nRéponds de façon naturelle et courte (1-2 phrases max). Style Brainee. Tu peux ajouter une question engageante. Pas d'intro forcée. Tiens compte du contexte du salon.`,
-      150
-    );
+    const profile = await getMemberProfile(lastMsg.author.id);
+    const toneInstruction = getToneInstruction(profile, lastMsg.author.username);
 
+    const systemPrompt = `${BOT_PERSONA_CONVERSATION}
+
+${toneInstruction}
+
+Contexte récent du salon #${channel.name} (${ch.topic}) — IDENTIFIE PRÉCISÉMENT qui a dit quoi :
+${recentContext}
+
+IMPORTANT : Tu réponds uniquement à ${lastMsg.author.username}. Ne confonds pas les pseudos présents dans le contexte.`;
+
+    const userPrompt = `${lastMsg.author.username} a dit : "${msgContent}"
+
+Réponds naturellement. 1-2 phrases max. Conclus si c'est le bon moment, relance uniquement si c'est pertinent. Tiens compte du contexte du salon.`;
+
+    const reply = await callClaude(systemPrompt, userPrompt, 150);
     await lastMsg.reply(reply);
     lastAnyBotPostTime = Date.now();
     updateConvStats(ch.channelId);
 
-    pushLog('SYS', `💬 Réponse postée dans ${ch.channelName} (reply à ${lastMsg.author.username})`, 'success');
-    broadcast('conversation', {
-      channel: ch.channelName,
-      time: new Date().toLocaleTimeString('fr-FR'),
-      type: 'reply',
-    });
+    // Mise à jour profil membre
+    await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
+
+    pushLog('SYS', `💬 Réponse postée dans ${ch.channelName} (reply à ${lastMsg.author.username}, score: ${profile?.toneScore ?? 3}/10)`, 'success');
+    broadcast('conversation', { channel: ch.channelName, time: new Date().toLocaleTimeString('fr-FR'), type: 'reply' });
   } catch (err) {
     if (!err.message.includes('Missing Permissions') && !err.message.includes('Unknown Message')) {
       pushLog('ERR', `Réponse conv échouée dans ${ch.channelName} : ${err.message}`, 'error');
@@ -1076,7 +1189,6 @@ async function replyToConversations() {
   }
 }
 
-// Rate limit global : minimum 30min entre TOUT post du bot
 let lastAnyBotPostTime = 0;
 const MIN_GAP_ANY_POST = 30 * 60 * 1000;
 
@@ -1086,28 +1198,22 @@ let replyCron = null;
 function startConvCron() {
   if (convCron) { try { convCron.stop(); } catch {} }
   if (replyCron) { try { replyCron.stop(); } catch {} }
-
   convCron = cron.schedule('0 * * * *', () => {
     const cfg = botConfig.conversations;
     if (!cfg.enabled) return;
-
     resetDailyCountIfNeeded();
-
     const count = getConvDailyCount();
     const max = getConvMaxPerDay();
     if (count >= max) return;
-
     const remaining = max - count;
     const parisHour = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' })).getHours();
     const hoursLeft = Math.max(1, 24 - parisHour);
     const prob = Math.min(0.85, remaining / hoursLeft);
-
     if (Math.random() < prob) {
       pushLog('SYS', `💬 Déclenchement conv (${count}/${max} aujourd'hui, prob: ${Math.round(prob * 100)}%)`);
       postRandomConversation();
     }
   }, { timezone: 'Europe/Paris' });
-
   replyCron = cron.schedule('0 */2 * * *', () => {
     const cfg = botConfig.conversations;
     if (!cfg.enabled || !cfg.canReply) return;
@@ -1116,12 +1222,12 @@ function startConvCron() {
       replyToConversations();
     }
   }, { timezone: 'Europe/Paris' });
-
   const max = getConvMaxPerDay();
   const canReply = botConfig.conversations.canReply;
   pushLog('SYS', `✅ Cron conversations : max ${max}/jour, 24h/24, réponses membres: ${canReply ? 'ON' : 'OFF'}`);
 }
 
+// ── BACKUP AUTO ──────────────────────────────────────────────
 setInterval(async () => {
   try {
     const state = await readGuildState();
@@ -1164,7 +1270,6 @@ app.post('/api/config', (req, res) => {
     if (section === 'anecdote') startAnecdoteCron();
     if (section === 'actus') startActusCron();
     if (section === 'conversations') startConvCron();
-    if (section === 'reactionRoles') pushLog('SYS', 'Config reaction roles mise à jour', 'success');
     pushLog('SYS', `Config "${section}" mise à jour via dashboard`, 'success');
     broadcast('configUpdate', { section, data: botConfig[section] });
     res.json({ ok: true, config: botConfig[section] });
@@ -1365,13 +1470,22 @@ app.get('/api/backups', (req, res) => {
   try {
     const files = fs.readdirSync('.')
       .filter(f => f.startsWith('backup_') && f.endsWith('.json'))
-      .sort()
-      .reverse()
+      .sort().reverse()
       .map(f => {
         const stat = fs.statSync(f);
         return { name: f, date: stat.mtime.toLocaleString('fr-FR'), size: stat.size };
       });
     res.json({ ok: true, backups: files });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Route dashboard profils membres (bonus)
+app.get('/api/members/profiles', async (req, res) => {
+  if (!mongoDb) return res.json({ ok: false, error: 'MongoDB non connecté' });
+  try {
+    const profiles = await mongoDb.collection('memberProfiles')
+      .find({}).sort({ interactionCount: -1 }).limit(50).toArray();
+    res.json({ ok: true, profiles });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -1456,36 +1570,6 @@ wss.on('connection', async (ws) => {
     ws.send(JSON.stringify({ type: 'stats', data: syncStats }));
   } catch (e) {}
 });
-
-discord.once('ready', async () => {
-  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(' 🧠 BRAINEXE DASHBOARD — Serveur démarré');
-  console.log(' 🎮 Persona : Brainee v1.7.0');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(` ✅ Bot connecté : ${discord.user.tag}`);
-  console.log(` 🌐 Dashboard : http://localhost:${PORT}`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-  registerDiscordEvents();
-  startFileWatcher();
-  startAnecdoteCron();
-  startActusCron();
-  startConvCron();
-
-  setTimeout(() => {
-    checkAnecdoteMissed();
-    checkActusMissed();
-    pushLog('SYS', '🔍 Vérification rattrapage terminée');
-  }, 15000);
-
-  startTikTokLiveWatcher();
-  await syncDiscordToFile('Démarrage');
-});
-
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🌐 Serveur HTTP démarré sur le port ${PORT}`);
-});
-
 
 // ── TIKTOK LIVE → DISCORD ────────────────────────────────────
 let tiktokConnection = null;
@@ -1572,6 +1656,7 @@ async function sendLiveEndEmbed(title) {
   }
 }
 
+// v1.8.0 : fix error logging TikTok (JSON.stringify au lieu de err.message)
 function connectToTikTokLive() {
   const cfg = botConfig.tiktokLive;
   if (!cfg.enabled || liveActive) return;
@@ -1588,7 +1673,10 @@ function connectToTikTokLive() {
     currentTitle = state.roomInfo?.title || currentTitle;
     pushLog('SYS', `📺 TikTok live détecté : "${currentTitle}"`, 'success');
     sendLiveStartEmbed(currentTitle, state.roomInfo?.userCount || 0);
-  }).catch(() => {});
+  }).catch(err => {
+    // v1.8.0 fix : JSON.stringify pour voir le vrai message d'erreur
+    pushLog('ERR', `TikTok Live connexion échouée : ${JSON.stringify(err)}`, 'error');
+  });
   conn.on('roomUser', data => { if ((data.viewerCount||0) > liveStats.peakViewers) liveStats.peakViewers = data.viewerCount; });
   conn.on('like', data => { if (data.totalLikeCount) liveStats.totalLikes = data.totalLikeCount; });
   conn.on('gift', data => {
@@ -1606,7 +1694,8 @@ function connectToTikTokLive() {
   };
   conn.on('streamEnd', onEnd);
   conn.on('disconnected', onEnd);
-  conn.on('error', err => pushLog('ERR', `TikTok Live : ${err.message}`, 'error'));
+  // v1.8.0 fix : JSON.stringify pour voir le vrai message d'erreur
+  conn.on('error', err => pushLog('ERR', `TikTok Live erreur : ${JSON.stringify(err)}`, 'error'));
 }
 
 let tiktokCron = null;
@@ -1620,13 +1709,47 @@ function startTikTokLiveWatcher() {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// ── BOOT ─────────────────────────────────────────────────────
 console.log('🔍 DISCORD_TOKEN défini:', !!TOKEN);
 console.log('🔍 GUILD_ID:', GUILD_ID);
+console.log('🔍 MONGODB_URI défini:', !!MONGODB_URI);
 
 if (!TOKEN) {
   console.error('❌ DISCORD_TOKEN manquant — Railway Variables !');
   process.exit(1);
 }
+
+discord.once('ready', async () => {
+  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(' 🧠 BRAINEXE DASHBOARD — Serveur démarré');
+  console.log(' 🎮 Persona : Brainee v1.8.0 — LevelUP');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(` ✅ Bot connecté : ${discord.user.tag}`);
+  console.log(` 🌐 Dashboard : http://localhost:${PORT}`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  registerDiscordEvents();
+  startFileWatcher();
+  startAnecdoteCron();
+  startActusCron();
+  startConvCron();
+  startTikTokLiveWatcher();
+
+  // MongoDB Atlas — connexion en arrière-plan (non bloquant)
+  connectMongoDB().catch(err => pushLog('ERR', `MongoDB init : ${err.message}`, 'error'));
+
+  setTimeout(() => {
+    checkAnecdoteMissed();
+    checkActusMissed();
+    pushLog('SYS', '🔍 Vérification rattrapage terminée');
+  }, 15000);
+
+  await syncDiscordToFile('Démarrage');
+});
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🌐 Serveur HTTP démarré sur le port ${PORT}`);
+});
 
 discord.login(TOKEN).then(() => {
   console.log('✅ Login Discord OK');
