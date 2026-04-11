@@ -1,27 +1,27 @@
-# 🧠 BrainEXE Dashboard `v1.8.0`
+# 🧠 BrainEXE Dashboard `v1.9.0`
 
-> **v1.8.0 — Brainee LevelUP** — Profils membres MongoDB, adaptation du ton par personne, contexte enrichi 100 messages, identification précise des speakers, conclusions naturelles.
+> **v1.9.0 — MongoDB State Migration** — Persistance complete de l'etat bot entre redeploys Railway. Quota conversations, dates de posts, slots actus : tout survit maintenant aux redemarrages. Fix double-fetch replyToConversations. Boot async non bloquant.
 
-Bot Discord autonome avec dashboard de contrôle en temps réel, automatisations IA et gestion complète du serveur depuis une interface web.
-Conçu pour le serveur **Neurodivergent Creator Hub** — propulsé par **Brainee**.
+Bot Discord autonome avec dashboard de controle en temps reel, automatisations IA et gestion complete du serveur depuis une interface web.
+Concu pour le serveur **Neurodivergent Creator Hub** — propulse par **Brainee**.
 
 ---
 
 ## 📦 Stack technique
 
-| Outil | Rôle |
+| Outil | Role |
 |---|---|
 | **Node.js** | Runtime backend |
 | **Discord.js v14** | Bot Discord |
 | **Express** | Serveur HTTP + API REST |
-| **WebSocket (ws)** | Sync temps réel dashboard ↔ bot |
+| **WebSocket (ws)** | Sync temps reel dashboard ↔ bot |
 | **node-cron** | Planification automatisations |
 | **chokidar** | Watcher fichier JSON |
-| **Anthropic API** | Génération contenu IA (Claude — Brainee) |
-| **YouTube Data API v3** | Recherche vidéos sur @mention |
-| **tiktok-live-connector** | Détection live TikTok en temps réel |
-| **MongoDB Atlas** | Persistance profils membres (toneScore, topics) |
-| **Railway** | Hébergement + auto-deploy |
+| **Anthropic API** | Generation contenu IA (Claude — Brainee) |
+| **YouTube Data API v3** | Recherche videos sur @mention |
+| **tiktok-live-connector** | Detection live TikTok en temps reel |
+| **MongoDB Atlas** | Persistance profils membres + etat bot (botState) |
+| **Railway** | Hebergement + auto-deploy |
 
 ---
 
@@ -32,7 +32,7 @@ brainexe-dashboard/
 ├── server.js               # Bot + API + WebSocket (tout le backend)
 ├── index.html              # Dashboard frontend (single-file)
 ├── discord-template.json   # Template structure serveur (sync bidirectionnel)
-├── brainexe-config.json    # Config persistante (automatisations, reaction roles…)
+├── brainexe-config.json    # Config persistante (automatisations, reaction roles...)
 ├── backup_*.json           # Snapshots auto de la structure Discord
 └── README.md
 ```
@@ -45,27 +45,27 @@ brainexe-dashboard/
 |---|---|---|
 | `DISCORD_TOKEN` | Token du bot Discord | ✅ Oui |
 | `GUILD_ID` | ID du serveur Discord | ✅ Oui |
-| `ANTHROPIC_API_KEY` | Clé API Anthropic (Claude) | ✅ Pour les IA |
-| `YOUTUBE_API_KEY` | Clé API YouTube Data v3 | ✅ Pour les recherches @mention |
-| `TIKTOK_USERNAME` | Pseudo TikTok à surveiller | ✅ Pour les notifs live |
-| `MONGODB_URI` | URI MongoDB Atlas | ✅ Pour les profils membres |
+| `ANTHROPIC_API_KEY` | Cle API Anthropic (Claude) | ✅ Pour les IA |
+| `YOUTUBE_API_KEY` | Cle API YouTube Data v3 | ✅ Pour les recherches @mention |
+| `TIKTOK_USERNAME` | Pseudo TikTok a surveiller | ✅ Pour les notifs live |
+| `MONGODB_URI` | URI MongoDB Atlas | ✅ Pour profils membres + botState |
 | `PORT` | Port serveur (auto Railway) | Auto |
 
 ---
 
-## 🚀 Déploiement
+## 🚀 Deploiement
 
 ```bash
-# 1. Installer les dépendances
+# 1. Installer les dependances
 npm install
 
 # 2. Push sur Railway
 git add .
-git commit -m "feat: v1.8.0"
+git commit -m "feat: v1.9.0"
 git push
 ```
 
-Railway rebuild et redémarre le bot automatiquement.
+Railway rebuild et redemarre le bot automatiquement.
 
 ---
 
@@ -78,44 +78,45 @@ Discord ──────► discord-template.json   (D→F)
               ◄─────── discord-template.json   (F→D)
 ```
 
-- **D→F** : Chaque événement Discord met à jour le fichier JSON — debounce 2s
+- **D→F** : Chaque evenement Discord met a jour le fichier JSON — debounce 2s
 - **F→D** : Chaque modification du fichier JSON applique les changements sur Discord — debounce 2s
-- **Rattrapage Railway** : Au boot, `checkAnecdoteMissed()` et `checkActusMissed()` compensent les crons manqués
+- **Rattrapage Railway** : Au boot, `checkAnecdoteMissed()` et `checkActusMissed()` compensent les crons manques (verifie MongoDB avant de rattaper)
 
-### MongoDB Atlas — Persistance des profils membres
-
-Les profils membres survivent aux redéploiements Railway grâce à MongoDB Atlas (free tier).
+### MongoDB Atlas — Deux collections
 
 | Collection | Contenu |
 |---|---|
 | `memberProfiles` | userId, username, toneScore, topics, interactionCount, lastSeen |
+| `botState` | anecdoteLastPostedDate, actusLastPostedSlots, convDailyCount, convLastPostDate, convLastPostByChannel |
 
-### WebSocket temps réel
+> La collection `botState` est le coeur de la v1.9.0 — elle garantit que le bot reprend exactement ou il en etait apres un redeploy Railway.
 
-| Événement | Contenu |
+### WebSocket temps reel
+
+| Evenement | Contenu |
 |---|---|
-| `state` | État complet du serveur |
-| `log` | Chaque ligne de log en temps réel |
+| `state` | Etat complet du serveur |
+| `log` | Chaque ligne de log en temps reel |
 | `stats` | Compteurs D→F / F→D |
-| `autorole` | Arrivée d'un nouveau membre |
-| `configUpdate` | Mise à jour config depuis une autre instance |
-| `conversation` | Post lance-conv ou réponse membre |
+| `autorole` | Arrivee d'un nouveau membre |
+| `configUpdate` | Mise a jour config depuis une autre instance |
+| `conversation` | Post lance-conv ou reponse membre |
 | `anecdote` | Statut anecdote quotidienne (posted / error + salon) |
 | `tiktokLive` | Statut live TikTok (started / ended + stats) |
 
 ---
 
-## 🤖 Fonctionnalités bot
+## 🤖 Fonctionnalites bot
 
-### 1. Auto-Role à l'arrivée
+### 1. Auto-Role a l'arrivee
 
-Chaque nouveau membre reçoit automatiquement le rôle configuré (défaut : `👁️ Lurker`).
+Chaque nouveau membre recoit automatiquement le role configure (defaut : `👁️ Lurker`).
 
 ---
 
-### 2. Reaction Roles — natif BrainEXE *(v1.5.0)*
+### 2. Reaction Roles — natif BrainEXE
 
-| Emoji | Rôle |
+| Emoji | Role |
 |---|---|
 | 📱 | 📱 TikToker |
 | 🧠 | 🧠 TDAH |
@@ -132,149 +133,139 @@ Chaque nouveau membre reçoit automatiquement le rôle configuré (défaut : `�
 
 ### 3. Message de bienvenue automatique
 
-- Phrase tirée au sort dans `welcome.messages`
+- Phrase tiree au sort dans `welcome.messages`
 - Embed violet BrainEXE avec avatar du membre
-- Liens automatiques vers `#règles` et `#choix-des-rôles`
+- Liens automatiques vers `#regles` et `#choix-des-roles`
 
 ---
 
-### 4. Anecdote Gaming Quotidienne ✨ *(v1.7.0)*
+### 4. Anecdote Gaming Quotidienne ✨
 
-**Routing intelligent** — l'anecdote est envoyée dans le bon salon selon son sujet.
+**Routing intelligent** — l'anecdote est envoyee dans le bon salon selon son sujet.
 
-| Salon | Thème injecté dans le prompt |
+| Salon | Theme injecte dans le prompt |
 |---|---|
-| `🕹️・retro-général` | Consoles classiques, années 80/90/2000, bugs légendaires |
+| `🕹️・retro-general` | Consoles classiques, annees 80/90/2000, bugs legendaires |
 | `🐉・jrpg-corner` | Final Fantasy, Persona, Dragon Quest, secrets de dev |
-| `⚔️・rpg-général` | Systèmes de jeu innovants, mécaniques RPG surprenantes |
-| `🌿・indie-général` | Dev solo, histoires de création, pépites cachées |
-| `🚀・next-gen-général` | Innovations PS5/Xbox/PC, records techniques |
-| `🏆・hidden-gems` | Jeux méconnus, trésors oubliés |
-| `🃏・lore-et-théories` | Easter eggs, mystères, secrets de développement |
+| `⚔️・rpg-general` | Systemes de jeu innovants, mecaniques RPG surprenantes |
+| `🌿・indie-general` | Dev solo, histoires de creation, pepites cachees |
+| `🚀・next-gen-general` | Innovations PS5/Xbox/PC, records techniques |
+| `🏆・hidden-gems` | Jeux meconnus, tresors oublies |
+| `🃏・lore-et-theories` | Easter eggs, mysteres, secrets de developpement |
 
-- Déclenchée chaque jour à 12h (Paris) + délai aléatoire 0–30 min
-- Anti-doublon : `lastPostedDate`
-- Rattrapage automatique si Railway a redémarré
+- Declenchee chaque jour a 12h (Paris) + delai aleatoire 0–30 min
+- Anti-doublon : `lastPostedDate` verifie dans **MongoDB** (v1.9.0)
+- Rattrapage automatique si Railway a redemarre
 
 ---
 
-### 5. TikTok Live → Discord 📺 *(v1.7.0)*
+### 5. TikTok Live → Discord 📺
 
-Notification automatique à chaque live `@brain.exe_modded`.
+Notification automatique a chaque live `@brain.exe_modded`.
 
-**Détection :**
-- Cron toutes les **2 minutes** — connexion tentée via `tiktok-live-connector`
-- Délai max de détection : 2 minutes après le démarrage du live
+**Detection :**
+- Cron toutes les **2 minutes** — connexion tentee via `tiktok-live-connector`
+- Delai max de detection : 2 minutes apres le demarrage du live
 
-**Embed 🔴 Live démarré :**
-- Titre du live récupéré automatiquement
-- Message d'accroche **généré par Claude** — unique à chaque live
+**Embed 🔴 Live demarre :**
+- Titre du live recupere automatiquement
+- Message d'accroche **genere par Claude** — unique a chaque live
 - Nombre de viewers en direct
 - Lien direct vers le live TikTok
 - Ping automatique `🔔 Notif Lives`
 - Rappels : 👏 Tapote • 📤 Partage • ➕ Abonne-toi
 
-**Embed ⚫ Live terminé :**
-- Durée totale
+**Embed ⚫ Live termine :**
+- Duree totale
 - Pic de viewers
 - Likes totaux
-- Nombre total de gifts reçus
-- Top 3 des gifts les plus envoyés
+- Nombre total de gifts recus
+- Top 3 des gifts les plus envoyes
 - Message de remerciement
-
-**Config `brainexe-config.json` :**
-```json
-"tiktokLive": {
-  "enabled": true,
-  "username": "brain.exe_modded",
-  "channelId": "1481028204897501273",
-  "channelName": "🔴・alertes-live",
-  "pingRoleName": "🔔 Notif Lives"
-}
-```
 
 ---
 
 ### 6. Actus Bi-Mensuelles
 
-- Le **1er et le 15 de chaque mois à 10h** (Europe/Paris)
-- Posts étalés sur 12h — 9 salons configurables
-- Générées par Claude avec la persona Brainee
-- Anti-doublon par slot (`YYYY-MM-1` / `YYYY-MM-15`)
+- Le **1er et le 15 de chaque mois a 10h** (Europe/Paris)
+- Posts etales sur 12h — 9 salons configurables
+- Generees par Claude avec la persona Brainee
+- Anti-doublon par slot (`YYYY-MM-1` / `YYYY-MM-15`) verifie dans **MongoDB** (v1.9.0)
 
 ---
 
-### 7. Lance-Conversations + Réponses Auto *(enrichi v1.8.0)*
+### 7. Lance-Conversations + Reponses Auto
 
 - Check toutes les heures — max 5 posts/jour
+- **Quota journalier persiste dans MongoDB** (v1.9.0) — survit aux redeploys
 - Rate limit global : 30 min minimum entre tout post du bot
 - Fetch les **100 derniers messages** avant de lancer un sujet
-- 4 modes : `débat` / `chaos` / `deep` / `simple`
-- **canReply enrichi** : fetch les **100 derniers messages** avant chaque réponse spontanée
-- Contexte formaté avec identification précise de chaque speaker
+- 4 modes : `debat` / `chaos` / `deep` / `simple`
+- **canReply** : fetch les **100 derniers messages** avant chaque reponse spontanee
+- **Fix v1.9.0** : 1 seul fetch 100 msgs dans `replyToConversations` (plus de double-fetch)
 
 ---
 
-### 8. @Brainee Mention Directe 🎯 *(v1.7.0 — enrichi v1.8.0)*
+### 8. @Brainee Mention Directe 🎯
 
 Quand un membre mentionne `@Brainee` dans n'importe quel salon :
 
 1. Brainee lit les **100 derniers messages** du salon (contexte complet)
-2. Identifie précisément qui a dit quoi grâce au formatage enrichi
+2. Identifie precisement qui a dit quoi grace au formatage enrichi
 3. Injecte le profil du membre pour adapter son ton
-4. Détecte si le message contient un mot-clé YouTube
-5. Si mot-clé détecté → lance une recherche YouTube Data API v3
-6. Génère une réponse **contextualisée** via Claude — jamais hors-sujet
+4. Detecte si le message contient un mot-cle YouTube
+5. Si mot-cle detecte → lance une recherche YouTube Data API v3
+6. Genere une reponse **contextualisee** via Claude — jamais hors-sujet
 
 ---
 
-### 9. Persona Brainee *(v1.4.0 — deux modes v1.8.0)*
+### 9. Persona Brainee
 
 **Profil :** Fille de 24 ans, internet native, gaming hardcore — membre BrainEXE.
 
 **Deux personas distinctes :**
 
-| Persona | Utilisée pour | Règle fin de message |
+| Persona | Utilisee pour | Regle fin de message |
 |---|---|---|
-| `BOT_PERSONA` | Anecdotes, actus, lance-convs | Question/hook obligatoire |
-| `BOT_PERSONA_CONVERSATION` | @mentions et replies directs | Conclusion naturelle autorisée |
+| `BOT_PERSONA` | Anecdotes, actus, lance-convs | Question/hook si pertinent |
+| `BOT_PERSONA_CONVERSATION` | @mentions et replies directs | Conclusion naturelle autorisee |
 
-**Style commun :** Phrases courtes, style oral, emojis légers, tutoiement, jamais corporate.
+**Style commun :** Phrases courtes, style oral, emojis legers, tutoiement, jamais corporate.
 
 ---
 
-### 10. Profils Membres MongoDB *(v1.8.0)*
+### 10. Profils Membres MongoDB
 
-Brainee construit une relation différente avec chaque membre au fil du temps.
+Brainee construit une relation differente avec chaque membre au fil du temps.
 
-**Données stockées :**
+**Donnees stockees :**
 
 | Champ | Description |
 |---|---|
 | `userId` | ID Discord du membre |
 | `username` | Pseudo Discord |
-| `toneScore` | Score de complicité 1–10 (évolue automatiquement) |
-| `topics` | Sujets gaming mentionnés ensemble (max 15) |
+| `toneScore` | Score de complicite 1–10 (evolue automatiquement) |
+| `topics` | Sujets gaming mentionnes ensemble (max 15) |
 | `interactionCount` | Nombre total d'interactions avec Brainee |
-| `lastSeen` | Dernière interaction |
-| `receptiveToBanter` | `true` si toneScore ≥ 5 |
+| `lastSeen` | Derniere interaction |
+| `receptiveToBanter` | `true` si toneScore >= 5 |
 
-**Évolution du toneScore :**
+**Evolution du toneScore :**
 - `+0.15` — emoji de rire dans le message (😂 🤣 💀...)
-- `+0.10` — message engagé (> 60 caractères)
-- `-0.05` — message très court (< 10 caractères)
+- `+0.10` — message engage (> 60 caracteres)
+- `-0.05` — message tres court (< 10 caracteres)
 - Score initial : **3** pour tout nouveau membre
-- Plafond : **1–10**, évolution lente et progressive
+- Plafond : **1–10**, evolution lente et progressive
 
 **Les trois niveaux de ton :**
 
 | Score | Comportement |
 |---|---|
 | 1–3 | Chaleureuse et douce uniquement. Aucune pique. |
-| 4–6 | Ironie très légère si naturelle. Reste accessible. |
-| 7–10 | Piques assumées, sarcasme léger — ce membre joue le jeu. |
+| 4–6 | Ironie tres legere si naturelle. Reste accessible. |
+| 7–10 | Piques assumees, sarcasme leger — ce membre joue le jeu. |
 
-**Règle non négociable :** Quel que soit le score, si le message exprime une difficulté, fatigue ou sujet sensible — ton doux et bienveillant systématiquement.
+**Regle non negociable :** Quel que soit le score, si le message exprime une difficulte, fatigue ou sujet sensible — ton doux et bienveillant systematiquement.
 
 ---
 
@@ -282,45 +273,45 @@ Brainee construit une relation différente avec chaque membre au fil du temps.
 
 ### Sync
 
-| Méthode | Route | Description |
+| Methode | Route | Description |
 |---|---|---|
-| GET | `/api/state` | État complet Discord |
+| GET | `/api/state` | Etat complet Discord |
 | POST | `/api/sync/discord-to-file` | Force D→F |
 | POST | `/api/sync/file-to-discord` | Force F→D |
 
 ### Config
 
-| Méthode | Route | Description |
+| Methode | Route | Description |
 |---|---|---|
 | GET | `/api/config` | Lire toute la config |
 | POST | `/api/config` | Sauvegarder une section |
 
 ### Automatisations
 
-| Méthode | Route | Description |
+| Methode | Route | Description |
 |---|---|---|
 | POST | `/api/anecdote` | Forcer une anecdote |
 | POST | `/api/actus` | Forcer les actus |
 | POST | `/api/conversation` | Forcer un lance-conv |
-| POST | `/api/conversation/reply` | Forcer une réponse |
+| POST | `/api/conversation/reply` | Forcer une reponse |
 | POST | `/api/tiktok/test` | Tester la connexion live TikTok |
 | POST | `/api/welcome/test` | Tester le message de bienvenue |
 | POST | `/api/post` | Post manuel dans un salon |
 
 ### Membres
 
-| Méthode | Route | Description |
+| Methode | Route | Description |
 |---|---|---|
 | GET | `/api/members` | Liste des membres |
 | GET | `/api/members/profiles` | Profils MongoDB (top 50 par interactions) |
-| PATCH | `/api/members/:id/roles` | Modifier les rôles |
+| PATCH | `/api/members/:id/roles` | Modifier les roles |
 | POST | `/api/members/:id/mute` | Timeout |
 | POST | `/api/members/:id/kick` | Expulser |
 | POST | `/api/members/:id/ban` | Bannir |
 
 ---
 
-## 🗃️ Structure `brainexe-config.json` — v1.8.0
+## 🗃️ Structure `brainexe-config.json` — v1.9.0
 
 ```json
 {
@@ -330,7 +321,7 @@ Brainee construit une relation différente avec chaque membre au fil du temps.
     "randomDelayMax": 30,
     "lastPostedDate": null,
     "channels": [
-      { "channelId": "...", "channelName": "🕹️・retro-général", "topic": "...", "enabled": true }
+      { "channelId": "...", "channelName": "🕹️・retro-general", "topic": "...", "enabled": true }
     ]
   },
   "tiktokLive": {
@@ -347,42 +338,46 @@ Brainee construit une relation différente avec chaque membre au fil du temps.
 }
 ```
 
-> ⚠️ Les profils membres sont stockés dans **MongoDB Atlas** et non dans ce fichier.
+> ⚠️ Les profils membres ET l'etat bot (quota, dates) sont stockes dans **MongoDB Atlas** — pas dans ce fichier.
 
 ---
 
 ## 📋 IDs importants
 
-| Élément | ID |
+| Element | ID |
 |---|---|
 | Serveur (Guild) | `1481022956816830669` |
 | Bot (App) | `1481022516783747242` |
 | Message reaction roles | `1481033797800693790` |
-| Salon `#choix-des-rôles` | `1481028181485027471` |
-| Salon `#présentations` | `1481028178389635292` |
+| Salon `#choix-des-roles` | `1481028181485027471` |
+| Salon `#presentations` | `1481028178389635292` |
 | Salon `#alertes-live` | `1481028204897501273` |
 
 ---
 
-## 🔧 Dépannage
+## 🔧 Depannage
 
-**Le bot ne détecte pas le live TikTok**
-→ `tiktok-live-connector` installé ? `npm install`
+**Le bot ne detecte pas le live TikTok**
+→ `tiktok-live-connector` installe ? `npm install`
 → `TIKTOK_USERNAME` dans les variables Railway ?
 → Tester via `POST /api/tiktok/test` depuis le dashboard
-→ Logs v1.8.0 : l'erreur TikTok est maintenant complète (plus de `undefined`)
+→ Logs : l'erreur TikTok est complete via `JSON.stringify(err)`
 
-**@Brainee ne répond pas / pas de YouTube**
+**@Brainee ne repond pas / pas de YouTube**
 → `YOUTUBE_API_KEY` dans Railway ?
-→ Quota YouTube épuisé ? (10 000 unités/jour, 1 recherche = 100 unités)
+→ Quota YouTube epuise ? (10 000 unites/jour, 1 recherche = 100 unites)
 
-**Profils membres non sauvegardés**
-→ `MONGODB_URI` défini dans Railway ?
-→ Vérifier les logs au démarrage : `✅ MongoDB Atlas connecté`
-→ Si absent : `⚠️ MONGODB_URI non défini — profils membres désactivés`
+**Profils membres non sauvegardes**
+→ `MONGODB_URI` defini dans Railway ?
+→ Verifier les logs au demarrage : `✅ MongoDB Atlas connecte`
+→ Si absent : `⚠️ MONGODB_URI non defini — profils membres desactives`
 
-**Les automatisations ne se déclenchent pas**
-→ Rattrapage automatique au boot — laisser Railway redémarrer
+**Quota conversations repart de zero apres un redeploy**
+→ Normal avant v1.9.0. Depuis v1.9.0, le quota est lu depuis MongoDB au boot.
+→ Verifier que `MONGODB_URI` est bien defini dans Railway.
+
+**Les automatisations ne se declenchent pas**
+→ Rattrapage automatique au boot (25s apres demarrage) — laisser Railway redemarrer
 → Rate limit global 30min entre chaque post du bot
 
 ---
@@ -391,26 +386,40 @@ Brainee construit une relation différente avec chaque membre au fil du temps.
 
 ---
 
-### ⭐ `v1.8.0` — Brainee LevelUP *(actuelle)*
+### ⭐ `v1.9.0` — MongoDB State Migration *(actuelle)*
 
-- **MongoDB Atlas** : profils membres persistants — survivent aux redéploiements Railway
-- **Profils membres** : `toneScore` 1–10 évolutif, `topics` gaming détectés, `interactionCount`, `lastSeen`
-- **Adaptation du ton** : 3 niveaux selon le score de complicité (doux / ironie légère / piques assumées)
-- **Garde-fou sujets sensibles** : ton doux forcé quel que soit le score si difficulté/fatigue détectée
-- **BOT_PERSONA_CONVERSATION** : persona dédiée aux interactions directes — conclusions naturelles, plus de question forcée à chaque message
-- **Contexte enrichi 100 messages** : fetch au maximum Discord partout (mentions, replies, lance-convs)
-- **Identification précise des speakers** : `formatContext()` résout les mentions @user et identifie les replies
-- **Fix TikTok error logging** : `JSON.stringify(err)` remplace `err.message` — erreur complète visible dans les logs
-- **Route API** `/api/members/profiles` : accès aux profils MongoDB depuis le dashboard
+- **`getBotState` / `setBotState`** : etat bot persistent dans MongoDB entre tous les redeploys Railway
+- **`checkAnecdoteMissed`** : async — verifie MongoDB avant de lancer le rattrapage
+- **`checkActusMissed`** : async — verifie les slots MongoDB avant rattrapage
+- **`postDailyAnecdote`** : appelle `setBotState` apres chaque post
+- **`postBiMonthlyActus`** : appelle `setBotState` apres chaque slot poste
+- **`resetDailyCountIfNeeded`** : async — recupere le quota conversations depuis MongoDB si Railway a redemarre aujourd'hui
+- **`updateConvStats`** : async — quota conversations survit aux redeploys
+- **Fix `replyToConversations`** : 1 seul fetch 100 messages (suppression du double-fetch v1.8.0)
+- **Boot non bloquant** : checks MongoDB en background avec delai 25s (plus de SIGTERM Railway)
 
 ---
 
-### `v1.7.0` — Spécial Optimisation
+### `v1.8.0` — Brainee LevelUP
 
-- Anecdote multi-salon (7 salons avec routing thématique)
-- TikTok Live → Discord (embeds démarrage + fin + stats)
+- **MongoDB Atlas** : profils membres persistants
+- **Profils membres** : `toneScore` 1–10 evolutif, `topics` gaming detectes, `interactionCount`, `lastSeen`
+- **Adaptation du ton** : 3 niveaux selon le score de complicite
+- **Garde-fou sujets sensibles** : ton doux force quel que soit le score
+- **`BOT_PERSONA_CONVERSATION`** : persona dediee aux interactions directes — conclusions naturelles
+- **Contexte enrichi 100 messages** partout
+- **`formatContext()`** : identification precise des speakers + resolution mentions @user
+- **Fix TikTok error logging** : `JSON.stringify(err)` remplace `err.message`
+- **Route API** `/api/members/profiles`
+
+---
+
+### `v1.7.0` — Special Optimisation
+
+- Anecdote multi-salon (7 salons avec routing thematique)
+- TikTok Live → Discord (embeds demarrage + fin + stats)
 - @Brainee mention directe avec YouTube Data API v3
-- canReply enrichi : fetch 20 messages avant réponse
+- canReply enrichi : fetch 20 messages avant reponse
 - Conversations enrichies : fetch 15 messages avant lance-conv
 - Renommage complet Brainy.exe → Brainee
 
@@ -418,57 +427,57 @@ Brainee construit une relation différente avec chaque membre au fil du temps.
 
 ### `v1.6.0` — Modes par categorie
 
-- `CATEGORY_MODES` : injection contextuelle selon la catégorie du salon
-- Fix apostrophes françaises dans les prompts
+- `CATEGORY_MODES` : injection contextuelle selon la categorie du salon
+- Fix apostrophes francaises dans les prompts
 
 ---
 
 ### `v1.5.0` — Reaction Roles natif
 
-- Carl-bot retraité — Reaction Roles géré nativement
-- `GuildMessageReactions` + `Partials` activés
-- Config persistée dans `brainexe-config.json`
+- Carl-bot retraite — Reaction Roles gere nativement
+- `GuildMessageReactions` + `Partials` actives
+- Config persistee dans `brainexe-config.json`
 
 ---
 
 ### `v1.4.0` — Persona Brainee
 
 - Personnage Brainee : fille de 24 ans, internet native, gaming hardcore
-- `BOT_PERSONA` injectée dans tous les prompts IA
-- `CONV_MODES` : 4 modes — débat / chaos / deep / simple
+- `BOT_PERSONA` injectee dans tous les prompts IA
+- `CONV_MODES` : 4 modes — debat / chaos / deep / simple
 
 ---
 
-### `v1.3.0` — Automatisations avancées
+### `v1.3.0` — Automatisations avancees
 
-- Actus bi-mensuelles : 1er et 15 du mois, étalées sur 12h
+- Actus bi-mensuelles : 1er et 15 du mois, etalees sur 12h
 - `lastPostedSlots[]` — anti-doublon robuste
 - Conversations : plage 24h, cible le salon le plus calme
 - `canReply` + rate limit global 30min
-- Rattrapage au boot des crons manqués
+- Rattrapage au boot des crons manques
 
 ---
 
 ### `v1.2.0` — Dashboard multi-pages
 
-- Pages complètes : Members, Channels, Roles, Welcome, Logs, Backups, Settings
-- Gestion membres : rôles, timeout, kick, ban
-- Posts manuels avec raccourcis par catégorie
+- Pages completes : Members, Channels, Roles, Welcome, Logs, Backups, Settings
+- Gestion membres : roles, timeout, kick, ban
+- Posts manuels avec raccourcis par categorie
 
 ---
 
 ### `v1.1.0` — Sync bidirectionnel
 
-- Sync Discord ↔ JSON en temps réel (debounce 2s)
+- Sync Discord ↔ JSON en temps reel (debounce 2s)
 - Watcher `chokidar` sur le fichier template
-- Dashboard WebSocket en temps réel
+- Dashboard WebSocket en temps reel
 
 ---
 
 ### `v1.0.0` — Base
 
-- Bot Discord connecté + serveur Express + WebSocket
-- Sync initiale Discord → JSON au démarrage
+- Bot Discord connecte + serveur Express + WebSocket
+- Sync initiale Discord → JSON au demarrage
 - Dashboard basique single-file HTML
 
 ---
