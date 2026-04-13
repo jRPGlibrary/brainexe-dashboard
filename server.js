@@ -3,7 +3,7 @@
 //  BrainEXE — Neurodivergent Creator Hub
 // ============================================================
 //
-//  Version actuelle : v2.0.3 — Channel Memory + Drift
+//  🧠 BRAINEXE DASHBOARD — Serveur Backend v2.0.4
 //  Stack : Node.js · Express · discord.js v14 · Claude · MongoDB Atlas
 //
 // ============================================================
@@ -1014,6 +1014,86 @@ discord.on(Events.GuildMemberAdd, async (member) => {
   } catch (err) { pushLog('ERR', `Arrivée échouée : ${err.message}`, 'error'); }
 });
 
+// ── DELAYED REPLY HELPERS v2.0.4 ─────────────────────────────
+
+function getEmojiExcuse(slot, mood) {
+  const bySlot = {
+    wakeup:      ["ah pardon je répondais depuis le lit encore à moitié endormie 😅", "j'étais en mode zombie total, j'ai juste réagi sans réfléchir lol"],
+    active:      ["sorry j'étais sur un truc, je reviens maintenant 👀", "j'avais la tête ailleurs, je lisais un thread sur un jeu — bref", "j'ai réagi et j'ai disparu dans mon hyperfocus, classique"],
+    lunch:       ["j'avais la bouche pleine sérieusement 😂 là je peux répondre proprement", "j'étais en train de manger, j'ai juste réagi pour dire que j'avais vu", "pause repas, je pouvais pas taper — là c'est bon"],
+    productive:  ["j'avais un truc en cours, j'ai juste réagi pour noter que t'avais écrit", "je venais de lancer un jeu, j'ai répondu à l'arrache 😅", "j'étais sur les actus du moment et j'ai pas pu répondre direct"],
+    transition:  ["je rangeais mes affaires, j'ai réagi mais j'avais pas le temps de répondre", "j'étais en train de me préparer pour la soirée gaming — là je suis dispo"],
+    gaming:      ["j'étais sur un boss, IMPOSSIBLE de répondre à ce moment précis 😭", "j'étais en pleine session, j'ai réagi pour dire que j'avais vu mais je pouvais pas lâcher le jeu", "j'étais sur un moment chaud dans ma partie, je pouvais pas taper — là c'est bon", "je regardais un trailer qui venait de tomber, j'ai pas pu m'arrêter 👀", "j'étais sur Reddit gaming, t'sais quand tu tombes dans un thread sans fin"],
+    latenight:   ["j'étais encore sur mon jeu à une heure de merde, là je décroche 5 min", "hyperfocus gaming tardif, je répondais plus à rien — désolée 😅"],
+  };
+  const byMood = {
+    hyperfocus:  ["j'étais en plein hyperfocus, j'entends plus rien quand ça prend 😂"],
+    zombie:      ["j'étais dans le brouillard total là, pardon"],
+    chill:       ["j'étais posée, j'ai réagi et j'ai oublié de répondre correctement lol"],
+  };
+  const all = [...(bySlot[slot?.status] || bySlot.active), ...(byMood[mood] || [])];
+  return all.length ? all[Math.floor(Math.random() * all.length)] : "désolée j'avais la tête ailleurs 😅";
+}
+
+async function scheduleDelayedReplyAfterEmoji(message, userQuery, emojiUsed, slot, mood) {
+  const delayMs = Math.floor((15 + Math.random() * 30) * 60 * 1000);
+  pushLog('SYS', `⏳ Retour tardif planifié dans ${Math.round(delayMs / 60000)} min (emoji ${emojiUsed} → ${message.author.username})`);
+  setTimeout(async () => {
+    try {
+      const currentSlot = getCurrentSlot();
+      if (currentSlot.maxConv === 0) { pushLog('SYS', `💤 Retour tardif annulé — Brainee dort`); return; }
+      const excuse = getEmojiExcuse(slot, mood);
+      const fetched = await message.channel.messages.fetch({ limit: 50 });
+      const contextLines = formatContext(fetched, null, 40);
+      const profile = await getMemberProfile(message.author.id);
+      const toneInstruction = getToneInstruction(profile, message.author.username);
+      const channelMemory = await getChannelMemory(message.channelId);
+      const memoryBlock = formatChannelMemoryBlock(channelMemory);
+      const currentMood = refreshDailyMood();
+      const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\nContexte récent #${message.channel.name} :\n${contextLines}\nTu reviens après avoir réagi avec ${emojiUsed} sans répondre.`;
+      const userPrompt = `Tu dois répondre à cette question de ${message.author.username} que t'as laissée sans réponse : "${userQuery}"\nCommence par cette excuse (reformule légèrement si besoin) : "${excuse}"\nPuis réponds vraiment à la question. Max 3 phrases au total.`;
+      const reply = await callClaude(systemPrompt, userPrompt, 250);
+      await simulateTyping(message.channel, 1000 + Math.random() * 2000);
+      await message.reply(reply);
+      lastAnyBotPostTime = Date.now();
+      await updateMemberProfile(message.author.id, message.author.username, userQuery);
+      pushLog('SYS', `↩️ Retour tardif envoyé à ${message.author.username}`, 'success');
+    } catch (err) { pushLog('ERR', `Retour tardif échoué : ${err.message}`, 'error'); }
+  }, delayMs);
+}
+
+async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, emojiUsed) {
+  const delayMs = Math.floor((10 + Math.random() * 20) * 60 * 1000);
+  pushLog('SYS', `⏳ Retour spontané planifié dans ${Math.round(delayMs / 60000)} min (emoji → ${lastMsg.author.username})`);
+  setTimeout(async () => {
+    try {
+      const currentSlot = getCurrentSlot();
+      if (currentSlot.maxConv === 0) return;
+      const excuse = getEmojiExcuse(slot, mood);
+      const guild = await discord.guilds.fetch(GUILD_ID);
+      await guild.channels.fetch();
+      const channel = guild.channels.cache.get(channelObj.channelId);
+      if (!channel) return;
+      const msgs = await channel.messages.fetch({ limit: 50 });
+      const context = formatContext(msgs, null, 40);
+      const profile = await getMemberProfile(lastMsg.author.id);
+      const toneInstruction = getToneInstruction(profile, lastMsg.author.username);
+      const channelMemory = await getChannelMemory(channelObj.channelId);
+      const memoryBlock = formatChannelMemoryBlock(channelMemory);
+      const currentMood = refreshDailyMood();
+      const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\nContexte récent #${channel.name} :\n${context}\nTu reviens après avoir réagi avec ${emojiUsed} sans rien dire.`;
+      const userPrompt = `${lastMsg.author.username} avait dit : "${lastMsg.content}"\nTu avais juste réagi avec ${emojiUsed} sans répondre. Tu reviens maintenant.\nCommence par : "${excuse}"\nPuis réponds naturellement. Max 2-3 phrases.`;
+      const reply = await callClaude(systemPrompt, userPrompt, 200);
+      await simulateTyping(channel, 800 + Math.random() * 1500);
+      await lastMsg.reply(reply);
+      lastAnyBotPostTime = Date.now();
+      await updateConvStats(channelObj.channelId);
+      await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, lastMsg.content);
+      pushLog('SYS', `↩️ Retour spontané envoyé à ${lastMsg.author.username}`, 'success');
+    } catch (err) { pushLog('ERR', `Retour spontané tardif échoué : ${err.message}`, 'error'); }
+  }, delayMs);
+}
+
 // ── @MENTION v2.0.2 + mémoire salon v2.0.3 ───────────────────
 discord.on(Events.MessageCreate, async (message) => {
   if (message.author.bot || !message.guild || message.guild.id !== GUILD_ID) return;
@@ -1039,6 +1119,7 @@ discord.on(Events.MessageCreate, async (message) => {
 
 async function handleMentionReply(message, userQuery) {
   try {
+    const slot = getCurrentSlot(); // slot au moment de la réponse (v2.0.4)
     const fetched = await message.channel.messages.fetch({ limit: 100 });
     const contextLines = formatContext(fetched, message.id, 80);
     const profile = await getMemberProfile(message.author.id);
@@ -1073,9 +1154,11 @@ Tu réponds uniquement à ${message.author.username}.`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
-      await message.react(getRandomReaction(userQuery));
+      const emoji = getRandomReaction(userQuery);
+      await message.react(emoji);
       await updateMemberProfile(message.author.id, message.author.username, userQuery);
-      pushLog('SYS', `😏 Réaction seule → ${message.author.username}`);
+      pushLog('SYS', `😏 Réaction seule : ${emoji} → ${message.author.username} (retour tardif planifié)`);
+      scheduleDelayedReplyAfterEmoji(message, userQuery, emoji, slot, mood);
       return;
     }
     const reply = await callClaude(systemPrompt, `${message.author.username} dit : "${userQuery}"\nMax 3 phrases.`, 250);
@@ -1331,10 +1414,13 @@ async function replyToConversations() {
     const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\nContexte #${channel.name} (${ch.topic}) :\n${context}\nTu réponds uniquement à ${lastMsg.author.username}.`;
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
-      await lastMsg.react(getRandomReaction(msgContent));
+      const emoji = getRandomReaction(msgContent);
+      await lastMsg.react(emoji);
       lastAnyBotPostTime = Date.now(); await updateConvStats(ch.channelId);
       await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
-      pushLog('SYS', `😏 Réaction seule → ${lastMsg.author.username}`); return;
+      pushLog('SYS', `😏 Réaction seule → ${lastMsg.author.username} (retour tardif planifié)`);
+      scheduleDelayedSpontaneousReply(lastMsg, ch, slot, mood, emoji);
+      return;
     }
     const reply = await callClaude(systemPrompt, `${lastMsg.author.username} dit : "${msgContent}"\n1-2 phrases.`, 150);
     if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
