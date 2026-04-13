@@ -1,30 +1,141 @@
-/**
-* ================================================
-* 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.0.3
-* ================================================
-* v2.0.3 — Channel Memory + Thematic Drift
-*   - Collection MongoDB channelMemory : mémoire vivante par salon
-*   - getChannelMemory / updateChannelMemory / enrichChannelMemory
-*   - detectThematicDrift() : analyse les 30 derniers msgs via Claude
-*   - handleDrift() : 4 niveaux observe/suggest/redirect/moderate
-*   - 70% suggestion · 20% redirection active · 10% modération ferme
-*   - Message de pont dans le salon d'origine
-*   - Mini résumé posté dans le salon cible si redirection
-*   - Thread auto sur sujet précis lors d'une dérive
-*   - Mémoire salon injectée dans tous les prompts conversation
-*   - Cron de dérive : check toutes les 3h sur salons actifs
-*   - Route /api/channel-memory/:id (debug)
-* v2.0.2 — Brainee Full Human Update (intégré)
-*   - Persona étendue : gaming + films + musique + manga + food
-*   - Typing indicator · Messages fragmentés · Réactions emoji autonomes
-*   - Fix YouTube (extractYoutubeQuery via Claude)
-*   - Daily mood (energique/chill/hyperfocus/zombie)
-*   - 5% ignore spontané
-*   - formatContext() identification précise des replies
-*   - handleMentionReply() injection membres tagués
-*   - Threads auto (anecdotes + convs jeux précis)
-* ================================================
-*/
+// ============================================================
+//  BRAINEE.EXE — server.js
+//  BrainEXE — Neurodivergent Creator Hub
+// ============================================================
+//
+//  Version actuelle : v2.0.3 — Channel Memory + Drift
+//  Stack : Node.js · Express · discord.js v14 · Claude · MongoDB Atlas
+//
+// ============================================================
+//  CHANGELOG INTÉGRÉ
+// ============================================================
+//
+//  v1.0.0 — Les origines
+//    · Bot Discord + serveur Express + WebSocket
+//    · Sync initiale Discord → JSON au démarrage
+//    · Dashboard single-file basique
+//
+//  v1.1.0 — Sync bidirectionnel
+//    · Sync temps réel Discord ↔ discord-template.json (debounce 2s)
+//    · Watcher chokidar : toute modif JSON s'applique sur Discord
+//    · Dashboard WebSocket : logs en direct
+//
+//  v1.2.0 — Dashboard complet
+//    · Pages : Members, Channels, Roles, Auto-Role, Welcome,
+//              Logs, Backups, Settings
+//    · Gestion membres : rôles, timeout, kick, ban
+//    · Posts manuels par catégorie · Navigation mobile bottom nav
+//
+//  v1.3.0 — Automatisations avancées
+//    · Actus bi-mensuelles (1er + 15) étalées sur 12h
+//    · lastPostedSlots[] — anti-doublon robuste
+//    · Lance-conversations : cible le salon le plus calme
+//    · canReply (20min–3h, 40%) + rate limit global 30min
+//    · Rattrapage automatique au boot si cron manqué
+//
+//  v1.4.0 — Persona Brainee
+//    · BOT_PERSONA injectée dans tous les prompts IA
+//    · Identité : Brainee, fille 24 ans, gaming hardcore, internet native
+//    · CONV_MODES : débat / chaos / deep / simple (tiré au sort)
+//    · Style oral, jamais corporate, toujours une question à la fin
+//
+//  v1.5.0 — Reaction Roles natif
+//    · Reaction Roles géré nativement (Carl-bot retraité)
+//    · GuildMessageReactions + Partials activés
+//    · Config persistante dans brainexe-config.json
+//    · Toggle ON/OFF + Message ID éditable depuis le dashboard
+//
+//  v1.6.0 — Modes par catégorie
+//    · CATEGORY_MODES : 11 catégories d'injection contextuelle
+//      → general tdah humour rpg jrpg retro gaming indie creative focus dev
+//    · Chaque salon a ses propres prompts adaptés à son topic
+//    · Fix apostrophes françaises dans les prompts (backticks partout)
+//
+//  v1.7.0 — Special Optimisation
+//    · Anecdotes multi-salon (7 salons, routing thématique)
+//    · TikTok Live → Discord (embeds démarrage + fin + stats)
+//    · @Brainee mention directe avec YouTube Data API v3
+//    · canReply enrichi : fetch 20 messages · lance-conv : fetch 15
+//    · Renommage complet Brainy.exe → Brainee
+//
+//  v1.8.0 — Brainee LevelUP
+//    · MongoDB Atlas : profils membres persistants
+//    · toneScore 1–10 évolutif, topics détectés, interactionCount, lastSeen
+//    · Adaptation du ton : 3 niveaux selon score de complicité
+//    · Garde-fou sujets sensibles : ton doux forcé
+//    · BOT_PERSONA_CONVERSATION : persona dédiée aux interactions directes
+//    · formatContext() : speakers identifiés + résolution @mentions
+//    · Route API /api/members/profiles
+//
+//  v1.9.0 — MongoDB State Migration
+//    · getBotState / setBotState : état persistant entre redeploys Railway
+//    · checkAnecdoteMissed / checkActusMissed : async, vérifie MongoDB
+//    · resetDailyCountIfNeeded : quota conversations survit aux redeploys
+//    · updateConvStats : statistiques persistantes
+//    · Boot non bloquant : checks MongoDB en background (délai 25s)
+//    · Fix replyToConversations : 1 seul fetch 100 messages
+//
+//  v2.0.0 — Human Planning
+//    · Grilles horaires semaine / samedi / dimanche
+//    · getCurrentSlot() : slot actif + délais @mention adaptés
+//    · Dodo 0h–9h · Mode gaming 18h–23h30
+//    · Morning greeting / lunch back / goodnight / night wakeup
+//    · maxPerDay 16 · MIN_GAP 15min
+//    · Profils membres : score complicité, sujets, ton injecté
+//
+//  v2.0.1 — Threads automatiques
+//    · Thread Discord auto quand un jeu précis est mentionné
+//    · 50+ jeux détectés (Castlevania, Persona, Hollow Knight, FF...)
+//    · formatContext() étendu : [↩ répond à X: "preview..."]
+//    · Threads auto sur anecdotes et convs qui s'emballent
+//
+//  v2.0.2 — Full Human Update
+//    · Culture étendue : films, musique, manga, bouffe
+//    · Typing indicator avant chaque réponse
+//    · 20% de chance de fragmenter en 2 messages courts avec pause
+//    · Réactions emoji autonomes : 10% seule / 25% + texte
+//    · Humeur du jour : énergique / chill / hyperfocus / zombie
+//    · 5% de chance d'ignorer une reply silencieusement
+//    · Fix YouTube : Claude extrait la vraie requête avant la recherche
+//
+//  v2.0.3 — Channel Memory + Drift  ← ACTUELLE
+//    · Collection MongoDB channelMemory (toneProfile, frequentThemes,
+//      insideJokes, heatLevel, offTopicTolerance, lastSummary)
+//    · enrichChannelMemory() : résumé thématique toutes les 6h par salon
+//    · detectThematicDrift() : Claude score 1–10 sur 30 derniers messages
+//    · handleDrift() : 4 niveaux → observe / suggest / redirect / moderate
+//    · Style 70% suggestion / 20% redirection / 10% ferme
+//    · Message de pont + mini résumé dans le bon salon
+//    · Thread auto si jeu précis détecté lors d'une dérive
+//    · Cron drift check toutes les 3h
+//    · Mémoire salon injectée dans tous les prompts conversation + @mention
+//    · Routes : /api/drift/check · /api/channel-memory · /api/channel-memory/:id
+
+// v2.0.4 — Delayed Reply After Emoji (ACTUELLE)
+//    · getEmojiExcuse() : excuse cohérente selon slot + mood
+//    · scheduleDelayedReplyAfterEmoji() : retour 15-45 min après emoji @mention
+//    · scheduleDelayedSpontaneousReply() : retour 10-30 min après emoji reply
+//    · Brainee revient toujours après une réaction-seule
+//    · L'excuse est contextuelle : boss en cours, hyperfocus, bouche pleine...
+//    Si elle dort entre-temps : retour annulé silencieusement
+
+
+// ============================================================
+//  COLLECTIONS MONGODB
+// ============================================================
+//
+//  · members       — profils membres (toneScore, topics, lastSeen)
+//  · botState      — état global persistant (mood, quotas, crons)
+//  · channelMemory — mémoire vivante par salon (thèmes, tone, drift)
+//
+// ============================================================
+//  VARIABLES D'ENVIRONNEMENT REQUISES
+// ============================================================
+//
+//  DISCORD_TOKEN · DISCORD_CLIENT_ID · DISCORD_GUILD_ID
+//  ANTHROPIC_API_KEY · MONGODB_URI · YOUTUBE_API_KEY
+//
+// ============================================================
 
 const express = require('express');
 const http = require('http');
