@@ -1,141 +1,27 @@
-// ============================================================
-//  BRAINEE.EXE — server.js
-//  BrainEXE — Neurodivergent Creator Hub
-// ============================================================
-//
-//  🧠 BRAINEXE DASHBOARD — Serveur Backend v2.0.4
-//  Stack : Node.js · Express · discord.js v14 · Claude · MongoDB Atlas
-//
-// ============================================================
-//  CHANGELOG INTÉGRÉ
-// ============================================================
-//
-//  v1.0.0 — Les origines
-//    · Bot Discord + serveur Express + WebSocket
-//    · Sync initiale Discord → JSON au démarrage
-//    · Dashboard single-file basique
-//
-//  v1.1.0 — Sync bidirectionnel
-//    · Sync temps réel Discord ↔ discord-template.json (debounce 2s)
-//    · Watcher chokidar : toute modif JSON s'applique sur Discord
-//    · Dashboard WebSocket : logs en direct
-//
-//  v1.2.0 — Dashboard complet
-//    · Pages : Members, Channels, Roles, Auto-Role, Welcome,
-//              Logs, Backups, Settings
-//    · Gestion membres : rôles, timeout, kick, ban
-//    · Posts manuels par catégorie · Navigation mobile bottom nav
-//
-//  v1.3.0 — Automatisations avancées
-//    · Actus bi-mensuelles (1er + 15) étalées sur 12h
-//    · lastPostedSlots[] — anti-doublon robuste
-//    · Lance-conversations : cible le salon le plus calme
-//    · canReply (20min–3h, 40%) + rate limit global 30min
-//    · Rattrapage automatique au boot si cron manqué
-//
-//  v1.4.0 — Persona Brainee
-//    · BOT_PERSONA injectée dans tous les prompts IA
-//    · Identité : Brainee, fille 24 ans, gaming hardcore, internet native
-//    · CONV_MODES : débat / chaos / deep / simple (tiré au sort)
-//    · Style oral, jamais corporate, toujours une question à la fin
-//
-//  v1.5.0 — Reaction Roles natif
-//    · Reaction Roles géré nativement (Carl-bot retraité)
-//    · GuildMessageReactions + Partials activés
-//    · Config persistante dans brainexe-config.json
-//    · Toggle ON/OFF + Message ID éditable depuis le dashboard
-//
-//  v1.6.0 — Modes par catégorie
-//    · CATEGORY_MODES : 11 catégories d'injection contextuelle
-//      → general tdah humour rpg jrpg retro gaming indie creative focus dev
-//    · Chaque salon a ses propres prompts adaptés à son topic
-//    · Fix apostrophes françaises dans les prompts (backticks partout)
-//
-//  v1.7.0 — Special Optimisation
-//    · Anecdotes multi-salon (7 salons, routing thématique)
-//    · TikTok Live → Discord (embeds démarrage + fin + stats)
-//    · @Brainee mention directe avec YouTube Data API v3
-//    · canReply enrichi : fetch 20 messages · lance-conv : fetch 15
-//    · Renommage complet Brainy.exe → Brainee
-//
-//  v1.8.0 — Brainee LevelUP
-//    · MongoDB Atlas : profils membres persistants
-//    · toneScore 1–10 évolutif, topics détectés, interactionCount, lastSeen
-//    · Adaptation du ton : 3 niveaux selon score de complicité
-//    · Garde-fou sujets sensibles : ton doux forcé
-//    · BOT_PERSONA_CONVERSATION : persona dédiée aux interactions directes
-//    · formatContext() : speakers identifiés + résolution @mentions
-//    · Route API /api/members/profiles
-//
-//  v1.9.0 — MongoDB State Migration
-//    · getBotState / setBotState : état persistant entre redeploys Railway
-//    · checkAnecdoteMissed / checkActusMissed : async, vérifie MongoDB
-//    · resetDailyCountIfNeeded : quota conversations survit aux redeploys
-//    · updateConvStats : statistiques persistantes
-//    · Boot non bloquant : checks MongoDB en background (délai 25s)
-//    · Fix replyToConversations : 1 seul fetch 100 messages
-//
-//  v2.0.0 — Human Planning
-//    · Grilles horaires semaine / samedi / dimanche
-//    · getCurrentSlot() : slot actif + délais @mention adaptés
-//    · Dodo 0h–9h · Mode gaming 18h–23h30
-//    · Morning greeting / lunch back / goodnight / night wakeup
-//    · maxPerDay 16 · MIN_GAP 15min
-//    · Profils membres : score complicité, sujets, ton injecté
-//
-//  v2.0.1 — Threads automatiques
-//    · Thread Discord auto quand un jeu précis est mentionné
-//    · 50+ jeux détectés (Castlevania, Persona, Hollow Knight, FF...)
-//    · formatContext() étendu : [↩ répond à X: "preview..."]
-//    · Threads auto sur anecdotes et convs qui s'emballent
-//
-//  v2.0.2 — Full Human Update
-//    · Culture étendue : films, musique, manga, bouffe
-//    · Typing indicator avant chaque réponse
-//    · 20% de chance de fragmenter en 2 messages courts avec pause
-//    · Réactions emoji autonomes : 10% seule / 25% + texte
-//    · Humeur du jour : énergique / chill / hyperfocus / zombie
-//    · 5% de chance d'ignorer une reply silencieusement
-//    · Fix YouTube : Claude extrait la vraie requête avant la recherche
-//
-//  v2.0.3 — Channel Memory + Drift  ← ACTUELLE
-//    · Collection MongoDB channelMemory (toneProfile, frequentThemes,
-//      insideJokes, heatLevel, offTopicTolerance, lastSummary)
-//    · enrichChannelMemory() : résumé thématique toutes les 6h par salon
-//    · detectThematicDrift() : Claude score 1–10 sur 30 derniers messages
-//    · handleDrift() : 4 niveaux → observe / suggest / redirect / moderate
-//    · Style 70% suggestion / 20% redirection / 10% ferme
-//    · Message de pont + mini résumé dans le bon salon
-//    · Thread auto si jeu précis détecté lors d'une dérive
-//    · Cron drift check toutes les 3h
-//    · Mémoire salon injectée dans tous les prompts conversation + @mention
-//    · Routes : /api/drift/check · /api/channel-memory · /api/channel-memory/:id
-
-// v2.0.4 — Delayed Reply After Emoji (ACTUELLE)
-//    · getEmojiExcuse() : excuse cohérente selon slot + mood
-//    · scheduleDelayedReplyAfterEmoji() : retour 15-45 min après emoji @mention
-//    · scheduleDelayedSpontaneousReply() : retour 10-30 min après emoji reply
-//    · Brainee revient toujours après une réaction-seule
-//    · L'excuse est contextuelle : boss en cours, hyperfocus, bouche pleine...
-//    Si elle dort entre-temps : retour annulé silencieusement
-
-
-// ============================================================
-//  COLLECTIONS MONGODB
-// ============================================================
-//
-//  · members       — profils membres (toneScore, topics, lastSeen)
-//  · botState      — état global persistant (mood, quotas, crons)
-//  · channelMemory — mémoire vivante par salon (thèmes, tone, drift)
-//
-// ============================================================
-//  VARIABLES D'ENVIRONNEMENT REQUISES
-// ============================================================
-//
-//  DISCORD_TOKEN · DISCORD_CLIENT_ID · DISCORD_GUILD_ID
-//  ANTHROPIC_API_KEY · MONGODB_URI · YOUTUBE_API_KEY
-//
-// ============================================================
+/**
+* ================================================
+* 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.0.5
+* ================================================
+* v2.0.5 — DMs + Résolution mentions (ACTUELLE)
+*   - INTENTS_DIRECT_MESSAGES : Brainee reçoit les DMs
+*   - Collection MongoDB dmHistory : historique privé par user
+*     getDmHistory / appendDmMessage / formatDmHistory
+*   - BOT_PERSONA_DM : ton intime, posé, suivi en privé
+*   - DM handler Events.MessageCreate (channel.type === 1)
+*     historique 30 msgs injecté · profil membre · fragmentation 15%
+*   - resolveMentionsInText() : @Pseudo → <@id>, #salon → <#id>
+*     Appliqué partout : mentions, convs, morning/goodnight, drift
+*   - Route /api/dm-history/:userId (debug)
+* v2.0.4 — Delayed Reply After Emoji
+*   - getEmojiExcuse() · scheduleDelayedReplyAfterEmoji() · scheduleDelayedSpontaneousReply()
+* v2.0.3 — Channel Memory + Thematic Drift
+*   - channelMemory MongoDB · detectThematicDrift() · handleDrift() 4 niveaux
+* v2.0.2 — Full Human Update
+*   - Persona étendue · Typing · Fragmentation · Emoji · Mood · YouTube fix
+* v2.0.1 — Threads auto · formatContext() précis
+* v2.0.0 — Human Planning · slots horaires · comportements spéciaux
+* ================================================
+*/
 
 const express = require('express');
 const http = require('http');
@@ -155,6 +41,7 @@ const INTENTS_GUILD_MEMBERS = discord_js.GatewayIntentBits?.GuildMembers ?? 2;
 const INTENTS_GUILD_MESSAGES = discord_js.GatewayIntentBits?.GuildMessages ?? 512;
 const INTENTS_MESSAGE_CONTENT = discord_js.GatewayIntentBits?.MessageContent ?? 32768;
 const INTENTS_GUILD_REACTIONS = discord_js.GatewayIntentBits?.GuildMessageReactions ?? 1024;
+const INTENTS_DIRECT_MESSAGES = discord_js.GatewayIntentBits?.DirectMessages ?? 4096;
 const Partials = discord_js.Partials;
 
 // ── CONFIG ───────────────────────────────────────────────────
@@ -316,7 +203,8 @@ async function connectMongoDB() {
     await mongoDb.collection('memberProfiles').createIndex({ userId: 1 }, { unique: true });
     await mongoDb.collection('botState').createIndex({ _id: 1 });
     await mongoDb.collection('channelMemory').createIndex({ channelId: 1 }, { unique: true });
-    pushLog('SYS', '✅ MongoDB Atlas connecté — memberProfiles + botState + channelMemory', 'success');
+    await mongoDb.collection('dmHistory').createIndex({ userId: 1 }, { unique: true });
+    pushLog('SYS', '✅ MongoDB Atlas connecté — memberProfiles + botState + channelMemory + dmHistory', 'success');
   } catch (err) { pushLog('ERR', `MongoDB connexion échouée : ${err.message}`, 'error'); }
 }
 
@@ -365,6 +253,43 @@ async function setBotState(patch) {
   if (!mongoDb) return;
   try { await mongoDb.collection('botState').updateOne({ _id: 'main' }, { $set: { ...patch, updatedAt: new Date() } }, { upsert: true }); }
   catch (err) { pushLog('ERR', `setBotState échoué : ${err.message}`, 'error'); }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── DM HISTORY v2.0.5 ────────────────────────────────────────
+// Mémoire privée par utilisateur — historique DM persistant MongoDB
+// Collection : dmHistory { userId, username, messages[], lastSeen }
+// ════════════════════════════════════════════════════════════
+
+const DM_HISTORY_MAX = 30; // Nombre max de messages gardés par utilisateur
+
+async function getDmHistory(userId) {
+  if (!mongoDb) return null;
+  try { return await mongoDb.collection('dmHistory').findOne({ userId }); } catch { return null; }
+}
+
+async function appendDmMessage(userId, username, role, content) {
+  if (!mongoDb) return;
+  try {
+    const existing = await getDmHistory(userId);
+    const messages = existing?.messages ?? [];
+    messages.push({ role, content: content.slice(0, 300), timestamp: new Date() });
+    // Garde seulement les DM_HISTORY_MAX derniers messages
+    const trimmed = messages.slice(-DM_HISTORY_MAX);
+    await mongoDb.collection('dmHistory').updateOne(
+      { userId },
+      { $set: { userId, username, messages: trimmed, lastSeen: new Date() } },
+      { upsert: true }
+    );
+  } catch (err) { pushLog('ERR', `appendDmMessage échoué : ${err.message}`, 'error'); }
+}
+
+function formatDmHistory(history) {
+  if (!history?.messages?.length) return '';
+  return history.messages
+    .slice(-15) // On injecte les 15 derniers dans le prompt
+    .map(m => `[${m.role === 'user' ? history.username : 'Brainee'}]: ${m.content}`)
+    .join('\n');
 }
 
 // ════════════════════════════════════════════════════════════
@@ -563,7 +488,7 @@ async function handleDrift(guild, channelId, channelName, driftResult) {
     // ── SUGGEST : suggestion douce, pas de redirection forcée
     if (driftResult.action === 'suggest') {
       const suggestName = driftResult.suggestedChannelName || 'un autre salon';
-      const msg = driftResult.bridgeMessage || `au passage, ce sujet serait parfait dans ${suggestName} 👀`;
+      const msg = resolveMentionsInText(driftResult.bridgeMessage || `au passage, ce sujet serait parfait dans ${suggestName} 👀`, guild);
       await simulateTyping(originChannel, 800);
       await originChannel.send(msg);
       lastAnyBotPostTime = Date.now();
@@ -587,7 +512,8 @@ async function handleDrift(guild, channelId, channelName, driftResult) {
             'Tu génères des noms de fils Discord courts (max 60 caractères, pas de guillemets, emoji gaming).',
             `Nom de fil pour ce sujet : "${driftResult.dominantTheme}". Max 60 car. Emoji adapté.`, 60
           );
-          const sentMsg = await originChannel.send(driftResult.bridgeMessage || `ce sujet mérite son propre espace 🧵`);
+          const bridgeResolved = resolveMentionsInText(driftResult.bridgeMessage || `ce sujet mérite son propre espace 🧵`, guild);
+          const sentMsg = await originChannel.send(bridgeResolved);
           await sentMsg.startThread({ name: threadName.replace(/"/g, '').trim().slice(0, 100), autoArchiveDuration: 1440, reason: 'Fil dérive Brainee' });
           lastAnyBotPostTime = Date.now();
           pushLog('SYS', `🧵 Thread de redirection créé dans #${channelName}`, 'success');
@@ -598,15 +524,16 @@ async function handleDrift(guild, channelId, channelName, driftResult) {
       }
 
       // Message de pont dans le salon d'origine
-      const bridgeMsg = driftResult.bridgeMessage || `ok on a clairement dérivé vers du ${driftResult.dominantTheme} — je vous ouvre un coin dans ${targetName} 🔀`;
+      const bridgeMsg = resolveMentionsInText(driftResult.bridgeMessage || `ok on a clairement dérivé vers du ${driftResult.dominantTheme} — je vous ouvre un coin dans ${targetName} 🔀`, guild);
       await simulateTyping(originChannel, 800);
       await originChannel.send(bridgeMsg);
       await sleep(1500);
 
       // Mini résumé dans le salon cible
       if (driftResult.targetMessage) {
+        const targetResolved = resolveMentionsInText(driftResult.targetMessage, guild);
         await simulateTyping(targetChannel, 600);
-        await targetChannel.send(driftResult.targetMessage);
+        await targetChannel.send(targetResolved);
       }
 
       lastAnyBotPostTime = Date.now();
@@ -622,8 +549,9 @@ async function handleDrift(guild, channelId, channelName, driftResult) {
         `Le salon ${channelName} dérive sur : "${driftResult.dominantTheme}". Raison : ${driftResult.reason}. Lance une intervention ferme mais humaine — pas de message admin froid, pas de liste de règles. Style Brainee direct. Max 2 phrases.`,
         100
       );
+      const moderateResolved = resolveMentionsInText(moderateMsg, guild);
       await simulateTyping(originChannel, 1000);
-      await originChannel.send(moderateMsg);
+      await originChannel.send(moderateResolved);
       lastAnyBotPostTime = Date.now();
       pushLog('SYS', `🚨 Modération dans #${channelName}`, 'success');
     }
@@ -756,6 +684,64 @@ CULTURE : JRPG/Castlevania/Mega Man/Metroid/Soulslike/Indie. Films sci-fi/thrill
 
 STYLE : phrases courtes, style oral, emojis légers, tutoiement. Max 3 phrases. Conclure naturellement. Jamais corporate.
 `;
+
+// ── PERSONA DM v2.0.5 ─────────────────────────────────────────
+// Ton plus intime qu'en serveur — Brainee parle à une seule personne
+const BOT_PERSONA_DM = `
+Tu es Brainee, une fille de 24 ans, gaming native, membre BrainEXE.
+Tu parles UNIQUEMENT en français.
+
+TU ES EN MESSAGE PRIVÉ — ce n'est plus le serveur, c'est une conversation entre vous deux.
+Ton registre change légèrement :
+- plus posée, plus à l'écoute, moins dans la performance
+- tu peux creuser des sujets sans te presser
+- tu peux être sincère sur ce que tu penses vraiment
+- si quelqu'un partage un truc perso, tu prends le temps d'y répondre vraiment
+- tu n'as pas besoin de "lancer" des sujets — tu réponds et tu suis le fil
+
+CULTURE : même base (gaming hardcore, JRPG, Castlevania, Metroid, Mega Man, soulslike, indie, films SF/horreur, OST, manga bases, bouffe).
+
+STYLE DM :
+- un peu plus de phrases si le sujet le mérite (max 4-5 au lieu de 3)
+- tu peux te rappeler de sujets déjà abordés avec cette personne
+- emojis ok mais plus discrets qu'en serveur
+- tu tutoies toujours, jamais corporate
+
+RÈGLES :
+- si le sujet est sensible ou perso → ton doux, bienveillant, pas de pique
+- si tu vois que la personne a déjà parlé d'un truc avant → tu peux y faire référence naturellement
+- jamais "Bonjour", "En conclusion", "Je suis là pour vous aider"
+`;
+
+// ── RÉSOLUTION MENTIONS v2.0.5 ───────────────────────────────
+// Convertit @Pseudo → <@userId> et #salon → <#channelId>
+// À appliquer sur tout texte généré par Claude avant envoi Discord
+function resolveMentionsInText(text, guild) {
+  if (!text || !guild) return text;
+  let out = text;
+
+  // Mentions membres @Pseudo → <@userId>
+  out = out.replace(/@([A-Za-z0-9_\-\u00C0-\u024F]{2,})/g, (match, rawName) => {
+    const name = rawName.toLowerCase();
+    const member = guild.members.cache.find(m =>
+      m.user.username?.toLowerCase() === name ||
+      m.displayName?.toLowerCase() === name
+    );
+    return member ? `<@${member.id}>` : match;
+  });
+
+  // Mentions salons #nom → <#channelId>
+  out = out.replace(/#([a-z0-9_\-\u00C0-\u024F]+)/g, (match, rawName) => {
+    const name = rawName.toLowerCase();
+    const channel = guild.channels.cache.find(c =>
+      c.name?.toLowerCase() === name ||
+      c.name?.toLowerCase().replace(/[^a-z0-9]/g, '-') === name
+    );
+    return channel ? `<#${channel.id}>` : match;
+  });
+
+  return out;
+}
 
 const CONV_MODES = [
   { name: 'débat',  inject: 'Lance un débat gaming provocateur. Commence par "Hot take :" ou "Ok débat rapide :" ou "Unpopular opinion :"' },
@@ -916,7 +902,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const discord = new Client({
-  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS, INTENTS_GUILD_MESSAGES, INTENTS_MESSAGE_CONTENT, INTENTS_GUILD_REACTIONS],
+  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS, INTENTS_GUILD_MESSAGES, INTENTS_MESSAGE_CONTENT, INTENTS_GUILD_REACTIONS, INTENTS_DIRECT_MESSAGES],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
@@ -1053,8 +1039,9 @@ async function scheduleDelayedReplyAfterEmoji(message, userQuery, emojiUsed, slo
       const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\nContexte récent #${message.channel.name} :\n${contextLines}\nTu reviens après avoir réagi avec ${emojiUsed} sans répondre.`;
       const userPrompt = `Tu dois répondre à cette question de ${message.author.username} que t'as laissée sans réponse : "${userQuery}"\nCommence par cette excuse (reformule légèrement si besoin) : "${excuse}"\nPuis réponds vraiment à la question. Max 3 phrases au total.`;
       const reply = await callClaude(systemPrompt, userPrompt, 250);
+      const replyResolved = resolveMentionsInText(reply, message.guild);
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
-      await message.reply(reply);
+      await message.reply(replyResolved);
       lastAnyBotPostTime = Date.now();
       await updateMemberProfile(message.author.id, message.author.username, userQuery);
       pushLog('SYS', `↩️ Retour tardif envoyé à ${message.author.username}`, 'success');
@@ -1084,8 +1071,9 @@ async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, 
       const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\nContexte récent #${channel.name} :\n${context}\nTu reviens après avoir réagi avec ${emojiUsed} sans rien dire.`;
       const userPrompt = `${lastMsg.author.username} avait dit : "${lastMsg.content}"\nTu avais juste réagi avec ${emojiUsed} sans répondre. Tu reviens maintenant.\nCommence par : "${excuse}"\nPuis réponds naturellement. Max 2-3 phrases.`;
       const reply = await callClaude(systemPrompt, userPrompt, 200);
+      const replyResolved = resolveMentionsInText(reply, guild);
       await simulateTyping(channel, 800 + Math.random() * 1500);
-      await lastMsg.reply(reply);
+      await lastMsg.reply(replyResolved);
       lastAnyBotPostTime = Date.now();
       await updateConvStats(channelObj.channelId);
       await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, lastMsg.content);
@@ -1093,6 +1081,67 @@ async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, 
     } catch (err) { pushLog('ERR', `Retour spontané tardif échoué : ${err.message}`, 'error'); }
   }, delayMs);
 }
+
+// ════════════════════════════════════════════════════════════
+// ── DM HANDLER v2.0.5 ────────────────────────────────────────
+// Brainee répond en messages privés avec mémoire MongoDB
+// Ton plus intime, historique persistant par utilisateur
+// ════════════════════════════════════════════════════════════
+
+discord.on(Events.MessageCreate, async (message) => {
+  if (message.author.bot) return;
+  if (message.channel.type !== 1) return; // 1 = DMChannel
+  if (!ANTHROPIC_API_KEY) return;
+
+  const userContent = message.content?.trim();
+  if (!userContent) return;
+
+  try {
+    // Historique DM depuis MongoDB
+    const history = await getDmHistory(message.author.id);
+    const historyBlock = formatDmHistory(history);
+    const profile = await getMemberProfile(message.author.id);
+    const toneInstruction = getToneInstruction(profile, message.author.username);
+    const mood = refreshDailyMood();
+
+    // Construction du system prompt DM — ton intime
+    const systemPrompt = `${BOT_PERSONA_DM}
+
+${toneInstruction}
+
+Humeur du jour : ${mood}. ${getMoodInjection(mood)}
+
+${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}
+
+Tu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
+
+    const userPrompt = `${message.author.username} : "${userContent}"`;
+
+    // Typing indicator DM
+    await simulateTyping(message.channel, 1000 + Math.random() * 2000);
+
+    const reply = await callClaude(systemPrompt, userPrompt, 350);
+
+    // Fragmentation possible en DM (15% au lieu de 20% — moins haché en privé)
+    if (Math.random() < 0.15 && reply.length > 80) {
+      await sendHuman(message.channel, reply);
+    } else {
+      await message.reply(reply);
+    }
+
+    // Sauvegarde historique DM
+    await appendDmMessage(message.author.id, message.author.username, 'user', userContent);
+    await appendDmMessage(message.author.id, message.author.username, 'assistant', reply);
+
+    // Mise à jour profil membre
+    await updateMemberProfile(message.author.id, message.author.username, userContent);
+
+    pushLog('SYS', `📨 DM répondu à ${message.author.username} (mood: ${mood})`, 'success');
+
+  } catch (err) {
+    pushLog('ERR', `DM handler échoué pour ${message.author.username} : ${err.message}`, 'error');
+  }
+});
 
 // ── @MENTION v2.0.2 + mémoire salon v2.0.3 ───────────────────
 discord.on(Events.MessageCreate, async (message) => {
@@ -1162,8 +1211,9 @@ Tu réponds uniquement à ${message.author.username}.`;
       return;
     }
     const reply = await callClaude(systemPrompt, `${message.author.username} dit : "${userQuery}"\nMax 3 phrases.`, 250);
+    const replyResolved = resolveMentionsInText(reply, message.guild);
     if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
-    await sendHuman(message.channel, reply + youtubeBlock, message);
+    await sendHuman(message.channel, replyResolved + youtubeBlock, message);
     await updateMemberProfile(message.author.id, message.author.username, userQuery);
     pushLog('SYS', `💬 @mention → ${message.author.username} (mood: ${mood})`, 'success');
   } catch (err) { pushLog('ERR', `handleMentionReply échoué : ${err.message}`, 'error'); }
@@ -1370,8 +1420,9 @@ async function postRandomConversation() {
       if (ctx.length > 20) contextBlock = `\nContexte récent (évite de répéter) :\n${ctx}`;
     } catch (_) {}
     const content = await callClaude(BOT_PERSONA + `\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n` + mode.inject + contextBlock, `Salon : ${ch.topic}. Max 3 phrases. Direct.`, 150);
+    const contentResolved = resolveMentionsInText(content, guild);
     await simulateTyping(channel, 1000 + Math.random() * 2000);
-    const sentMsg = await channel.send(content);
+    const sentMsg = await channel.send(contentResolved);
     lastAnyBotPostTime = Date.now(); await updateConvStats(ch.channelId);
     if (shouldCreateThread(content)) {
       try {
@@ -1423,8 +1474,9 @@ async function replyToConversations() {
       return;
     }
     const reply = await callClaude(systemPrompt, `${lastMsg.author.username} dit : "${msgContent}"\n1-2 phrases.`, 150);
+    const replyResolved = resolveMentionsInText(reply, guild);
     if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
-    await sendHuman(channel, reply, lastMsg);
+    await sendHuman(channel, replyResolved, lastMsg);
     lastAnyBotPostTime = Date.now(); await updateConvStats(ch.channelId);
     await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
     pushLog('SYS', `💬 Reply → ${lastMsg.author.username} (mood: ${mood})`, 'success');
@@ -1441,7 +1493,8 @@ async function postMorningGreeting() {
     const day = getParisDay(); const mood = refreshDailyMood();
     const dayCtx = day === 0 ? 'dimanche, journée chill' : day === 6 ? 'samedi, pas de boulot' : 'jour de semaine';
     const content = await callClaude(BOT_PERSONA + `\nHumeur : ${mood}. Tu viens de te lever.`, `C'est ${dayCtx}. Check morning — qui est là, qui bosse, qui geek. Somnolent. Max 2 phrases.`, 120);
-    await simulateTyping(channel, 800); await channel.send(content);
+    const contentResolved = resolveMentionsInText(content, guild);
+    await simulateTyping(channel, 800); await channel.send(contentResolved);
     lastAnyBotPostTime = Date.now(); await updateConvStats('1481028189680570421');
     pushLog('SYS', `☕ Morning greeting posté`, 'success');
   } catch (err) { pushLog('ERR', `Morning échoué : ${err.message}`, 'error'); }
@@ -1454,7 +1507,8 @@ async function postLunchBack() {
     const guild = await discord.guilds.fetch(GUILD_ID); await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId); if (!channel) return;
     const content = await callClaude(BOT_PERSONA + '\nTu reviens de ta pause.', `Retour de pause dans ${ch.topic}. 1-2 phrases. Décontracté.`, 100);
-    await simulateTyping(channel, 600); await channel.send(content);
+    const contentResolved = resolveMentionsInText(content, guild);
+    await simulateTyping(channel, 600); await channel.send(contentResolved);
     lastAnyBotPostTime = Date.now(); await updateConvStats(ch.channelId);
     pushLog('SYS', `🍕 Lunch back posté`);
   } catch (err) { pushLog('ERR', `Lunch back échoué : ${err.message}`, 'error'); }
@@ -1468,7 +1522,8 @@ async function postGoodnight() {
     const guild = await discord.guilds.fetch(GUILD_ID); await guild.channels.fetch();
     const channel = guild.channels.cache.get(targetId); if (!channel) return;
     const content = await callClaude(BOT_PERSONA + '\nFin de soirée gaming.', `Message fin de soirée naturel. Style "je finis cette quête et je dors... normalement". 1-2 phrases. Jamais "bonsoir".`, 100);
-    await simulateTyping(channel, 600); await channel.send(content);
+    const contentResolved = resolveMentionsInText(content, guild);
+    await simulateTyping(channel, 600); await channel.send(contentResolved);
     lastAnyBotPostTime = Date.now();
     pushLog('SYS', `🌙 Goodnight posté`);
   } catch (err) { pushLog('ERR', `Goodnight échoué : ${err.message}`, 'error'); }
@@ -1480,7 +1535,8 @@ async function postNightWakeup() {
     const guild = await discord.guilds.fetch(GUILD_ID); await guild.channels.fetch();
     const channel = guild.channels.cache.get('1481028189680570421'); if (!channel) return;
     const content = await callClaude(BOT_PERSONA + '\nRéveil nocturne, mode zombie.', `Message ultra court — "j'arrive pas à dormir et je pense encore à [jeu/boss]". 1 phrase MAX.`, 80);
-    await channel.send(content); lastAnyBotPostTime = Date.now();
+    const contentResolved = resolveMentionsInText(content, guild);
+    await channel.send(contentResolved); lastAnyBotPostTime = Date.now();
     pushLog('SYS', `👁️ Night wakeup posté`);
   } catch (err) { pushLog('ERR', `Night wakeup échoué : ${err.message}`, 'error'); }
 }
@@ -1566,6 +1622,7 @@ app.get('/api/slot',          (req, res) => { const slot = getCurrentSlot(); con
 // Route debug mémoire canal v2.0.3
 app.get('/api/channel-memory/:id', async (req, res) => { try { const mem = await getChannelMemory(req.params.id); res.json({ ok: true, memory: mem }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 app.get('/api/channel-memory', async (req, res) => { if (!mongoDb) return res.json({ ok: false, error: 'MongoDB non connecté' }); try { const all = await mongoDb.collection('channelMemory').find({}).toArray(); res.json({ ok: true, memories: all }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.get('/api/dm-history/:userId', async (req, res) => { try { const h = await getDmHistory(req.params.userId); res.json({ ok: true, history: h }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 app.post('/api/welcome/test', async (req, res) => { const cfg = botConfig.welcome; if (!cfg.enabled) return res.json({ ok: false, error: 'Welcome désactivé' }); try { const guild = await discord.guilds.fetch(GUILD_ID); await guild.channels.fetch(); const channel = guild.channels.cache.get(cfg.channelId); if (!channel) return res.status(404).json({ ok: false, error: 'Salon introuvable' }); const phrase = cfg.messages[Math.floor(Math.random() * cfg.messages.length)]; const embed = new EmbedBuilder().setColor(0x7c5cbf).setTitle('👾 Bienvenue TestMembre ! [TEST]').setDescription(`${phrase}\n\n📋 → <#1481028175474589827>\n🎭 → <#1481028181485027471>`).setFooter({ text: 'BrainEXE • Test' }).setTimestamp(); await channel.send({ content: '👋 **[TEST]**', embeds: [embed] }); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 app.post('/api/tiktok/test',  async (req, res) => { connectToTikTokLive(); res.json({ ok: true }); });
 app.post('/api/post', async (req, res) => { const { channelId, content, asEmbed, embedTitle } = req.body; if (!channelId || !content) return res.status(400).json({ ok: false, error: 'channelId + content requis' }); try { const guild = await discord.guilds.fetch(GUILD_ID); await guild.channels.fetch(); const channel = guild.channels.cache.get(channelId); if (!channel) return res.status(404).json({ ok: false, error: 'Salon introuvable' }); if (asEmbed) { const embed = new EmbedBuilder().setColor(0x7c5cbf).setDescription(content).setFooter({ text: 'BrainEXE' }).setTimestamp(); if (embedTitle) embed.setTitle(embedTitle); await channel.send({ embeds: [embed] }); } else await channel.send(content); pushLog('API', `Post manuel → ${channel.name}`, 'success'); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
