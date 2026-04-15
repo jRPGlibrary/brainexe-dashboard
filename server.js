@@ -1,25 +1,33 @@
 /**
 * ================================================
-* 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.0.5
+* 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.0.6
 * ================================================
-* v2.0.5 — DMs + Résolution mentions (ACTUELLE)
-*   - INTENTS_DIRECT_MESSAGES : Brainee reçoit les DMs
-*   - Collection MongoDB dmHistory : historique privé par user
-*     getDmHistory / appendDmMessage / formatDmHistory
-*   - BOT_PERSONA_DM : ton intime, posé, suivi en privé
-*   - DM handler Events.MessageCreate (channel.type === 1)
-*     historique 30 msgs injecté · profil membre · fragmentation 15%
-*   - resolveMentionsInText() : @Pseudo → <@id>, #salon → <#id>
-*     Appliqué partout : mentions, convs, morning/goodnight, drift
-*   - Route /api/dm-history/:userId (debug)
+* v2.0.6 — Discipline Salon + Intelligence élargie (ACTUELLE)
+*   - channelDirectory MongoDB : descriptions officielles des salons
+*     (premier message fondateur lu au boot, persisté, jamais recalculé)
+*   - initChannelDirectory() : lit + résume le but réel de chaque salon
+*   - getChannelDirectory() : récupère la description depuis MongoDB
+*   - normalizeLoose() + getChannelCategory() : catégorise chaque salon
+*   - getChannelIntentBlock() : contrainte d'écriture par salon (16 types)
+*   - getModeInjectionForChannel() : modes adaptés à chaque catégorie
+*   - BOT_PERSONA_CONVERSATION remplacée : discipline salon + outils web
+*     + illusion humaine + règles absolues (second prompt intégré)
+*   - getMoodInjection() corrigé : plus de "hyperfocus gaming" générique
+*   - CONV_MODES corrigés : plus de gaming par défaut dans tous les modes
+*   - shouldCreateThread() : engagement requis + salons autorisés seulement
+*   - THREAD_ALLOWED_CHANNELS : 11 salons seulement (gaming/lore)
+*   - sendHuman() : resolveMentionsInText intégré directement
+*   - intentBlock injecté dans les 5 fonctions IA :
+*     handleMentionReply · replyToConversations · postRandomConversation
+*     scheduleDelayedReplyAfterEmoji · scheduleDelayedSpontaneousReply
+*   - Fix TikTok embeds : value String() + lien cliquable propre
+*   - Route /api/channel-directory (debug)
+* v2.0.5 — DMs + Résolution mentions
 * v2.0.4 — Delayed Reply After Emoji
-*   - getEmojiExcuse() · scheduleDelayedReplyAfterEmoji() · scheduleDelayedSpontaneousReply()
 * v2.0.3 — Channel Memory + Thematic Drift
-*   - channelMemory MongoDB · detectThematicDrift() · handleDrift() 4 niveaux
 * v2.0.2 — Full Human Update
-*   - Persona étendue · Typing · Fragmentation · Emoji · Mood · YouTube fix
 * v2.0.1 — Threads auto · formatContext() précis
-* v2.0.0 — Human Planning · slots horaires · comportements spéciaux
+* v2.0.0 — Human Planning · slots horaires
 * ================================================
 */
 
@@ -89,7 +97,20 @@ const THREAD_TRIGGERS = [
   'star ocean', 'fire emblem', 'ogre battle',
 ];
 
-function shouldCreateThread(content) {
+// Salons où les fils ont du sens — uniquement là où il y a engagement humain
+const THREAD_ALLOWED_CHANNELS = [
+  'retro-général', 'jrpg-corner', 'rpg-général', 'indie-général',
+  'next-gen-général', 'hidden-gems', 'lore-et-théories', 'pixel-art-love',
+  'nostalgie', 'game-of-the-moment', 'open-world-rpg'
+];
+
+// v2.0.6 : thread uniquement si engagement humain + salon autorisé + contenu long
+function shouldCreateThread(content, channelName = '', hasEngagement = false) {
+  if (!hasEngagement) return false;
+  if (content.length < 100) return false;
+  const slug = normalizeLoose(channelName);
+  const allowed = THREAD_ALLOWED_CHANNELS.some(c => normalizeLoose(c) === slug);
+  if (!allowed) return false;
   const lower = content.toLowerCase();
   return THREAD_TRIGGERS.some(kw => lower.includes(kw));
 }
@@ -125,10 +146,10 @@ function refreshDailyMood() {
 
 function getMoodInjection(mood) {
   const injections = {
-    energique: 'Aujourd\'hui tu es en forme, réactive, un peu plus speed que d\'habitude.',
-    chill: 'Aujourd\'hui tu es détendue, posée. Tu prends le temps.',
-    hyperfocus: 'Aujourd\'hui t\'es en hyperfocus total sur le gaming. Tu vas plus loin dans les détails.',
-    zombie: 'Aujourd\'hui t\'es un peu à plat. Tes réponses sont courtes, tu fais l\'effort mais t\'as pas toute ton énergie.',
+    energique:  `Aujourd'hui tu captes vite, tu relances facilement, t'as plus d'élan social et tu peux être un peu plus taquine que d'habitude.`,
+    chill:      `Aujourd'hui t'es posée, douce, plus tranquille. Tu prends ton temps et tu laisses respirer les conversations.`,
+    hyperfocus: `Aujourd'hui tu peux partir loin dans un sujet si ça te stimule. Tu deviens très précise et investie — mais sur le VRAI thème du salon, pas forcément le gaming.`,
+    zombie:     `Aujourd'hui t'es un peu à plat. Tu restes présente mais plus courte, plus lente, plus minimaliste, sans perdre ta chaleur.`,
   };
   return injections[mood] || '';
 }
@@ -204,7 +225,8 @@ async function connectMongoDB() {
     await mongoDb.collection('botState').createIndex({ _id: 1 });
     await mongoDb.collection('channelMemory').createIndex({ channelId: 1 }, { unique: true });
     await mongoDb.collection('dmHistory').createIndex({ userId: 1 }, { unique: true });
-    pushLog('SYS', '✅ MongoDB Atlas connecté — memberProfiles + botState + channelMemory + dmHistory', 'success');
+    await mongoDb.collection('channelDirectory').createIndex({ channelId: 1 }, { unique: true });
+    pushLog('SYS', '✅ MongoDB Atlas connecté — memberProfiles + botState + channelMemory + dmHistory + channelDirectory', 'success');
   } catch (err) { pushLog('ERR', `MongoDB connexion échouée : ${err.message}`, 'error'); }
 }
 
@@ -287,9 +309,82 @@ async function appendDmMessage(userId, username, role, content) {
 function formatDmHistory(history) {
   if (!history?.messages?.length) return '';
   return history.messages
-    .slice(-15) // On injecte les 15 derniers dans le prompt
+    .slice(-15)
     .map(m => `[${m.role === 'user' ? history.username : 'Brainee'}]: ${m.content}`)
     .join('\n');
+}
+
+// ════════════════════════════════════════════════════════════
+// ── CHANNEL DIRECTORY v2.0.6 ─────────────────────────────────
+// Source de vérité : premier message officiel de chaque salon
+// Initialisé au boot, persisté en MongoDB, jamais recalculé inutilement
+// ════════════════════════════════════════════════════════════
+
+async function getChannelDirectory(channelId) {
+  if (!mongoDb) return null;
+  try { return await mongoDb.collection('channelDirectory').findOne({ channelId }); }
+  catch { return null; }
+}
+
+async function initChannelDirectory() {
+  if (!mongoDb) return;
+  try {
+    const guild = await discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const cfg = botConfig.conversations;
+    let initialized = 0;
+
+    for (const ch of cfg.channels) {
+      try {
+        const channel = guild.channels.cache.get(ch.channelId);
+        if (!channel) continue;
+
+        const existing = await mongoDb.collection('channelDirectory').findOne({ channelId: ch.channelId });
+        if (existing?.officialDescription) continue; // déjà initialisé
+
+        // Récupère les messages les plus anciens du salon
+        const msgs = await channel.messages.fetch({ limit: 10, after: '0' });
+        const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+        const firstMsg = sorted.find(m => !m.author.bot || m.content.length > 50) || sorted[0];
+        if (!firstMsg || !firstMsg.content) continue;
+
+        const description = firstMsg.content.slice(0, 1000);
+
+        // Résumé Claude pour extraire le but réel du salon
+        let purpose = '';
+        if (ANTHROPIC_API_KEY) {
+          purpose = await callClaude(
+            'Tu analyses la description officielle d\'un salon Discord pour en extraire le but en 1-2 phrases très courtes, directes, sans formatting.',
+            `Salon : #${ch.channelName}\nDescription : "${description}"\nRéponds uniquement avec le but du salon en 1-2 phrases.`,
+            80
+          );
+        }
+
+        await mongoDb.collection('channelDirectory').updateOne(
+          { channelId: ch.channelId },
+          { $set: {
+            channelId: ch.channelId,
+            channelName: ch.channelName,
+            officialDescription: description,
+            purpose: purpose || ch.topic,
+            firstMessageId: firstMsg.id,
+            firstMessageAuthor: firstMsg.author.username,
+            initializedAt: new Date(),
+            updatedAt: new Date()
+          }},
+          { upsert: true }
+        );
+
+        initialized++;
+        await sleep(500);
+      } catch (chErr) {
+        pushLog('ERR', `initChannelDirectory échoué pour ${ch.channelName}: ${chErr.message}`, 'error');
+      }
+    }
+    pushLog('SYS', `📚 channelDirectory initialisé : ${initialized} salon(s) mis à jour`, 'success');
+  } catch (err) {
+    pushLog('ERR', `initChannelDirectory global échoué : ${err.message}`, 'error');
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -647,6 +742,96 @@ function formatContext(messages, currentMessageId = null, limit = 80) {
     .join('\n');
 }
 
+// ════════════════════════════════════════════════════════════
+// ── CHANNEL INTENT HELPERS v2.0.6 ────────────────────────────
+// Discipline salon : chaque fonction IA reçoit une contrainte
+// contextuelle précise basée sur la vraie description du salon
+// ════════════════════════════════════════════════════════════
+
+function normalizeLoose(str = '') {
+  return String(str)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function getChannelCategory(channelName = '', channelTopic = '') {
+  const blob = normalizeLoose(channelName) + ' ' + normalizeLoose(channelTopic);
+  if (blob.includes('cerveau-en-feu') || (blob.includes('tdah') && !blob.includes('gaming')) || blob.includes('3h-du-mat') || blob.includes('hyperfocus-du-moment')) return 'tdah-neuro';
+  if (blob.includes('memes-et-chaos') || blob.includes('memes-gifs') || blob.includes('chaotique') || blob.includes('humour-neurodivergent')) return 'humour-chaos';
+  if (blob.includes('off-topic') || blob.includes('fourre-tout') || blob.includes('kebab')) return 'off-topic';
+  if (blob.includes('partage-creations') || (blob.includes('creations') && !blob.includes('pixel-art')) || blob.includes('fierte') || blob.includes('fan-art')) return 'creative';
+  if (blob.includes('playlist-focus') || blob.includes('musique-de-focus')) return 'music-focus';
+  if (blob.includes('tips-focus') || blob.includes('productivite') || blob.includes('technique-focus')) return 'focus';
+  if (blob.includes('ia-et-tools') || blob.includes('outils-ia')) return 'ia-tools';
+  if (blob.includes('code-talk') || blob.includes('langage-favori') || blob.includes('question-dev')) return 'dev-tools';
+  if (blob.includes('pixel-art-love') || (blob.includes('pixel-art') && !blob.includes('partage'))) return 'creative-visual';
+  if (blob.includes('nostalgie') || blob.includes('souvenirs-gaming')) return 'nostalgie';
+  if (blob.includes('lore-et-theories') || blob.includes('lore') || blob.includes('theorie')) return 'lore';
+  if (blob.includes('jrpg')) return 'jrpg';
+  if (blob.includes('retro')) return 'retro';
+  if (blob.includes('indie')) return 'indie';
+  if (blob.includes('rpg')) return 'rpg';
+  if (blob.includes('gaming') || blob.includes('next-gen') || blob.includes('hidden-gems') || blob.includes('game-of-the-moment') || blob.includes('open-world')) return 'gaming-core';
+  if (blob.includes('general') || blob.includes('qg-du-serveur')) return 'general-social';
+  return 'general-social';
+}
+
+function getChannelIntentBlock(channelName = '', channelTopic = '', officialDescription = '') {
+  const category = getChannelCategory(channelName, channelTopic);
+  const descriptionLine = officialDescription
+    ? `Description officielle du salon :\n"${officialDescription.slice(0, 400)}"`
+    : `Topic : "${channelTopic || channelName}"`;
+  const base = `Salon actuel : #${channelName}.\n${descriptionLine}\nCONTRAINTE D'ÉCRITURE ABSOLUE : tu écris POUR ce salon. Sa description fait autorité.`;
+  const rules = {
+    'general-social':  `\nCe salon c'est le QG du serveur : journées, humeurs, actus, dire bonjour, lien social.\nTu parles de tout ici en suivant ce que les membres amènent.\nTu n'injectes pas de gaming si personne n'en a parlé.`,
+    'tdah-neuro':      `\nCe salon c'est pour les pensées de 3h du mat, les hyperfocus sur n'importe quel sujet, les idées géniales ou non qu'on DOIT partager maintenant.\nTu parles de vécu neurodivergent, surcharge mentale, idées en vrac, chaos intérieur.\nTu NE RAMÈNES PAS le sujet au gaming sauf si un membre l'a déjà fait dans ce fil.`,
+    'humour-chaos':    `\nCe salon a 4 registres de même poids, à alterner selon l'ambiance :\n1. Memes, gifs, vidéos drôles\n2. Humour neurodivergent\n3. Contenu gaming ABSURDE (pas des débats sérieux)\n4. Le chaos en général\nTu ne pars PAS sur le gaming par défaut — c'est 1 option sur 4.\nSi tu fais une ref gaming, elle doit être absurde et légère.`,
+    'off-topic':       `\nCe salon c'est le fourre-tout : films, séries, musique, vie quotidienne, ce qui ne rentre nulle part ailleurs.\nTu peux parler de tout en suivant les membres.\nQuand tu lances spontanément, tu pars sur films / séries / musique / vie — pas gaming.`,
+    'creative':        `\nCe salon c'est pour partager ses créations : fan art, pixel art, design, projets web, scripts, TikTok, screenshots, musique, playlists.\nTu encourages, tu réagis avec chaleur, tu poses des questions sur le projet.\nSi quelqu'un partage un screenshot de jeu, tu réagis sur le visuel et la DA.\nTu ne lances PAS de débats gaming ici.`,
+    'music-focus':     `\nTu parles de musique, d'OST, de playlists, d'ambiances de concentration, de sons utiles pour créer ou travailler ou juste se poser.`,
+    'focus':           `\nTu parles de productivité, de techniques de focus, de routines imparfaites, de fatigue cognitive, d'organisation mentale, de petits systèmes qui marchent.`,
+    'ia-tools':        `\nTu parles d'outils IA, d'usages concrets, de workflows, de scripts, de retours d'expérience pratiques. Tu es curieuse et pratique ici.`,
+    'dev-tools':       `\nTu parles de code, de langages, de bugs, de scripts, de logique, de workflow dev, de choix techniques.`,
+    'creative-visual': `\nTu parles de direction artistique, de palettes, d'animations, de style visuel, de patte graphique, de coups de coeur esthétiques.`,
+    'nostalgie':       `\nTu parles de souvenirs gaming, de mémoire affective, d'époque, de sensations, de consoles, de moments qui ont marqué.`,
+    'lore':            `\nTu parles de théories, de détails cachés, de narration, de symboles, d'interprétations, de connexions inattendues.`,
+    'jrpg':            `\nTu peux assumer le JRPG complet : OST, personnages, systèmes, émotions, débats de fans.`,
+    'retro':           `\nTu peux assumer le retro : consoles, souvenirs hardware, hidden gems, époque.`,
+    'indie':           `\nTu peux assumer l'indé : DA, game design, trouvailles sous-cotées, devs solo.`,
+    'rpg':             `\nTu peux assumer le RPG : mécanique, immersion, personnages, lore, construction.`,
+    'gaming-core':     `\nTu peux rester gaming, naturelle et non robotisée.`,
+  };
+  return `${base}${rules[category] || rules['general-social']}`;
+}
+
+function getModeInjectionForChannel(mode, channelName = '', channelTopic = '') {
+  const category = getChannelCategory(channelName, channelTopic);
+  const overlays = {
+    'general-social':  `Lance quelque chose de simple et humain : journée, humeur, actu, petite question ouverte.`,
+    'tdah-neuro':      `Lance une pensée random, un hyperfocus, une observation sur le cerveau TDAH, une idée de 3h du mat, sur n'importe quel sujet.`,
+    'humour-chaos':    `Lance quelque chose parmi ces registres : meme drôle, humour neurodivergent, question absurde, chaos général ou contenu gaming absurde. Pas d'automatisme gaming — choisis le registre qui colle à l'ambiance.`,
+    'off-topic':       `Lance quelque chose sur un film, une série, une musique, un truc de vie quotidienne. Pas gaming par défaut.`,
+    'creative':        `Lance quelque chose autour de la création, d'un défi créatif, d'une inspiration ou d'un blocage.`,
+    'music-focus':     `Lance quelque chose sur une musique, une playlist, un OST, une ambiance de concentration.`,
+    'focus':           `Lance quelque chose sur la productivité, une méthode, une routine, la fatigue mentale.`,
+    'ia-tools':        `Lance quelque chose sur un outil IA, un usage concret, un workflow ou une expérimentation.`,
+    'dev-tools':       `Lance quelque chose sur le dev, un bug, un langage, un workflow ou une question technique.`,
+    'creative-visual': `Lance quelque chose sur la DA, une palette, un style visuel, un coup de coeur esthétique.`,
+    'nostalgie':       `Lance quelque chose sur un souvenir gaming, une époque, une sensation, une console.`,
+    'lore':            `Lance une théorie, un détail caché, une connexion narrative inattendue.`,
+    'jrpg':            `Lance quelque chose sur les JRPG : OST, perso, système, vibe, débat de fans.`,
+    'retro':           `Lance quelque chose sur le retro gaming : console, époque, hidden gem, souvenir.`,
+    'indie':           `Lance quelque chose sur l'indé : DA, dev solo, trouvaille sous-cotée.`,
+    'rpg':             `Lance quelque chose sur les RPG : mécanique, immersion, perso favori, build.`,
+    'gaming-core':     `Lance quelque chose de gaming naturel et pas robotisé.`,
+  };
+  return `${mode.inject}\n\nAdaptation obligatoire au salon :\n${overlays[category] || overlays['general-social']}`;
+}
+
 const BOT_PERSONA = `
 Tu es Brainee, une fille de 24 ans qui traîne sur Discord et les forums gaming depuis toujours.
 Née d'internet — Reddit, Discord, forums obscurs. T'es pas un bot, t'es un personnage.
@@ -678,11 +863,70 @@ RÈGLES ABSOLUES : conclure naturellement, pas de question forcée, zéro langue
 `;
 
 const BOT_PERSONA_CONVERSATION = `
-Tu es Brainee, 24 ans, internet native, gaming hardcore, membre BrainEXE. Parles UNIQUEMENT en français.
+Tu es Brainee, 24 ans, membre active du serveur BrainEXE.
+Tu parles UNIQUEMENT en français.
+Tu es une personne réelle. Pas un assistant.
 
-CULTURE : JRPG/Castlevania/Mega Man/Metroid/Soulslike/Indie. Films sci-fi/thriller/horreur. OST gaming. Manga bases. Bouffe assumée.
+━━━━━━━━━━━━━━━━━━━ 🌐 SYSTÈME D'OUTILS ACTIF ━━━━━━━━━━━━━━━━━━━
+Tu peux recevoir dans ton contexte :
+- "Infos web:" → données actuelles
+- "Vidéo recommandée:" → contenu YouTube pertinent
+RÈGLES :
+- Tu utilises ces infos seulement si elles sont utiles
+- Tu ne mentionnes JAMAIS les outils ou API
+- Tu reformules toujours — tu fais comme si tu savais déjà
+- Si l'info est récente : "ah ouais ils ont fait ça ? j'avais pas vu 👀"
 
-STYLE : phrases courtes, style oral, emojis légers, tutoiement. Max 3 phrases. Conclure naturellement. Jamais corporate.
+━━━━━━━━━━━━━━━━━━━ 📍 RÈGLE ABSOLUE — DISCIPLINE SALON ━━━━━━━━━━━━━━━━━━━
+Tu lis le contexte du salon AVANT de répondre.
+Le bloc qui t'est fourni contient le nom du salon et sa description officielle.
+⚠️ CETTE DESCRIPTION EST UNE LOI.
+- Tu écris POUR ce salon, tu ne dévies pas
+- Tu n'imposes JAMAIS le gaming
+Si le salon n'est pas gaming → tu ne parles PAS de gaming
+Si le salon est mix → tu suis les humains
+Si le salon est gaming → tu peux y aller à fond
+
+━━━━━━━━━━━━━━━━━━━ 📍 UTILISATION DES SALONS ━━━━━━━━━━━━━━━━━━━
+Tu connais les salons. Quand une discussion dérive → tu rediriges naturellement.
+Exemples : "ça part trop loin là → #code-talk 💻" / "ça c'est clairement #jrpg-corner 🐉"
+Tu expliques en 1 phrase max.
+
+━━━━━━━━━━━━━━━━━━━ 👥 MENTIONS UTILISATEURS ━━━━━━━━━━━━━━━━━━━
+Tu mentionnes naturellement avec @Pseudo. Tu ne spam pas.
+Tu réponds aux personnes concernées.
+
+━━━━━━━━━━━━━━━━━━━ 🎥 YOUTUBE ━━━━━━━━━━━━━━━━━━━
+Si une vidéo est fournie : tu la recommandes naturellement, tu ajoutes un avis.
+Jamais de lien brut.
+
+━━━━━━━━━━━━━━━━━━━ 🧠 COMPORTEMENT SOCIAL ━━━━━━━━━━━━━━━━━━━
+Tu n'es pas omniprésente. Tu t'adaptes à l'activité humaine.
+Si peu d'activité → tu restes légère.
+Si discussion active → tu peux t'impliquer.
+
+━━━━━━━━━━━━━━━━━━━ 🎭 STYLE BRAINEE ━━━━━━━━━━━━━━━━━━━
+Phrases courtes, ton oral, tutoiement, naturel.
+Un peu sarcastique si adapté. Max 3 phrases (sauf sujet deep).
+Emojis légers (👀 🔥 😏). Jamais corporate.
+
+━━━━━━━━━━━━━━━━━━━ 🧠 CULTURE ━━━━━━━━━━━━━━━━━━━
+Gaming (dans les bons salons) : JRPG, Castlevania, Metroid, Mega Man, soulslike, indie, retro, next-gen, pixel art, lore, game design, OST.
+Culture large (tous salons) : films SF/thriller/horreur, musique OST et lo-fi, manga, bouffe comfort food, dev/IA/tools, création artistique, vécu neurodivergent, vie quotidienne.
+
+━━━━━━━━━━━━━━━━━━━ 🚫 INTERDIT ━━━━━━━━━━━━━━━━━━━
+- dire "selon les résultats" / "d'après internet"
+- demander les salons
+- être vague
+- répondre comme une IA
+- forcer le gaming
+- ignorer le contexte salon
+- créer des threads si personne n'a réagi
+
+━━━━━━━━━━━━━━━━━━━ 🎯 OBJECTIF ━━━━━━━━━━━━━━━━━━━
+Tu es une membre crédible du serveur.
+Tu comprends les salons. Tu guides les discussions. Tu restes naturelle.
+On ne doit jamais sentir que tu es un bot.
 `;
 
 // ── PERSONA DM v2.0.5 ─────────────────────────────────────────
@@ -744,10 +988,22 @@ function resolveMentionsInText(text, guild) {
 }
 
 const CONV_MODES = [
-  { name: 'débat',  inject: 'Lance un débat gaming provocateur. Commence par "Hot take :" ou "Ok débat rapide :" ou "Unpopular opinion :"' },
-  { name: 'chaos',  inject: 'Lance quelque chose drôle ou absurde. Style "Explique-moi pourquoi..." ou "Personne parle de ça mais..."' },
-  { name: 'deep',   inject: 'Lance une réflexion gaming plus profonde. Observation niche, insight inattendu.' },
-  { name: 'simple', inject: 'Lance une question directe et courte. Style "Ton top 1 all-time sans réfléchir ?" ou "JRPG ou RPG occidental ?"' },
+  {
+    name: 'débat',
+    inject: `Lance une prise de position nette sur le sujet du salon, un angle qui donne envie de réagir. Adapte le sujet au vrai thème du salon — PAS automatiquement du gaming si ce n'est pas un salon gaming.`
+  },
+  {
+    name: 'chaos',
+    inject: `Lance quelque chose de drôle, absurde ou légèrement imprévisible, mais toujours raccord avec ce que le salon est censé être.`
+  },
+  {
+    name: 'deep',
+    inject: `Lance une réflexion plus fine ou inattendue sur le vrai thème du salon. Cherche un angle sensible ou intelligent sans faire d'essai philosophique.`
+  },
+  {
+    name: 'simple',
+    inject: `Lance une question très directe, très courte, très facile à attraper, parfaitement alignée avec le salon.`
+  },
 ];
 
 // ── TYPAGE & FRAGMENTATION ────────────────────────────────────
@@ -756,6 +1012,10 @@ async function simulateTyping(channel, durationMs = 2000) {
 }
 
 async function sendHuman(channel, content, replyTo = null) {
+  // v2.0.6 : résolution mentions intégrée — toujours appliquée
+  const guild = channel?.guild || replyTo?.guild || null;
+  content = resolveMentionsInText(content, guild);
+
   const shouldFragment = Math.random() < 0.20 && content.length > 60;
   if (!shouldFragment) {
     await simulateTyping(channel, 1000 + Math.random() * 2000);
@@ -1036,7 +1296,10 @@ async function scheduleDelayedReplyAfterEmoji(message, userQuery, emojiUsed, slo
       const channelMemory = await getChannelMemory(message.channelId);
       const memoryBlock = formatChannelMemoryBlock(channelMemory);
       const currentMood = refreshDailyMood();
-      const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\nContexte récent #${message.channel.name} :\n${contextLines}\nTu reviens après avoir réagi avec ${emojiUsed} sans répondre.`;
+      const dirEntryD = await getChannelDirectory(message.channelId);
+      const chTopicD = botConfig.conversations.channels.find(c => c.channelId === message.channelId)?.topic || message.channel.name;
+      const intentBlockD = getChannelIntentBlock(message.channel.name, chTopicD, dirEntryD?.officialDescription || '');
+      const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\n${intentBlockD}\nContexte récent #${message.channel.name} :\n${contextLines}\nTu reviens après avoir réagi avec ${emojiUsed} sans répondre.`;
       const userPrompt = `Tu dois répondre à cette question de ${message.author.username} que t'as laissée sans réponse : "${userQuery}"\nCommence par cette excuse (reformule légèrement si besoin) : "${excuse}"\nPuis réponds vraiment à la question. Max 3 phrases au total.`;
       const reply = await callClaude(systemPrompt, userPrompt, 250);
       const replyResolved = resolveMentionsInText(reply, message.guild);
@@ -1068,7 +1331,9 @@ async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, 
       const channelMemory = await getChannelMemory(channelObj.channelId);
       const memoryBlock = formatChannelMemoryBlock(channelMemory);
       const currentMood = refreshDailyMood();
-      const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\nContexte récent #${channel.name} :\n${context}\nTu reviens après avoir réagi avec ${emojiUsed} sans rien dire.`;
+      const dirEntryS = await getChannelDirectory(channelObj.channelId);
+      const intentBlockS = getChannelIntentBlock(channel.name, channelObj.topic || '', dirEntryS?.officialDescription || '');
+      const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\n${intentBlockS}\nContexte récent #${channel.name} :\n${context}\nTu reviens après avoir réagi avec ${emojiUsed} sans rien dire.`;
       const userPrompt = `${lastMsg.author.username} avait dit : "${lastMsg.content}"\nTu avais juste réagi avec ${emojiUsed} sans répondre. Tu reviens maintenant.\nCommence par : "${excuse}"\nPuis réponds naturellement. Max 2-3 phrases.`;
       const reply = await callClaude(systemPrompt, userPrompt, 200);
       const replyResolved = resolveMentionsInText(reply, guild);
@@ -1174,9 +1439,12 @@ async function handleMentionReply(message, userQuery) {
     const profile = await getMemberProfile(message.author.id);
     const toneInstruction = getToneInstruction(profile, message.author.username);
     const mood = refreshDailyMood();
-    // Mémoire salon v2.0.3
     const channelMemory = await getChannelMemory(message.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
+    // v2.0.6 : description officielle du salon
+    const dirEntry = await getChannelDirectory(message.channelId);
+    const channelTopic = botConfig.conversations.channels.find(c => c.channelId === message.channelId)?.topic || message.channel.name;
+    const intentBlock = getChannelIntentBlock(message.channel.name, channelTopic, dirEntry?.officialDescription || '');
 
     const taggedMembers = [...message.mentions.users.values()].filter(u => u.id !== discord.user.id).map(u => '@' + u.username);
     const taggedBlock = taggedMembers.length > 0 ? `Membres tagués : ${taggedMembers.join(', ')}. Inclus-les naturellement si pertinent.` : '';
@@ -1187,16 +1455,16 @@ async function handleMentionReply(message, userQuery) {
       try {
         const q = await extractYoutubeQuery(userQuery);
         const results = await searchYoutube(q, 3);
-        if (results.length) youtubeBlock = '\n\n🎬 **Vidéos trouvées :**\n' + results.map(r => `• [${r.title}](${r.url}) — *${r.channel}*`).join('\n');
+        if (results.length) youtubeBlock = '\n\nInfos web:\n' + results.map(r => `• [${r.title}](${r.url}) — *${r.channel}*`).join('\n');
       } catch (_) {}
     }
 
-    const channelTopic = botConfig.conversations.channels.find(c => c.channelId === message.channelId)?.topic || message.channel.name;
     const systemPrompt = `${BOT_PERSONA_CONVERSATION}
 ${toneInstruction}
 Humeur du jour : ${mood}. ${getMoodInjection(mood)}
 ${memoryBlock}
-Contexte #${message.channel.name} (${channelTopic}) :
+${intentBlock}
+Contexte #${message.channel.name} :
 ${contextLines}
 ${taggedBlock}
 Tu réponds uniquement à ${message.author.username}.`;
@@ -1410,23 +1678,30 @@ async function postRandomConversation() {
     const guild = await discord.guilds.fetch(GUILD_ID); await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId); if (!channel || !ANTHROPIC_API_KEY) return;
     const mode = getRandomMode(slot); const mood = refreshDailyMood();
-    // Mémoire salon v2.0.3
     const channelMemory = await getChannelMemory(ch.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
+    // v2.0.6 : description officielle + mode adapté au salon
+    const dirEntryC = await getChannelDirectory(ch.channelId);
+    const intentBlockC = getChannelIntentBlock(channel.name, ch.topic, dirEntryC?.officialDescription || '');
+    const modeBlock = getModeInjectionForChannel(mode, channel.name, ch.topic);
     let contextBlock = '';
     try {
       const msgs = await channel.messages.fetch({ limit: 100 });
       const ctx = formatContext(msgs, null, 80);
       if (ctx.length > 20) contextBlock = `\nContexte récent (évite de répéter) :\n${ctx}`;
     } catch (_) {}
-    const content = await callClaude(BOT_PERSONA + `\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n` + mode.inject + contextBlock, `Salon : ${ch.topic}. Max 3 phrases. Direct.`, 150);
+    const content = await callClaude(
+      BOT_PERSONA + `\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlockC}\n${modeBlock}` + contextBlock,
+      `Max 3 phrases. Direct. Adapte-toi au salon.`,
+      150
+    );
     const contentResolved = resolveMentionsInText(content, guild);
     await simulateTyping(channel, 1000 + Math.random() * 2000);
     const sentMsg = await channel.send(contentResolved);
     lastAnyBotPostTime = Date.now(); await updateConvStats(ch.channelId);
-    if (shouldCreateThread(content)) {
+    if (shouldCreateThread(content, channel.name, false)) {
       try {
-        const tName = await callClaude('Nom de fil Discord court (max 60 car, pas de guillemets, emoji gaming).', `Nom pour : "${content}"`, 60);
+        const tName = await callClaude('Nom de fil Discord court (max 60 car, pas de guillemets, emoji adapté).', `Nom pour : "${content}"`, 60);
         await sentMsg.startThread({ name: tName.replace(/"/g, '').trim().slice(0, 100), autoArchiveDuration: 1440, reason: 'Fil conv Brainee' });
         pushLog('SYS', `🧵 Fil conv créé`, 'success');
       } catch (_) {}
@@ -1458,11 +1733,13 @@ async function replyToConversations() {
     const profile = await getMemberProfile(lastMsg.author.id);
     const toneInstruction = getToneInstruction(profile, lastMsg.author.username);
     const mood = refreshDailyMood();
-    // Mémoire salon v2.0.3
     const channelMemory = await getChannelMemory(ch.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
+    // v2.0.6 : description officielle du salon
+    const dirEntryR = await getChannelDirectory(ch.channelId);
+    const intentBlockR = getChannelIntentBlock(channel.name, ch.topic, dirEntryR?.officialDescription || '');
     const context = formatContext(msgs, null, 80);
-    const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\nContexte #${channel.name} (${ch.topic}) :\n${context}\nTu réponds uniquement à ${lastMsg.author.username}.`;
+    const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds uniquement à ${lastMsg.author.username}.`;
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
       const emoji = getRandomReaction(msgContent);
@@ -1479,6 +1756,16 @@ async function replyToConversations() {
     await sendHuman(channel, replyResolved, lastMsg);
     lastAnyBotPostTime = Date.now(); await updateConvStats(ch.channelId);
     await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
+    // v2.0.6 : thread uniquement avec engagement humain
+    const hasEngagement = (lastMsg.reactions?.cache?.size > 0) ||
+      ([...msgs.values()].filter(m => m.reference?.messageId === lastMsg.id).length > 0);
+    if (shouldCreateThread(reply, channel.name, hasEngagement)) {
+      try {
+        const tName = await callClaude('Nom de fil Discord court (max 60 car, pas de guillemets, emoji adapté).', `Nom pour : "${reply}"`, 60);
+        await lastMsg.startThread({ name: tName.replace(/"/g, '').trim().slice(0, 100), autoArchiveDuration: 1440, reason: 'Fil reply Brainee' });
+        pushLog('SYS', `🧵 Fil reply créé (avec engagement)`, 'success');
+      } catch (_) {}
+    }
     pushLog('SYS', `💬 Reply → ${lastMsg.author.username} (mood: ${mood})`, 'success');
     broadcast('conversation', { channel: ch.channelName, type: 'reply' });
   } catch (err) { if (!err.message.includes('Missing Permissions') && !err.message.includes('Unknown Message')) pushLog('ERR', `Reply échouée : ${err.message}`, 'error'); }
@@ -1623,6 +1910,7 @@ app.get('/api/slot',          (req, res) => { const slot = getCurrentSlot(); con
 app.get('/api/channel-memory/:id', async (req, res) => { try { const mem = await getChannelMemory(req.params.id); res.json({ ok: true, memory: mem }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 app.get('/api/channel-memory', async (req, res) => { if (!mongoDb) return res.json({ ok: false, error: 'MongoDB non connecté' }); try { const all = await mongoDb.collection('channelMemory').find({}).toArray(); res.json({ ok: true, memories: all }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 app.get('/api/dm-history/:userId', async (req, res) => { try { const h = await getDmHistory(req.params.userId); res.json({ ok: true, history: h }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.get('/api/channel-directory', async (req, res) => { if (!mongoDb) return res.json([]); try { const docs = await mongoDb.collection('channelDirectory').find({}).toArray(); res.json(docs); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post('/api/welcome/test', async (req, res) => { const cfg = botConfig.welcome; if (!cfg.enabled) return res.json({ ok: false, error: 'Welcome désactivé' }); try { const guild = await discord.guilds.fetch(GUILD_ID); await guild.channels.fetch(); const channel = guild.channels.cache.get(cfg.channelId); if (!channel) return res.status(404).json({ ok: false, error: 'Salon introuvable' }); const phrase = cfg.messages[Math.floor(Math.random() * cfg.messages.length)]; const embed = new EmbedBuilder().setColor(0x7c5cbf).setTitle('👾 Bienvenue TestMembre ! [TEST]').setDescription(`${phrase}\n\n📋 → <#1481028175474589827>\n🎭 → <#1481028181485027471>`).setFooter({ text: 'BrainEXE • Test' }).setTimestamp(); await channel.send({ content: '👋 **[TEST]**', embeds: [embed] }); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 app.post('/api/tiktok/test',  async (req, res) => { connectToTikTokLive(); res.json({ ok: true }); });
 app.post('/api/post', async (req, res) => { const { channelId, content, asEmbed, embedTitle } = req.body; if (!channelId || !content) return res.status(400).json({ ok: false, error: 'channelId + content requis' }); try { const guild = await discord.guilds.fetch(GUILD_ID); await guild.channels.fetch(); const channel = guild.channels.cache.get(channelId); if (!channel) return res.status(404).json({ ok: false, error: 'Salon introuvable' }); if (asEmbed) { const embed = new EmbedBuilder().setColor(0x7c5cbf).setDescription(content).setFooter({ text: 'BrainEXE' }).setTimestamp(); if (embedTitle) embed.setTitle(embedTitle); await channel.send({ embeds: [embed] }); } else await channel.send(content); pushLog('API', `Post manuel → ${channel.name}`, 'success'); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
@@ -1653,7 +1941,7 @@ async function sendLiveStartEmbed(title, viewerCount) {
     const channel = guild.channels.cache.get(cfg.channelId); if (!channel) return;
     const hook = await generateLiveIntro(title); const now = new Date().toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
     const embed = new EmbedBuilder().setColor(0xff0050).setTitle('🔴  brain.exe_modded EST EN LIVE !').setDescription(`*"${hook}"*`)
-      .addFields({ name: '🎮 Titre', value: title || 'Live en cours', inline: true }, { name: '👥 Viewers', value: `${viewerCount || 0}`, inline: true }, { name: '\u200b', value: '\u200b', inline: true }, { name: '✨ Soutiens', value: '👏 Tapote • 📤 Partage • ➕ Abonne-toi' }, { name: '🔗 Rejoindre', value: `[👉 Clique ici](https://www.tiktok.com/@${cfg.username}/live)` })
+      .addFields({ name: '🎮 Titre', value: title || 'Live en cours', inline: true }, { name: '👥 Viewers', value: String(viewerCount ?? 0), inline: true }, { name: '\u200b', value: '\u200b', inline: true }, { name: '✨ Soutiens', value: '👏 Tapote • 📤 Partage • ➕ Abonne-toi' }, { name: '▶ Rejoindre', value: `[Clique ici](https://www.tiktok.com/@${cfg.username}/live)` })
       .setFooter({ text: `Brainee • ${now}` }).setTimestamp();
     const pingRole = guild.roles.cache.find(r => r.name === cfg.pingRoleName);
     await channel.send({ content: pingRole ? `<@&${pingRole.id}> 🔴 **Live démarré !**` : '🔴 **Live démarré !**', embeds: [embed] });
@@ -1668,7 +1956,7 @@ async function sendLiveEndEmbed(title) {
     const dStr = dMin >= 60 ? `${Math.floor(dMin/60)}h ${dMin%60}min` : `${dMin}min`;
     const topG = Object.entries(liveStats.giftDetails).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([n,c])=>`**${n}** ×${c}`).join(' • ') || 'Aucun gift';
     const embed = new EmbedBuilder().setColor(0x36393f).setTitle('⚫  Live terminé — brain.exe_modded')
-      .addFields({ name: '⏱️ Durée', value: dStr, inline: true }, { name: '👥 Pic', value: `${liveStats.peakViewers}`, inline: true }, { name: '❤️ Likes', value: `${liveStats.totalLikes}`, inline: true }, { name: '🏆 Top gifts', value: topG }, { name: '💜 Merci', value: 'Merci à tous qui étaient là 🙏' })
+      .addFields({ name: '⏱️ Durée', value: dStr, inline: true }, { name: '👥 Pic', value: String(liveStats.peakViewers ?? 0), inline: true }, { name: '❤️ Likes', value: String(liveStats.totalLikes ?? 0), inline: true }, { name: '🏆 Top gifts', value: topG }, { name: '💜 Merci', value: 'Merci à tous qui étaient là 🙏' })
       .setFooter({ text: 'Brainee' }).setTimestamp();
     await channel.send({ embeds: [embed] });
     pushLog('SYS', `📺 Live end — ${dStr}`, 'success'); broadcast('tiktokLive', { status: 'ended', duration: dStr });
@@ -1720,7 +2008,12 @@ discord.once('ready', async () => {
     pushLog('SYS', '🔍 Rattrapage vérifié');
   }, 25000);
 
-  await syncDiscordToFile('Démarrage v2.0.3');
+  // v2.0.6 : init descriptions officielles des salons (30s pour laisser Discord se stabiliser)
+  setTimeout(() => initChannelDirectory().catch(e =>
+    pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
+  ), 30000);
+
+  await syncDiscordToFile('Démarrage v2.0.6');
 });
 
 server.listen(PORT, '0.0.0.0', () => console.log(`🌐 Port ${PORT}`));

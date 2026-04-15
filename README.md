@@ -1,18 +1,10 @@
-# 🧠 BrainEXE Dashboard `v2.0.4`
+# 🧠 BrainEXE Dashboard `v2.0.6`
 
-
-> **v2.0.4 — Delayed Reply After Emoji** — Brainee disparait, réagit à un emoji, puis revient plus tard avec une excuse contextuelle. Réponses différées après réaction emoji, synchronisées avec son planning et son humeur du jour.
-
-
-Bot Discord autonome avec dashboard de controle en temps reel, automatisations IA et gestion complete du serveur depuis une interface web.
-Concu pour le serveur **Neurodivergent Creator Hub** — propulse par **Brainee**.
-
+> **v2.0.6 — Discipline Salon + Intelligence élargie** — Brainee sait enfin pourquoi chaque salon existe. Elle lit les vraies descriptions officielles, adapte chaque message au bon contexte, et ne ramène plus le gaming là où personne ne lui a rien demandé. Plus intelligente, plus cultivée, plus humaine.
 
 ---
 
-
 ## 📦 Stack technique
-
 
 | Outil | Role |
 |---|---|
@@ -24,379 +16,293 @@ Concu pour le serveur **Neurodivergent Creator Hub** — propulse par **Brainee*
 | **chokidar** | Watcher fichier JSON |
 | **Anthropic API** | Generation contenu IA (Claude) |
 | **YouTube Data API v3** | Recherche videos sur @mention |
-| **tiktok-live-connector** | Detection live TikTok en temps reel |
-| **MongoDB Atlas** | Profils membres + etat bot + memoire salons |
+| **tiktok-live-connector** | Detection live TikTok |
+| **MongoDB Atlas** | Profils membres + etat bot + memoire salons + historique DM + annuaire salons |
 | **Railway** | Hebergement + auto-deploy |
 
-
 ---
-
 
 ## 🗂️ Structure du projet
 
+```
 brainexe-dashboard/
-├── server.js # Bot + API + WebSocket (tout le backend)
-├── public/index.html # Dashboard frontend (single-file)
-├── discord-template.json # Template structure serveur (sync bidirectionnel)
-├── brainexe-config.json # Config persistante (automatisations, reaction roles...)
-├── backup_*.json # Snapshots auto de la structure Discord
+├── server.js               # Bot + API + WebSocket
+├── public/index.html       # Dashboard frontend
+├── discord-template.json   # Template structure serveur
+├── brainexe-config.json    # Config persistante
+├── backup_*.json           # Snapshots auto
 └── README.md
-
-text
-
+```
 
 ---
 
-
 ## ⚙️ Variables d'environnement Railway
-
 
 | Variable | Description | Requis |
 |---|---|---|
 | `DISCORD_TOKEN` | Token du bot Discord | ✅ |
-| `GUILD_ID` | ID du serveur Discord | ✅ |
-| `ANTHROPIC_API_KEY` | Cle API Anthropic (Claude) | ✅ Pour les IA |
-| `YOUTUBE_API_KEY` | Cle API YouTube Data v3 | ✅ Pour les recherches @mention |
-| `TIKTOK_USERNAME` | Pseudo TikTok a surveiller | ✅ Pour les notifs live |
-| `MONGODB_URI` | URI MongoDB Atlas | ✅ Profils + botState + channelMemory |
-| `PORT` | Port serveur (auto Railway) | Auto |
-
+| `GUILD_ID` | ID du serveur | ✅ |
+| `ANTHROPIC_API_KEY` | Claude API | ✅ |
+| `YOUTUBE_API_KEY` | YouTube Data API v3 | ✅ |
+| `TIKTOK_USERNAME` | Pseudo TikTok | ✅ |
+| `MONGODB_URI` | Atlas URI | ✅ |
+| `PORT` | Auto Railway | Auto |
 
 ---
 
-
-## 🚀 Deploiement
-
+## 🚀 Déploiement
 
 ```bash
-npm install
 git add .
-git commit -m "feat: v2.0.4"
+git commit -m "feat: v2.0.6"
 git push
 ```
 
-Railway rebuild et redemarre le bot automatiquement.
+### Ce que tu dois vérifier une seule fois
 
+**Discord Developer Portal** — Privileged Gateway Intents :
+- Message Content Intent ✅
+- Server Members Intent ✅
+
+**Premier démarrage** — Brainee lit les premiers messages de chaque salon 30 secondes après le boot. C'est automatique. Elle ne le refait pas aux redémarrages suivants.
+
+**Vérifier que ça a marché** après le premier boot :
+```
+GET /api/channel-directory
+```
+Tu verras un objet par salon avec la description officielle et le résumé du but.
 
 ---
-
 
 ## 🏗️ Architecture
 
-
-### Sync bidirectionnel Discord ↔ JSON
-
-Discord ──────► discord-template.json (D→F, debounce 2s)
-◄─────── discord-template.json (F→D, debounce 2s)
-
-text
-
-
-### MongoDB Atlas — Trois collections
-
+### MongoDB Atlas — Cinq collections
 
 | Collection | Contenu |
 |---|---|
-| `memberProfiles` | userId, username, toneScore, topics, interactionCount, lastSeen |
-| `botState` | anecdoteLastPostedDate, actusLastPostedSlots, convDailyCount, convLastPostDate |
-| `channelMemory` | toneProfile, frequentThemes, insideJokes, heatLevel, offTopicTolerance, lastSummary |
-
-
----
-
-
-## 🤖 Fonctionnalites bot — Vue complete
-
-
-### 1. Auto-Role a l'arrivee
-Chaque nouveau membre recoit automatiquement le role configure (defaut : `👁️ Lurker`).
-
+| `memberProfiles` | toneScore, topics, interactionCount, lastSeen |
+| `botState` | état bot persistant entre redeploys |
+| `channelMemory` | toneProfile, frequentThemes, insideJokes, heatLevel |
+| `dmHistory` | historique privé des DMs par utilisateur |
+| `channelDirectory` | description officielle + but résumé de chaque salon |
 
 ---
 
+## 🤖 Fonctionnalités bot — Vue complète v2.0.6
 
-### 2. Reaction Roles natif BrainEXE
-
-
-| Emoji | Role |
-|---|---|
-| 📱 | 📱 TikToker |
-| 🧠 | 🧠 TDAH |
-| 💜 | 💜 Borderline |
-| 💻 | 💻 Web Dev |
-| ⚔️ | ⚔️ RPG Addict |
-| 🕹️ | 🕹️ Retro Gamer |
-| 🌿 | 🌿 Indie Explorer |
-| 🚀 | 🚀 Next-Gen Player |
-| 🔔 | 🔔 Notif Lives |
-| 👁️ | 👁️ Lurker |
-
+### 1. Auto-Role + Reaction Roles
+Auto-role `👁️ Lurker` à l'arrivée. 10 reaction roles gérés nativement.
 
 ---
 
-
-### 3. Message de bienvenue automatique
-Phrase tiree au sort dans `welcome.messages`. Embed violet BrainEXE avec avatar du membre.
-
+### 2. Message de bienvenue
+Phrase aléatoire, embed violet BrainEXE avec avatar du membre.
 
 ---
 
-
-### 4. Anecdote Gaming Quotidienne
-
-
-Routing intelligent — 7 salons thematiques. Declenchee a 10h (Paris) + delai aleatoire 0-30 min.
-Anti-doublon via MongoDB. Rattrapage automatique au boot Railway.
-Fil Discord cree automatiquement avec nom genere par Claude.
-
+### 3. Anecdote Gaming Quotidienne
+10h (Paris) + délai aléatoire 0-30 min. Routing 7 salons thématiques.
+Fil Discord créé automatiquement avec nom généré par Claude.
 
 ---
 
-
-### 5. TikTok Live → Discord
-
-
-Detection toutes les 2 minutes via `tiktok-live-connector`.
-Embed demarrage : hook genere par Claude, viewers, lien direct, ping `🔔 Notif Lives`.
-Embed fin : duree totale, pic viewers, likes, gifts.
-
+### 4. TikTok Live → Discord
+Detection 2 min. Embed démarrage avec hook Claude, viewers, lien cliquable.
+Embed fin avec durée, pic viewers, likes, top gifts. Fix v2.0.6 : valeurs correctement castées en string.
 
 ---
 
-
-### 6. Actus Bi-Mensuelles
-
-
-Le 1er et le 15 de chaque mois a 10h. 9 salons configurables.
-Posts etales sur 12h. Anti-doublon par slot MongoDB.
-
+### 5. Actus Bi-Mensuelles
+1er et 15 du mois à 10h. 9 salons sur 12h.
 
 ---
 
-
-### 7. Lance-Conversations + Reponses Auto v2.0.0
-
-
-**Planning horaire complet** — Brainee suit un emploi du temps reel :
-
+### 6. Planning horaire complet v2.0.0
 
 | Tranche | Statut | Conv max | Intervalle |
 |---|---|---|---|
 | 01h – 09h | 💤 Dort | 0 | — |
-| 09h – 10h | ☕ Reveil mou | 1 | — |
+| 09h – 10h | ☕ Réveil mou | 1 | — |
 | 10h – 12h30 | 🧠 Active | 3 | 35 min |
-| 12h30 – 14h | 🍕 Pause dej | 0 | @mention 2-8 min |
+| 12h30 – 14h | 🍕 Pause déj | 0 | @mention 2-8 min |
 | 14h – 17h | ⚡ Productive | 4 | 25 min |
 | 17h – 18h | 🚶 Transition | 1 | — |
 | 18h – 23h30 | 🎮 Gaming | 6 | 18 min |
 | 23h30 – 01h | 🌙 Hyperfocus | 1 | — |
 
+Weekend : quotas augmentés. Samedi soirée jusqu'à 1h (8 conv max, 15 min).
+Dimanche : mode chill/nostalgie.
 
-Weekend : quotas augmentes, samedi soiree jusqu'a 1h du mat (8 conv max), dimanche mode chill/nostalgie.
-
-
-**Comportements speciaux** :
-- `postMorningGreeting()` — check morning 09h (lun-ven), 09h30 (sam), 10h (dim)
-- `postLunchBack()` — retour pause 14h, 33% de chance
-- `postGoodnight()` — bonne nuit 23h, 33% de chance
-- `postNightWakeup()` — reveil nocturne 03h30, 10% de chance
-
-
-**4 modes** : `debat` / `chaos` / `deep` / `simple` avec priorites selon le slot.
-
+**Comportements spéciaux** : morning greeting 09h/09h30/10h (85%), lunch back 14h (33%), goodnight 23h (33%), night wakeup 03h30 (10%).
 
 ---
 
+### 7. Discipline Salon v2.0.6 — Le cœur de la mise à jour
 
-### 8. @Brainee Mention Directe v2.0.2
+Brainee lit la description officielle de chaque salon (premier message fondateur) et l'utilise comme contrainte absolue.
 
+**16 catégories de salons**, chacune avec ses propres règles :
 
-1. Typage indicator actif avant la reponse
-2. Delai simule selon la tranche horaire
-3. Pendant le sommeil : reponse differee au reveil (ignoree si message > 2h)
-4. Fetch 100 messages de contexte avec identification precise des replies
-5. Profil membre injecte (toneScore, topics, complicite)
-6. Memoire salon injectee (v2.0.3)
-7. Membres taggues dans le message → inclus naturellement dans la reponse
-8. Detection mot-cle YouTube → `extractYoutubeQuery()` via Claude → recherche propre
-9. 10% de chance : reaction emoji seule, pas de texte
-10. 25% de chance : reaction emoji + texte
-11. 20% de chance : message fragmente en 2 parties avec pause
-
-
----
-
-
-### 9. Persona Brainee v2.0.2 — Culture complete
-
-
-**Profil** : Fille de 24 ans, internet native, gaming hardcore.
-
-
-**Culture gaming** :
-- JRPG : Final Fantasy (toute la serie), Persona, Dragon Quest, Tales of, Xenoblade, Fire Emblem, Star Ocean, Chrono Trigger
-- Metroidvania : Castlevania (toute la serie, SOTN, Rondo, Aria...), Metroid (Super, Zero Mission, Fusion, Dread, Prime), Mega Man (Classic, X, Zero, ZX, Legends), Hollow Knight, Blasphemous, Dead Cells, Ori, Bloodstained, Salt & Sanctuary, Shovel Knight
-- Soulslike : Elden Ring, Dark Souls, Sekiro, Bloodborne
-- Indie : Hades, Stardew, Celeste, Disco Elysium, Undertale
-- Retro gaming, next-gen, hidden gems
-
-
-**Culture films** : sci-fi (Blade Runner, Matrix, Alien, Dune, Ex Machina, Ghost in the Shell), thriller (Se7en, Memento, Parasite), horreur (Hereditary, The Thing, It Follows, Midsommar).
-
-
-**Culture musique** : annees 2000, K-pop, metal, dubstep, electro, lo-fi. Vraie passion OST gaming (Uematsu, Mitsuda, Yamane, Koji Kondo).
-
-
-**Culture manga/anime** : Naruto, Fairy Tail, Black Clover, Shaman King, Attack on Titan. OAV gaming (FF7 Advent Children, Tales of Zestiria, Star Ocean EX).
-
-
-**Culture bouffe** : tacos, kebab, burger, pizza assumes. Cuisine indienne et asiatique adoree. Peut donner des recettes.
-
-
-**Daily mood** : tire chaque matin — `energique` / `chill` / `hyperfocus` / `zombie`. Influence le ton de toutes les interactions.
-
-
----
-
-
-### 10. Profils Membres MongoDB v1.8.0
-
-
-| Champ | Description |
+| Catégorie | Comportement |
 |---|---|
-| `toneScore` | Score complicite 1-10 (evolue auto) |
-| `topics` | Sujets gaming mentionnes (max 15) |
-| `interactionCount` | Nombre total d'interactions avec Brainee |
-| `lastSeen` | Derniere interaction |
-
-
-Evolution toneScore : +0.15 emoji rire, +0.10 message long, -0.05 message tres court.
-Niveaux : 1-3 chaleureux uniquement / 4-6 ironie legere / 7-10 piques assumees.
-Regle non negociable : sujet sensible → ton doux TOUJOURS.
-
-
----
-
-
-### 11. Channel Memory v2.0.3 — Memoire vivante par salon
-
-
-Chaque salon a son propre profil stocke dans MongoDB.
-
-
-| Champ | Description |
-|---|---|
-| `toneProfile` | Description du ton habituel du salon |
-| `frequentThemes` | Sujets recurrents detectes |
-| `insideJokes` | References internes detectees |
-| `heatLevel` | Niveau d'activite 1-10 |
-| `offTopicTolerance` | Tolerance hors-sujet 1-10 |
-| `lastSummary` | Resume des sujets recents |
-
-
-`enrichChannelMemory()` tourne en background toutes les 6h par salon.
-La memoire est injectee dans tous les prompts de conversation et @mention.
-
+| `general-social` | QG du serveur — tout est possible, journées/humeurs/actus. Pas de gaming par défaut. |
+| `tdah-neuro` | Pensées TDAH, hyperfocus sur N'IMPORTE QUEL sujet. Pas de gaming sauf si un membre l'amène. |
+| `humour-chaos` | 4 registres égaux : memes, humour neuro, gaming ABSURDE, chaos. Pas d'automatisme gaming. |
+| `off-topic` | Fourre-tout : films, séries, musique, vie. Pas gaming par défaut. |
+| `creative` | Encouragement créatif, réaction sur la DA. Pas de débats gaming. |
+| `music-focus` | Musique, OST, playlists, concentration. |
+| `focus` | Productivité, méthodes, fatigue cognitive. |
+| `ia-tools` | Outils IA, workflows, usages concrets. |
+| `dev-tools` | Code, langages, bugs, scripts. |
+| `creative-visual` | DA, palettes, style visuel. |
+| `nostalgie` | Souvenirs gaming, époque, mémoire affective. |
+| `lore` | Théories, détails cachés, narration. |
+| `jrpg` | JRPG complet à fond. |
+| `retro` | Retro gaming à fond. |
+| `indie` | Indé à fond. |
+| `rpg` | RPG à fond. |
+| `gaming-core` | Gaming naturel, non robotisé. |
 
 ---
 
+### 8. Intelligence élargie v2.0.6
 
-### 12. Detection de Derive Thematique v2.0.3
+**Système d'outils intégré dans la persona** — quand des infos web sont disponibles dans le contexte, Brainee les utilise naturellement :
+> *"ah ouais ils ont annoncé ça ? j'avais pas vu 👀"*
 
+Elle ne mentionne jamais les outils ou API. Elle reformule toujours.
 
-Brainee analyse les 30 derniers messages d'un salon et score la derive.
+**Humeur du jour corrigée** — plus de "hyperfocus gaming" générique. L'humeur hyperfocus signifie maintenant "va loin dans le vrai thème du salon".
 
-
-**Les 4 niveaux de comportement** :
-
-
-| Niveau | Ce que fait Brainee |
-|---|---|
-| **Observe** | Elle lit, score les themes, n'intervient pas encore |
-| **Suggest** | Elle propose doucement un meilleur endroit (70% des cas) |
-| **Redirect** | Elle cree un thread ou poste dans le bon salon + message de pont (20%) |
-| **Moderate** | Elle intervient plus fermement si spam/conflit/derapage (10%) |
-
-
-Exemple de message Brainee en mode redirect :
-*"ok on a officiellement transforme le general en refuge JRPG, je vous ouvre un coin dans #jrpg-corner"*
-
-
-Drift check cron : toutes les 3h, sur les 5 salons les plus actifs.
-Route manuelle : `POST /api/drift/check`.
-
+**Modes de conversation corrigés** — les 4 modes (débat, chaos, deep, simple) s'adaptent au salon. Plus de gaming par défaut dans tous les modes.
 
 ---
 
+### 9. @Brainee Mention Directe v2.0.5+
 
-## 🌐 API Routes
+1. Délai simulé selon la tranche horaire
+2. Contexte 100 messages avec identification précise des replies
+3. Profil membre + toneScore + humeur du jour
+4. Mémoire salon + description officielle (v2.0.6)
+5. Membres tagués injectés dans le prompt
+6. Recherche YouTube propre via extraction Claude
+7. 10% réaction emoji seule → retour 15-45 min avec excuse contextuelle
+8. 25% réaction emoji + texte
+9. Résolution mentions `@Pseudo → <@id>` et `#salon → <#id>` partout
 
+---
+
+### 10. Persona Brainee v2.0.6
+
+**Culture gaming** (dans les bons salons) : JRPG complet, Castlevania toute la série, Metroid toute la série, Mega Man Classic/X/Zero, soulslike, indie, retro, next-gen, pixel art, lore, OST (Uematsu, Mitsuda, Yamane).
+
+**Culture large** (tous salons) : films (Blade Runner, Matrix, Alien, Dune, Hereditary, Se7en...), musique (K-pop, metal, dubstep, lo-fi, OST), manga (Naruto, AoT, Fairy Tail, Shaman King + OAV gaming), bouffe (tacos, kebab, curry, ramen).
+
+**Daily mood** : energique / chill / hyperfocus / zombie — corrigé, plus de biais gaming.
+
+---
+
+### 11. DMs v2.0.5
+
+Historique privé persistant MongoDB (`dmHistory`, 30 messages max).
+Ton plus intime — posé, à l'écoute, peut creuser les sujets.
+Fragmentation 15% en DM (plus douce qu'en serveur).
+
+---
+
+### 12. Retour tardif après emoji v2.0.4
+
+Quand elle tire le 10% emoji-seul, retour 15-45 min avec excuse contextuelle selon l'heure :
+> *"j'étais sur un boss, IMPOSSIBLE de répondre à ce moment précis 😭"*
+> *"j'avais la bouche pleine sérieusement 😂"*
+
+---
+
+### 13. Mémoire par salon v2.0.3
+
+`channelMemory` MongoDB — toneProfile, frequentThemes, insideJokes, heatLevel, offTopicTolerance. Enrichi toutes les 6h en background.
+
+---
+
+### 14. Détection de dérive thématique v2.0.3
+
+Score de dérive 1-10 sur les 30 derniers messages.
+4 niveaux : observe → suggest (70%) → redirect (20%) → moderate (10%).
+
+---
+
+### 15. Threads automatiques v2.0.6
+
+Créés uniquement si :
+- Engagement humain détecté (réaction ou reply sur le message)
+- Salon autorisé (11 salons gaming/lore uniquement)
+- Contenu assez long (>100 caractères)
+- Jeu précis détecté (50+ triggers)
+
+**Salons autorisés** : retro-général, jrpg-corner, rpg-général, indie-général, next-gen-général, hidden-gems, lore-et-théories, pixel-art-love, nostalgie, game-of-the-moment, open-world-rpg.
+
+---
+
+### 16. Profils membres v1.8.0
+
+toneScore 1-10 : +0.15 emoji rire, +0.10 message long, -0.05 très court.
+Niveaux : 1-3 chaleureux / 4-6 ironie légère / 7-10 piques assumées.
+Sujet sensible → ton doux TOUJOURS.
+
+---
+
+## 🌐 API Routes complètes
 
 ### Sync
-
-
-| Methode | Route | Description |
+| Méthode | Route | Description |
 |---|---|---|
-| GET | `/api/state` | Etat complet Discord |
+| GET | `/api/state` | État Discord complet |
 | POST | `/api/sync/discord-to-file` | Force D→F |
 | POST | `/api/sync/file-to-discord` | Force F→D |
 
-
 ### Config
-
-
-| Methode | Route | Description |
+| Méthode | Route | Description |
 |---|---|---|
-| GET | `/api/config` | Lire toute la config |
+| GET | `/api/config` | Lire la config |
 | POST | `/api/config` | Sauvegarder une section |
 
-
 ### Automatisations
-
-
-| Methode | Route | Description |
+| Méthode | Route | Description |
 |---|---|---|
 | POST | `/api/anecdote` | Forcer une anecdote |
 | POST | `/api/actus` | Forcer les actus |
 | POST | `/api/conversation` | Forcer un lance-conv |
-| POST | `/api/conversation/reply` | Forcer une reponse spontanee |
-| POST | `/api/morning` | Forcer le morning greeting |
-| POST | `/api/goodnight` | Forcer le goodnight |
-| POST | `/api/nightwakeup` | Forcer le night wakeup |
-| POST | `/api/tiktok/test` | Tester la connexion live TikTok |
-| POST | `/api/welcome/test` | Tester le message de bienvenue |
-| POST | `/api/post` | Post manuel dans un salon |
+| POST | `/api/conversation/reply` | Forcer une réponse |
+| POST | `/api/morning` | Forcer morning greeting |
+| POST | `/api/goodnight` | Forcer goodnight |
+| POST | `/api/nightwakeup` | Forcer night wakeup |
+| POST | `/api/tiktok/test` | Tester TikTok |
+| POST | `/api/welcome/test` | Tester welcome |
+| POST | `/api/post` | Post manuel |
 
-
-### Bot v2.0.3 / v2.0.4
-
-
-| Methode | Route | Description |
+### Bot v2.0.6
+| Méthode | Route | Description |
 |---|---|---|
-| GET | `/api/slot` | Tranche horaire active + humeur du jour |
-| POST | `/api/drift/check` | Declencher le check de derive manuellement |
-| GET | `/api/channel-memory` | Toutes les memoires salons |
-| GET | `/api/channel-memory/:id` | Memoire d'un salon specifique |
-
+| GET | `/api/slot` | Tranche active + humeur |
+| POST | `/api/drift/check` | Check dérive manuel |
+| GET | `/api/channel-memory` | Mémoires salons |
+| GET | `/api/channel-memory/:id` | Mémoire d'un salon |
+| GET | `/api/channel-directory` | Annuaire officiel des salons |
+| GET | `/api/dm-history/:userId` | Historique DM d'un user |
 
 ### Membres
-
-
-| Methode | Route | Description |
+| Méthode | Route | Description |
 |---|---|---|
-| GET | `/api/members` | Liste des membres |
-| GET | `/api/members/profiles` | Profils MongoDB (top 50) |
-| PATCH | `/api/members/:id/roles` | Modifier les roles |
+| GET | `/api/members` | Liste membres |
+| GET | `/api/members/profiles` | Profils MongoDB |
+| PATCH | `/api/members/:id/roles` | Modifier rôles |
 | POST | `/api/members/:id/mute` | Timeout |
 | POST | `/api/members/:id/kick` | Expulser |
 | POST | `/api/members/:id/ban` | Bannir |
 
-
 ---
 
-
 ## 📋 IDs importants
-
 
 | Element | ID |
 |---|---|
@@ -406,264 +312,102 @@ Route manuelle : `POST /api/drift/check`.
 | Salon `#choix-des-roles` | `1481028181485027471` |
 | Salon `#presentations` | `1481028178389635292` |
 | Salon `#alertes-live` | `1481028204897501273` |
-| Salon `#general` | `1481028189680570421` |
-
-
----
-
-
-## 🔧 Depannage
-
-
-**MongoDB non connecte**  
-→ `MONGODB_URI` dans Railway ?  
-→ Boot log : `✅ MongoDB Atlas connecte — memberProfiles + botState + channelMemory`
-
-
-**Drift check ne se declenche pas**  
-→ Check cron toutes les 3h seulement pendant les tranches actives (pas pendant le sommeil)  
-→ Forcer via `POST /api/drift/check`  
-→ Verifier que `ANTHROPIC_API_KEY` est defini  
-
-
-**Memoire salon vide**  
-→ Normal au premier boot — `enrichChannelMemory()` se declenche en background apres la premiere conv active  
-→ Verifier via `GET /api/channel-memory`  
-
-
-**YouTube retourne des resultats hors-sujet**  
-→ v2.0.2 : fix integre — `extractYoutubeQuery()` via Claude extrait la vraie requete  
-→ Si toujours probleme : verifier quota YouTube (10 000 unites/jour)  
-
-
-**Brainee repond trop vite / ne simule pas le typing**  
-→ `simulateTyping()` utilise `channel.sendTyping()` — verifier permission `Send Messages` du bot  
-→ Le typing dure max 10s cote Discord, Brainee attend min(duree, 8s)  
-
-
-**Bot ne detecte pas le live TikTok**  
-→ `tiktok-live-connector` installe ? `npm install`  
-→ `TIKTOK_USERNAME` dans Railway ?  
-→ Tester via `POST /api/tiktok/test`  
-
-
-**Quota conversations repart de zero apres redeploy**  
-→ Verifie que `MONGODB_URI` est defini — la persistance passe par `botState`  
-
-
-**Reponses retardees apres emoji ne partent pas**  
-→ Verifier que les events de reactions sont bien actives (`GuildMessageReactions` + `Partials.Reaction`)  
-→ Verifier que `ANTHROPIC_API_KEY` est defini (pour `getEmojiExcuse()`)  
-→ Checker les logs pour `scheduleDelayedReplyAfterEmoji` / `scheduleDelayedSpontaneousReply`  
-
+| Salon `#général` | `1481028189680570421` |
 
 ---
 
+## 🔧 Dépannage
+
+**channelDirectory vide après le boot**
+→ Attendre 35-40s après le démarrage
+→ Vérifier via `GET /api/channel-directory`
+→ Si vide : vérifier que `ANTHROPIC_API_KEY` et `MONGODB_URI` sont définis
+
+**Brainee parle encore de gaming hors-sujet**
+→ Le channelDirectory n'est pas encore initialisé — attendre le premier boot complet
+→ Vérifier la description officielle du salon via `/api/channel-directory`
+
+**Threads créés sans engagement**
+→ Normal avant v2.0.6 — désormais `hasEngagement` requis + salon de la liste autorisée
+
+**Embeds TikTok cassés (valeurs manquantes)**
+→ Fix intégré en v2.0.6 — toutes les valeurs numériques castées en String
+
+**YouTube retourne des résultats hors-sujet**
+→ Fix v2.0.2 : `extractYoutubeQuery()` via Claude avant l'appel API
+
+**DMs non reçus**
+→ Vérifier Message Content Intent dans Discord Developer Portal
+
+---
 
 ## 🔄 Changelog complet
 
+---
+
+### ⭐ `v2.0.6` — Discipline Salon + Intelligence élargie *(actuelle)*
+
+- **`channelDirectory`** : nouvelle collection MongoDB — description officielle de chaque salon
+- **`initChannelDirectory()`** : lit le premier message fondateur au boot (30s de délai), résume le but via Claude, persiste en MongoDB
+- **`normalizeLoose()`** + **`getChannelCategory()`** : catégorise chaque salon (16 types)
+- **`getChannelIntentBlock()`** : contrainte d'écriture absolue injectée dans les 5 fonctions IA
+- **`getModeInjectionForChannel()`** : modes adaptes à chaque catégorie de salon
+- **`BOT_PERSONA_CONVERSATION`** remplacée : discipline salon absolue + système d'outils web + illusion humaine + interdits explicites
+- **`getMoodInjection()`** corrigé : hyperfocus sur le vrai thème du salon, pas forcément gaming
+- **`CONV_MODES`** corrigés : plus de gaming hardcodé dans les 4 modes
+- **`shouldCreateThread()`** : engagement humain requis + `THREAD_ALLOWED_CHANNELS` (11 salons)
+- **`sendHuman()`** : `resolveMentionsInText` intégré directement
+- Fix embeds TikTok : `String(viewerCount ?? 0)`, lien cliquable propre
+- Route `/api/channel-directory`
 
 ---
 
+### `v2.0.5` — DMs + Résolution mentions
 
-### ⭐ `v2.0.4` — Delayed Reply After Emoji *(actuelle)*
-
-
-- `getEmojiExcuse()` : genere une excuse coherente selon le slot horaire et l'humeur du jour (boss en cours, hyperfocus, bouche pleine, etc.)
-- `scheduleDelayedReplyAfterEmoji()` : planifie une reponse 15–45 min apres une reaction emoji sur un message mentionnant Brainee
-- `scheduleDelayedSpontaneousReply()` : planifie une reponse 10–30 min apres une reaction emoji seule de Brainee
-- Brainee revient toujours apres une reaction emoji seule avec une phrase contextuelle, sauf si elle “dort”
-- Si le bot passe en slot sommeil avant l'echeance, la reponse planifiee est annulee silencieusement
-- Integre au systeme de planning existant (slots horaires + dailyMood)
-
+- `INTENTS_DIRECT_MESSAGES` · `dmHistory` MongoDB · `BOT_PERSONA_DM`
+- DM handler avec historique 30 msgs · fragmentation 15%
+- `resolveMentionsInText()` partout (mentions + salons)
 
 ---
 
+### `v2.0.4` — Delayed Reply After Emoji
 
-### ⭐ `v2.0.3` — Channel Memory + Drift
-
-
-- **`channelMemory`** : nouvelle collection MongoDB — memoire vivante par salon
-- **`enrichChannelMemory()`** : analyse Claude en background toutes les 6h (toneProfile, frequentThemes, insideJokes, heatLevel, offTopicTolerance, lastSummary)
-- **`detectThematicDrift()`** : Claude analyse les 30 derniers messages, score de derive 1-10
-- **`handleDrift()`** : 4 niveaux observe/suggest/redirect/moderate
-- Style 70% suggestion / 20% redirection / 10% ferme
-- Message de pont dans le salon d'origine + mini resume dans le salon cible
-- Thread auto si jeu precis detecte lors d'une derive
-- `driftCron` toutes les 3h sur les 5 salons les plus actifs
-- Memoire salon injectee dans tous les prompts conversation et @mention
-- Routes `/api/drift/check`, `/api/channel-memory`, `/api/channel-memory/:id`
-- Index MongoDB `channelId` cree au boot
-
+- `getEmojiExcuse()` · `scheduleDelayedReplyAfterEmoji()` · `scheduleDelayedSpontaneousReply()`
 
 ---
 
+### `v2.0.3` — Channel Memory + Thematic Drift
+
+- `channelMemory` MongoDB · `detectThematicDrift()` · `handleDrift()` 4 niveaux · drift cron 3h
+
+---
 
 ### `v2.0.2` — Full Human Update
 
-
-- Persona etendue : films (sci-fi/thriller/horreur), musique (K-pop/metal/dubstep/OST), manga (bases + OAV gaming), bouffe (tacos/kebab/curry/ramen)
-- `simulateTyping()` avant chaque reponse — Discord affiche "Brainee est en train d'ecrire..."
-- `sendHuman()` : 20% de chance de fragmenter en 2 messages avec pause 1-3s
-- Reactions emoji autonomes : 10% reaction seule / 25% reaction + texte
-- `getRandomReaction()` : pool gaming-aware selon le contenu
-- `refreshDailyMood()` : humeur tiree chaque matin (energique/chill/hyperfocus/zombie)
-- `getMoodInjection()` : injection de l'humeur dans tous les prompts
-- 5% de chance d'ignorer une reply spontanee
-- Fix YouTube : `extractYoutubeQuery()` via Claude avant l'appel API
-- Injection des membres tagues dans `handleMentionReply()`
-- Route `/api/slot` enrichie avec le mood
-
+- Persona étendue · typing · fragmentation · emoji · mood · YouTube fix
 
 ---
 
-
-### `v2.0.1` — Threads automatiques
-
-
-- `shouldCreateThread()` + `THREAD_TRIGGERS` : 50+ jeux detectes
-- Thread auto sur anecdotes (nom genere par Claude)
-- Thread auto sur lance-convs si jeu precis detecte
-- `formatContext()` enrichi : `[↩ repond a X: "preview du message..."]` au lieu de `[↩ reply]`
-
+### `v2.0.1` — Threads auto · formatContext() précis
 
 ---
-
 
 ### `v2.0.0` — Human Planning
 
-
-- `WEEKDAY_SLOTS` / `SATURDAY_SLOTS` / `SUNDAY_SLOTS` : 3 grilles horaires
-- `getCurrentSlot()`, `getRandomMode()`, `getMentionDelayMs()`, `getSlotIntervalMs()`
-- `handleMentionReply()` : delai simule par slot + sleep guard (message > 2h ignore)
-- `postMorningGreeting()` : 09h semaine / 09h30 samedi / 10h dimanche
-- `postLunchBack()` : 14h, 33% de chance, delai 0-15 min
-- `postGoodnight()` : 23h, 33% de chance, delai 0-30 min
-- `postNightWakeup()` : 03h30, 10% de chance
-- maxPerDay 5 → 16 / MIN_GAP 30 → 15 min
-- Routes `/api/morning`, `/api/goodnight`, `/api/nightwakeup`
-
+- Grilles horaires semaine/samedi/dimanche · comportements spéciaux · maxPerDay 16
 
 ---
-
 
 ### `v1.9.0` — MongoDB State Migration
 
-
-- `getBotState()` / `setBotState()` : etat bot persistant entre redeploys Railway
-- `checkAnecdoteMissed()` async : verifie MongoDB avant rattrapage
-- `checkActusMissed()` async : verifie les slots MongoDB
-- `resetDailyCountIfNeeded()` async : quota conversations persistant
-- `updateConvStats()` async : statistiques inter-redeploys
-- Boot non bloquant avec delai 25s
-- Fix `replyToConversations()` : 1 seul fetch 100 messages
-
+- `getBotState/setBotState` · persistance inter-redeploys Railway
 
 ---
 
+### `v1.8.0` → `v1.0.0`
 
-### `v1.8.0` — Brainee LevelUP
-
-
-- MongoDB Atlas : profils membres persistants
-- `toneScore` 1-10 evolutif, `topics` gaming, `interactionCount`, `lastSeen`
-- 3 niveaux de ton selon le score de complicite
-- Garde-fou sujets sensibles : ton doux force
-- `BOT_PERSONA_CONVERSATION` : persona dediee aux interactions directes
-- Route `/api/members/profiles`
-
+Voir historique complet dans le changelog Discord (message Brainee.exe).
 
 ---
-
-
-### `v1.7.0` — Special Optimisation
-
-
-- Anecdotes multi-salon (7 salons routing thematique)
-- TikTok Live → Discord (embeds demarrage + fin + stats)
-- @Brainee mention directe avec YouTube Data API v3
-- Renommage Brainy.exe → Brainee
-
-
----
-
-
-### `v1.6.0` — Modes par categorie
-
-
-- `CATEGORY_MODES` : 11 categories d'injection (general, tdah, humour, rpg, jrpg, retro, gaming, indie, creative, focus, dev)
-- Fix apostrophes francaises dans les prompts JS
-
-
----
-
-
-### `v1.5.0` — Reaction Roles natif
-
-
-- Carl-bot retraite — Reaction Roles gere nativement
-- `GuildMessageReactions` + `Partials` (detection sur messages existants)
-- Config persistee dans `brainexe-config.json`
-- Toggle ON/OFF + Message ID editable depuis le dashboard
-
-
----
-
-
-### `v1.4.0` — Persona Brainee
-
-
-- Personnage Brainee : fille 24 ans, internet native, gaming hardcore
-- `BOT_PERSONA` injectee dans tous les prompts
-- `CONV_MODES` : 4 modes — debat / chaos / deep / simple
-
-
----
-
-
-### `v1.3.0` — Automatisations avancees
-
-
-- Actus bi-mensuelles : 1er et 15 du mois, etalees sur 12h
-- `lastPostedSlots[]` — anti-doublon robuste
-- Conversations : plage horaire, salon le plus calme en priorite
-- Rate limit global + rattrapage au boot
-
-
----
-
-
-### `v1.2.0` — Dashboard multi-pages
-
-
-- Pages completes : Members, Channels, Roles, Welcome, Logs, Backups, Settings
-- Gestion membres : roles, timeout, kick, ban
-- Posts manuels avec raccourcis par categorie
-
-
----
-
-
-### `v1.1.0` — Sync bidirectionnel
-
-
-- Sync Discord ↔ JSON en temps reel (debounce 2s)
-- Watcher chokidar
-- Dashboard WebSocket en temps reel
-
-
----
-
-
-### `v1.0.0` — Base
-
-
-- Bot Discord connecte + Express + WebSocket
-- Sync initiale Discord → JSON au demarrage
-- Dashboard basique single-file HTML
-
-
----
-
 
 *BrainEXE Dashboard — Neurodivergent Creator Hub 🧠*
