@@ -1,6 +1,6 @@
 const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
-const { GUILD_ID, ANTHROPIC_API_KEY } = require('../config');
+const { GUILD_ID, ANTHROPIC_API_KEY, GNEWS_API_KEY } = require('../config');
 const { callClaude } = require('../ai/claude');
 const { getBotState, setBotState } = require('../db/botState');
 const { BOT_PERSONA } = require('../bot/persona');
@@ -10,19 +10,68 @@ const { saveConfig } = require('../botConfig');
 
 let actusCron = null;
 
+async function fetchGamingNews(topic, postedUrls = []) {
+  if (!GNEWS_API_KEY) return [];
+  const query = encodeURIComponent(`gaming ${topic}`);
+  const from = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const base = `https://gnews.io/api/v4/search?q=${query}&max=10&sortby=publishedAt&from=${from}&apikey=${GNEWS_API_KEY}`;
+  try {
+    const resFr = await fetch(`${base}&lang=fr`);
+    if (!resFr.ok) throw new Error(`GNews ${resFr.status}`);
+    const dataFr = await resFr.json();
+    const articles = (dataFr.articles || []).filter(a => !postedUrls.includes(a.url));
+    if (articles.length < 3) {
+      const resEn = await fetch(`${base}&lang=en`);
+      if (resEn.ok) {
+        const dataEn = await resEn.json();
+        const extra = (dataEn.articles || []).filter(a => !postedUrls.includes(a.url) && !articles.find(b => b.url === a.url));
+        articles.push(...extra);
+      }
+    }
+    return articles;
+  } catch (err) {
+    pushLog('ERR', `GNews échouée : ${err.message}`, 'error');
+    return [];
+  }
+}
+
 async function postActuForChannel(ch) {
   try {
     const guild = await shared.discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel || !ANTHROPIC_API_KEY) return false;
+
     const month = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
-    const content = await callClaude(
-      "\nTu résumes les actus gaming récentes.",
-      `Récap actus pour : ${ch.topic}. 4-6 actus avec emojis. Ton Brainee. Commence direct.`,
-      600,
-      BOT_PERSONA
-    );
+    const state = await getBotState();
+    const postedUrls = state.postedNewsUrls || [];
+
+    const articles = await fetchGamingNews(ch.topic, postedUrls);
+    let content;
+
+    if (articles.length >= 2) {
+      const selected = articles.slice(0, 6);
+      const newsContext = selected.map((a, i) =>
+        `${i + 1}. ${a.title}\n   ${a.description || ''}\n   Lien : ${a.url}`
+      ).join('\n\n');
+      content = await callClaude(
+        '\nTu résumes des actualités gaming récentes fournies. Inclus chaque lien en format Markdown [titre](url) dans le résumé.',
+        `Actus gaming ${month} pour : ${ch.topic}\n\n${newsContext}\n\n4-6 actus avec emojis. Style Brainee. Commence direct. Intègre les liens.`,
+        900,
+        BOT_PERSONA
+      );
+      const newPostedUrls = [...postedUrls, ...selected.map(a => a.url)].slice(-100);
+      await setBotState({ postedNewsUrls: newPostedUrls });
+    } else {
+      pushLog('SYS', `⚠️ GNews sans résultats pour ${ch.channelName} → fallback Claude`, 'warn');
+      content = await callClaude(
+        '\nTu résumes les actus gaming récentes.',
+        `Récap actus pour : ${ch.topic}. 4-6 actus avec emojis. Ton Brainee. Commence direct.`,
+        600,
+        BOT_PERSONA
+      );
+    }
+
     const embed = new EmbedBuilder()
       .setColor(0x5b7fff)
       .setTitle(`📅 Actus ${month.charAt(0).toUpperCase() + month.slice(1)}`)
