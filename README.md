@@ -16,6 +16,7 @@
 | **chokidar** | Watcher fichier JSON |
 | **Anthropic API** | Generation contenu IA (Claude) |
 | **YouTube Data API v3** | Recherche videos sur @mention |
+| **GNews API** | Vraies actualites gaming recentes (bi-mensuel) |
 | **tiktok-live-connector** | Detection live TikTok |
 | **MongoDB Atlas** | Profils membres + etat bot + memoire salons + historique DM + annuaire salons |
 | **Railway** | Hebergement + auto-deploy |
@@ -55,7 +56,7 @@ brainexe-dashboard/
 
 ```bash
 git add .
-git commit -m "feat: v2.0.6"
+git commit -m "feat: v2.0.8"
 git push
 ```
 
@@ -145,7 +146,7 @@ Dimanche : mode chill/nostalgie.
 
 ---
 
-### 7. Discipline Salon v2.0.6 — Le cœur de la mise à jour
+### 7. Discipline Salon v2.0.6
 
 Brainee lit la description officielle de chaque salon (premier message fondateur) et l'utilise comme contrainte absolue.
 
@@ -288,7 +289,7 @@ Sujet sensible → ton doux TOUJOURS.
 | POST | `/api/welcome/test` | Tester welcome |
 | POST | `/api/post` | Post manuel |
 
-### Bot v2.0.6
+### Bot v2.0.8
 | Méthode | Route | Description |
 |---|---|---|
 | GET | `/api/slot` | Tranche active + humeur |
