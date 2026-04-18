@@ -1,6 +1,6 @@
-# 🧠 BrainEXE Dashboard `v2.0.7`
+# 🧠 BrainEXE Dashboard `v2.0.8`
 
-> **v2.0.7 — Planning Adaptatif + Moins de Robotisme** — Brainee est maintenant plus humaine. Elle génère chaque jour une "vibe" (chatty, introvert, impulsive...) qui influence son comportement. Les horaires ne sont plus fixes (9h pile) mais flottants ±20-30 min. Elle peut refuser de répondre, repousser à demain, ou être hyperactive selon son humeur. Moins de tags, moins de structure rigide, plus d'âme.
+> **v2.0.8 — GNews API + Actualités réelles + Planning Adaptatif** — Brainee est maintenant plus humaine. Elle génère chaque jour une "vibe" (chatty, introvert, impulsive...) qui influence son comportement. Les horaires ne sont plus fixes (9h pile) mais flottants ±20-30 min. Elle peut refuser de répondre, repousser à demain, ou être hyperactive selon son humeur. Moins de tags, moins de structure rigide, plus d'âme.
 
 ---
 
@@ -16,6 +16,7 @@
 | **chokidar** | Watcher fichier JSON |
 | **Anthropic API** | Generation contenu IA (Claude) |
 | **YouTube Data API v3** | Recherche videos sur @mention |
+| **GNews API** | Vraies actualites gaming recentes (bi-mensuel) |
 | **tiktok-live-connector** | Detection live TikTok |
 | **MongoDB Atlas** | Profils membres + etat bot + memoire salons + historique DM + annuaire salons |
 | **Railway** | Hebergement + auto-deploy |
@@ -44,6 +45,7 @@ brainexe-dashboard/
 | `GUILD_ID` | ID du serveur | ✅ |
 | `ANTHROPIC_API_KEY` | Claude API | ✅ |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 | ✅ |
+| `GNEWS_API_KEY` | GNews API pour actualités gaming | ✅ |
 | `TIKTOK_USERNAME` | Pseudo TikTok | ✅ |
 | `MONGODB_URI` | Atlas URI | ✅ |
 | `PORT` | Auto Railway | Auto |
@@ -54,7 +56,7 @@ brainexe-dashboard/
 
 ```bash
 git add .
-git commit -m "feat: v2.0.7"
+git commit -m "feat: v2.0.8"
 git push
 ```
 
@@ -88,7 +90,7 @@ Tu verras un objet par salon avec la description officielle et le résumé du bu
 
 ---
 
-## 🤖 Fonctionnalités bot — Vue complète v2.0.7
+## 🤖 Fonctionnalités bot — Vue complète v2.0.8
 
 ### 1. Auto-Role + Reaction Roles
 Auto-role `👁️ Lurker` à l'arrivée. 10 reaction roles gérés nativement.
@@ -115,9 +117,17 @@ Embed fin avec durée, pic viewers, likes, top gifts. Fix v2.0.6 : valeurs corre
 ### 5. Actus Bi-Mensuelles
 1er et 15 du mois à 10h. 9 salons sur 12h.
 
+**GNews API integration v2.0.8** :
+- Récupère vraies actualités gaming récentes (40 jours) via GNews
+- Filtrage multi-langue : français d'abord, fallback anglais si insuffisant
+- Déduplication par URLs stockées en MongoDB (max 100)
+- Claude résume et formate avec les liens en style Brainee
+- Fallback Claude pur si GNews ne retourne rien
+
+
 ---
 
-### 6. Planning horaire adaptatif v2.0.7 — NOUVEAU
+### 6. Planning horaire adaptatif v2.0.8 — NOUVEAU
 
 **Concept clé** : chaque jour, Brainee génère une "vibe" quotidienne qui influence toute son activité :
 
@@ -155,7 +165,7 @@ Dimanche : mode chill/nostalgie.
 
 ---
 
-### 7. Agency — Brainee peut refuser ou différer (v2.0.7)
+### 7. Agency — Brainee peut refuser ou différer (v2.0.8)
 
 #### Sur @mention (mention directe)
 - **Urgent** (détecté par keywords ou question directe) → réponse rapide (1-5 min)
@@ -183,7 +193,7 @@ Système d'outils intégré dans la persona — quand des infos web sont disponi
 
 ---
 
-### 10. @Brainee Mention Directe v2.0.7+
+### 10. @Brainee Mention Directe v2.0.8+
 
 1. **Détection urgence** — heuristique sur keywords + structure du message
 2. **Délai simulé** selon la tranche horaire ET la vibe du jour
@@ -194,17 +204,17 @@ Système d'outils intégré dans la persona — quand des infos web sont disponi
 7. **Recherche YouTube** propre via extraction Claude
 8. **10% réaction emoji seule** → retour 15-45 min avec excuse contextuelle
 9. **25% réaction emoji + texte**
-10. **Résolution mentions** `@Pseudo → <@id>` et `#salon → <#id>` — **FIXE v2.0.7** : gère now `.`, emojis, diacritiques
+10. **Résolution mentions** `@Pseudo → <@id>` et `#salon → <#id>` — **FIXE v2.0.8** : gère now `.`, emojis, diacritiques
 
 ---
 
-### 11. Persona Brainee v2.0.7
+### 11. Persona Brainee v2.0.8
 
 **Culture gaming** : JRPG, Castlevania, Metroid, Mega Man, soulslike, indie, retro, next-gen, lore, OST.
 
 **Culture large** : films SF/thriller/horreur, musique, manga, bouffe, dev/IA, création artistique, neurodivergence.
 
-**Tags v2.0.7 — STRICT** : évite les @ autant que possible. Une reply Discord notifie déjà. Ne tag que si vraiment nécessaire. Jamais plus d'un tag par message.
+**Tags v2.0.8 — STRICT** : évite les @ autant que possible. Une reply Discord notifie déjà. Ne tag que si vraiment nécessaire. Jamais plus d'un tag par message.
 
 ---
 
@@ -278,7 +288,7 @@ Niveaux : 1-3 chaleureux / 4-6 ironie légère / 7-10 piques assumées.
 | POST | `/api/welcome/test` | Tester welcome |
 | POST | `/api/post` | Post manuel |
 
-### Bot v2.0.7
+### Bot v2.0.8
 | Méthode | Route | Description |
 |---|---|---|
 | GET | `/api/slot` | Tranche active + humeur + vibe |
@@ -320,13 +330,13 @@ Niveaux : 1-3 chaleureux / 4-6 ironie légère / 7-10 piques assumées.
 → La vibe du jour module le comportement — attendre le lendemain ou redéployer pour forcer une nouvelle vibe
 
 **@mention complètement ignorée (agency)**
-→ Normal v2.0.7 — elle peut refuser selon sa vibe (skip aléatoire). Réessayer quelques heures après.
+→ Normal v2.0.8 — elle peut refuser selon sa vibe (skip aléatoire). Réessayer quelques heures après.
 
 **Mention différée jusqu'à demain**
 → Pas urgente + vibe lazy/introvert = relance le lendemain vers 10-12h avec @mention
 
 **Tags qui ne résolvent pas (emojis, points dans noms)**
-→ Fix v2.0.7 — `resolveMentionsInText()` est maintenant plus robuste avec normalisation Unicode
+→ Fix v2.0.8 — `resolveMentionsInText()` est maintenant plus robuste avec normalisation Unicode
 
 **channelDirectory vide après le boot**
 → Attendre 35-40s après le démarrage
@@ -338,7 +348,7 @@ Niveaux : 1-3 chaleureux / 4-6 ironie légère / 7-10 piques assumées.
 
 ## 🔄 Changelog complet
 
-### ⭐ `v2.0.7` — Planning Adaptatif + Agency + Moins de Tags *(actuelle)*
+### ⭐ `v2.0.8` — Planning Adaptatif + Agency + Moins de Tags *(actuelle)*
 
 **Nouveau système de vibe quotidienne** :
 - `getDailyVibe()` : 8 vibes tirées au hasard chaque matin (chatty, introvert, impulsive, lazy, focus, excited, grumpy, balanced)
@@ -356,19 +366,19 @@ Niveaux : 1-3 chaleureux / 4-6 ironie légère / 7-10 piques assumées.
 - `queueRelance` : queue en mémoire de mentions à relancer le lendemain vers 10-12h
 
 **Moins de tags — règle stricte** :
-- v2.0.7 renforce la persona : reply Discord notifie déjà, pas besoin de @pseudo
+- v2.0.8 renforce la persona : reply Discord notifie déjà, pas besoin de @pseudo
 - `NO_TAG_CLAUSE` injecté dans prompts de greeting/conv ambiante
 - `LIGHT_TAG_CLAUSE` pour replies (avertissement à Claude)
 - `shouldTagPerson()` roll dice selon vibe.tagPenalty
 - Jamais plus d'un tag par message
 
 **Bug fix mentions** :
-- `resolveMentionsInText()` complètement réécrit v2.0.7
+- `resolveMentionsInText()` complètement réécrit v2.0.8
 - Gère now : pseudos avec `.`, emojis, diacritiques, caractères spéciaux
 - Normalization Unicode + fuzzy matching de salons/users
 - Regex permissive + lookup intelligent
 
-**Crons v2.0.7** :
+**Crons v2.0.8** :
 - `startConvCron()` restructuré : floatingEventsCron + relanceCron en plus
 - Skip probabiliste selon vibe
 - Post impulsif aléatoire (hors-cron)
@@ -378,6 +388,31 @@ Niveaux : 1-3 chaleureux / 4-6 ironie légère / 7-10 piques assumées.
 - `postRelanceMention()` : envoie la relance du jour d'avant à ~10-12h, avec @mention de la personne
 
 ---
+
+### ⭐ `v2.0.8` — GNews API + Actualités réelles *(actuelle)*
+
+- **`fetchGamingNews(topic, postedUrls)`** : requête GNews API (FR + EN fallback)
+- **Déduplication par MongoDB** : `botState.postedNewsUrls` (max 100 URLs)
+- **Actualités vraies + récentes** : 40 jours retour avec filtrage par topic
+- **Claude résume + style Brainee** : inclut les liens Markdown dans le résumé
+- **Fallback Claude pur** : si GNews ne retourne rien
+- Ajout `GNEWS_API_KEY` dans config.js et env Railway
+- **Intégration avec v2.0.8** : combine GNews API + Planning Adaptatif + Vibes
+
+---
+
+### `v2.0.8` — Planning Adaptatif + Moins de Robotisme (base 2.0.8)
+
+- **Vibes quotidiennes** : 8 vibes (chatty, introvert, impulsive, lazy, focus, excited, grumpy, balanced)
+- **Horaires flottants** : ±jitter aléatoire (morning ±25min, lunch ±25min, goodnight ±45min)
+- **Agency système** : Brainee peut refuser, repousser au lendemain, ignorer selon vibe
+- **Comportement modulé** : chattiness, impulse, skip rates varient par vibe
+- Nouvelle collection `botState.vibeOfTheDay` avec scores quotidiens
+- Routes API pour vibes et status
+
+---
+
+### `v2.0.7` — Planning Adaptatif + Moins de Robotisme
 
 ### `v2.0.6` — Discipline Salon + Intelligence élargie
 

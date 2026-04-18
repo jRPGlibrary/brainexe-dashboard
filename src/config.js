@@ -6,6 +6,7 @@ module.exports = {
   CONFIG_FILE: 'brainexe-config.json',
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
+  GNEWS_API_KEY: process.env.GNEWS_API_KEY,
   MONGODB_URI: process.env.MONGODB_URI,
   MIN_GAP_ANY_POST: 15 * 60 * 1000,
 };
