@@ -14,6 +14,11 @@ const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getCurrentSlot, getMentionDelayMs, getParisDay } = require('../bot/scheduling');
 const { getChannelIntentBlock } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
+const {
+  getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
+  updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens,
+} = require('../bot/emotions');
+const { ensureMemberBond, applyInteractionToBond, describeBond } = require('../db/memberBonds');
 const { getRandomReaction } = require('../bot/reactions');
 const { formatContext } = require('../features/context');
 const { scheduleDelayedReplyAfterEmoji } = require('../features/delayedReply');
@@ -63,6 +68,13 @@ async function handleMentionReply(message, userQuery) {
     const profile = await getMemberProfile(message.author.id);
     const toneInstruction = getToneInstruction(profile, message.author.username);
     const mood = refreshDailyMood();
+    updateInternalStatesForSlot(slot);
+    applyNaturalDecay();
+    detectEmotionFromMessage(userQuery, { userId: message.author.id });
+    const bond = await ensureMemberBond(message.author.id, message.author.username);
+    const bondBlock = describeBond(bond, message.author.username);
+    const emotionBlock = getEmotionalInjection();
+    const temperamentBlock = getTemperamentInjection();
     const channelMemory = await getChannelMemory(message.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntry = await getChannelDirectory(message.channelId);
@@ -82,22 +94,24 @@ async function handleMentionReply(message, userQuery) {
       } catch (_) {}
     }
 
-    const dynamicPrompt = `${toneInstruction}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds uniquement à ${message.author.username}.`;
+    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds uniquement à ${message.author.username}.`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
       const emoji = getRandomReaction(userQuery);
       await message.react(emoji);
       await updateMemberProfile(message.author.id, message.author.username, userQuery);
+      await applyInteractionToBond(message.author.id, message.author.username, userQuery);
       pushLog('SYS', `😏 Réaction seule : ${emoji} → ${message.author.username} (retour tardif planifié)`);
       scheduleDelayedReplyAfterEmoji(message, userQuery, emoji, slot, mood);
       return;
     }
-    const reply = await callClaude(dynamicPrompt, `${message.author.username} dit : "${userQuery}"\nMax 3 phrases.`, 250, BOT_PERSONA_CONVERSATION);
+    const reply = await callClaude(dynamicPrompt, `${message.author.username} dit : "${userQuery}"\nMax 3 phrases.`, adjustMaxTokens(250), BOT_PERSONA_CONVERSATION);
     const replyResolved = resolveMentionsInText(reply, message.guild);
     if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
-    await sendHuman(message.channel, replyResolved + youtubeBlock, message);
+    await sendHuman(message.channel, replyResolved + youtubeBlock, message, { bond });
     await updateMemberProfile(message.author.id, message.author.username, userQuery);
+    await applyInteractionToBond(message.author.id, message.author.username, userQuery);
     pushLog('SYS', `💬 @mention → ${message.author.username} (mood: ${mood})`, 'success');
   } catch (err) { pushLog('ERR', `handleMentionReply échoué : ${err.message}`, 'error'); }
 }
@@ -116,15 +130,35 @@ function registerMessageHandlers() {
       const profile = await getMemberProfile(message.author.id);
       const toneInstruction = getToneInstruction(profile, message.author.username);
       const mood = refreshDailyMood();
-      const dynamicPrompt = `${toneInstruction}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
+      const slot = getCurrentSlot();
+      updateInternalStatesForSlot(slot);
+      applyNaturalDecay();
+      detectEmotionFromMessage(userContent, { userId: message.author.id });
+      const bond = await ensureMemberBond(message.author.id, message.author.username);
+      const bondBlock = describeBond(bond, message.author.username);
+      const emotionBlock = getEmotionalInjection();
+      const temperamentBlock = getTemperamentInjection();
+      const dynamicPrompt = `${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
       const userPrompt = `${message.author.username} : "${userContent}"`;
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
-      const reply = await callClaude(dynamicPrompt, userPrompt, 350, BOT_PERSONA_DM);
-      if (Math.random() < 0.15 && reply.length > 80) { await sendHuman(message.channel, reply); }
-      else { await message.reply(reply); }
+      const reply = await callClaude(dynamicPrompt, userPrompt, adjustMaxTokens(350), BOT_PERSONA_DM);
+      if (Math.random() < 0.15 && reply.length > 80) { await sendHuman(message.channel, reply, null, { bond }); }
+      else {
+        const { humanize } = require('../bot/humanize');
+        const { getHumanizationSignal } = require('../bot/emotions');
+        const { getBondSignal } = require('../db/memberBonds');
+        const humanized = humanize(reply, {
+          emotionalSignal: getHumanizationSignal(),
+          bondSignal: getBondSignal(bond),
+          mood,
+          slotStatus: slot.status,
+        });
+        await message.reply(humanized);
+      }
       await appendDmMessage(message.author.id, message.author.username, 'user', userContent);
       await appendDmMessage(message.author.id, message.author.username, 'assistant', reply);
       await updateMemberProfile(message.author.id, message.author.username, userContent);
+      await applyInteractionToBond(message.author.id, message.author.username, userContent);
       pushLog('SYS', `📨 DM répondu à ${message.author.username} (mood: ${mood})`, 'success');
     } catch (err) { pushLog('ERR', `DM handler échoué pour ${message.author.username} : ${err.message}`, 'error'); }
   });

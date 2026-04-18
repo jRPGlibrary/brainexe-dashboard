@@ -7,14 +7,20 @@ const { postRandomConversation, replyToConversations } = require('./features/con
 const { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup } = require('./features/greetings');
 const { runDriftCheck } = require('./features/drift');
 const { getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded } = require('./features/convStats');
+const {
+  updateInternalStatesForSlot, applyNaturalDecay, applyDailyDrift,
+  decayEmotions, saveEmotionalState,
+} = require('./bot/emotions');
+const { runDailyBondEvolution } = require('./db/memberBonds');
 const { readGuildState } = require('./discord/sync');
 const fs = require('fs');
 
 let convCron = null, replyCron = null, morningCron = null, morningCronWE = null, morningCronSun = null;
 let lunchBackCron = null, goodnightCron = null, nightWakeupCron = null, moodResetCron = null, driftCron = null;
+let emotionHourlyCron = null, emotionDailyCron = null;
 
 function startConvCron() {
-  [convCron, replyCron, morningCron, morningCronWE, morningCronSun, lunchBackCron, goodnightCron, nightWakeupCron, moodResetCron, driftCron]
+  [convCron, replyCron, morningCron, morningCronWE, morningCronSun, lunchBackCron, goodnightCron, nightWakeupCron, moodResetCron, driftCron, emotionHourlyCron, emotionDailyCron]
     .forEach(c => { if (c) { try { c.stop(); } catch {} } });
 
   convCron = cron.schedule('0 * * * *', () => {
@@ -50,7 +56,29 @@ function startConvCron() {
     if (slot.maxConv > 0) { pushLog('SYS', `🔍 Drift check déclenché [${slot.label}]`); runDriftCheck(); }
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v2.0.6 — conv + drift check toutes les 3h`, 'success');
+  // Decay des émotions + update des états internes selon le slot toutes les heures
+  emotionHourlyCron = cron.schedule('30 * * * *', () => {
+    try {
+      const slot = getCurrentSlot();
+      updateInternalStatesForSlot(slot);
+      applyNaturalDecay();
+      decayEmotions();
+      saveEmotionalState().catch(() => {});
+      pushLog('SYS', `💗 Évolution émotionnelle horaire [${slot.label}]`);
+    } catch (err) { pushLog('ERR', `emotionHourlyCron: ${err.message}`, 'error'); }
+  }, { timezone: 'Europe/Paris' });
+
+  // Évolution journalière des bonds + drift des états internes à 00h05
+  emotionDailyCron = cron.schedule('5 0 * * *', async () => {
+    try {
+      applyDailyDrift();
+      await runDailyBondEvolution();
+      await saveEmotionalState();
+      pushLog('SYS', `💞 Évolution journalière bonds + états internes`, 'success');
+    } catch (err) { pushLog('ERR', `emotionDailyCron: ${err.message}`, 'error'); }
+  }, { timezone: 'Europe/Paris' });
+
+  pushLog('SYS', `✅ Crons v2.0.9 — conv + drift + émotions horaires + bonds journaliers`, 'success');
 }
 
 function startBackupInterval() {

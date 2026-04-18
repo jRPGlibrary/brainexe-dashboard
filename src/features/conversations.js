@@ -11,6 +11,11 @@ const { getCurrentSlot, getRandomMode, getSlotIntervalMs } = require('../bot/sch
 const { getChannelIntentBlock, getModeInjectionForChannel } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
 const { getRandomReaction, shouldCreateThread } = require('../bot/reactions');
+const {
+  getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
+  updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens,
+} = require('../bot/emotions');
+const { ensureMemberBond, applyInteractionToBond, describeBond } = require('../db/memberBonds');
 const { formatContext } = require('./context');
 const { scheduleDelayedSpontaneousReply } = require('./delayedReply');
 const {
@@ -35,11 +40,15 @@ async function postRandomConversation() {
     if (!channel || !ANTHROPIC_API_KEY) return;
     const mode = getRandomMode(slot);
     const mood = refreshDailyMood();
+    updateInternalStatesForSlot(slot);
+    applyNaturalDecay();
     const channelMemory = await getChannelMemory(ch.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntryC = await getChannelDirectory(ch.channelId);
     const intentBlockC = getChannelIntentBlock(channel.name, ch.topic, dirEntryC?.officialDescription || '');
     const modeBlock = getModeInjectionForChannel(mode, channel.name, ch.topic);
+    const emotionBlock = getEmotionalInjection();
+    const temperamentBlock = getTemperamentInjection();
     let contextBlock = '';
     try {
       const msgs = await channel.messages.fetch({ limit: 100 });
@@ -47,9 +56,9 @@ async function postRandomConversation() {
       if (ctx.length > 20) contextBlock = `\nContexte récent (évite de répéter) :\n${ctx}`;
     } catch (_) {}
     const content = await callClaude(
-      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlockC}\n${modeBlock}` + contextBlock,
+      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${intentBlockC}\n${modeBlock}` + contextBlock,
       `Max 3 phrases. Direct. Adapte-toi au salon.`,
-      150,
+      adjustMaxTokens(150),
       BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
@@ -97,12 +106,18 @@ async function replyToConversations() {
     const profile = await getMemberProfile(lastMsg.author.id);
     const toneInstruction = getToneInstruction(profile, lastMsg.author.username);
     const mood = refreshDailyMood();
+    updateInternalStatesForSlot(slot);
+    applyNaturalDecay();
+    detectEmotionFromMessage(msgContent, { userId: lastMsg.author.id });
+    const bond = await ensureMemberBond(lastMsg.author.id, lastMsg.author.username);
+    const bondBlock = describeBond(bond, lastMsg.author.username);
+    const emotionBlock = getEmotionalInjection();
     const channelMemory = await getChannelMemory(ch.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntryR = await getChannelDirectory(ch.channelId);
     const intentBlockR = getChannelIntentBlock(channel.name, ch.topic, dirEntryR?.officialDescription || '');
     const context = formatContext(msgs, null, 80);
-    const dynamicPrompt = `${toneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds uniquement à ${lastMsg.author.username}.`;
+    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds uniquement à ${lastMsg.author.username}.`;
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
       const emoji = getRandomReaction(msgContent);
@@ -110,17 +125,19 @@ async function replyToConversations() {
       shared.lastAnyBotPostTime = Date.now();
       await updateConvStats(ch.channelId);
       await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
+      await applyInteractionToBond(lastMsg.author.id, lastMsg.author.username, msgContent);
       pushLog('SYS', `😏 Réaction seule → ${lastMsg.author.username} (retour tardif planifié)`);
       scheduleDelayedSpontaneousReply(lastMsg, ch, slot, mood, emoji);
       return;
     }
-    const reply = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\n1-2 phrases.`, 150, BOT_PERSONA_CONVERSATION);
+    const reply = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\n1-2 phrases.`, adjustMaxTokens(150), BOT_PERSONA_CONVERSATION);
     const replyResolved = resolveMentionsInText(reply, guild);
     if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
-    await sendHuman(channel, replyResolved, lastMsg);
+    await sendHuman(channel, replyResolved, lastMsg, { bond });
     shared.lastAnyBotPostTime = Date.now();
     await updateConvStats(ch.channelId);
     await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
+    await applyInteractionToBond(lastMsg.author.id, lastMsg.author.username, msgContent);
     const hasEngagement = (lastMsg.reactions?.cache?.size > 0) ||
       ([...msgs.values()].filter(m => m.reference?.messageId === lastMsg.id).length > 0);
     if (shouldCreateThread(reply, channel.name, hasEngagement)) {
