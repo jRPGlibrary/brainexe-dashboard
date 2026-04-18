@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.0.6
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.0.7
  * ================================================
  * Architecture refactorée — entry point minimal
  * Toute la logique est dans src/
@@ -65,6 +65,7 @@ const { startTikTokLiveWatcher } = require('./src/features/tiktok');
 const { initChannelDirectory } = require('./src/db/channelDir');
 const { refreshDailyMood, getDailyMood } = require('./src/bot/mood');
 const { getCurrentSlot } = require('./src/bot/scheduling');
+const { getDailyVibe } = require('./src/bot/adaptiveSchedule');
 const { registerRoutes } = require('./src/api/routes');
 
 // ── API ROUTES ────────────────────────────────────────────────
@@ -89,10 +90,11 @@ discord.once('ready', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(' 🧠 BRAINEXE — Brainee v2.0.6 (refactoré)');
+  console.log(' 🧠 BRAINEXE — Brainee v2.0.7 (refactoré)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  const vibe = getDailyVibe();
   console.log(` ✅ Bot : ${discord.user.tag}`);
-  console.log(` ⏰ Slot : ${slot.label} | 🎭 Humeur : ${getDailyMood()}`);
+  console.log(` ⏰ Slot : ${slot.label} | 🎭 Humeur : ${getDailyMood()} | 🎨 Vibe : ${vibe.name}`);
   console.log(` 🌐 Dashboard : http://localhost:${PORT}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
@@ -117,7 +119,7 @@ discord.once('ready', async () => {
     pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
   ), 30000);
 
-  await syncDiscordToFile('Démarrage v2.0.6');
+  await syncDiscordToFile('Démarrage v2.0.7');
 });
 
 server.listen(PORT, '0.0.0.0', () => console.log(`🌐 Port ${PORT}`));

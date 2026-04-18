@@ -12,11 +12,13 @@ const { getDmHistory, appendDmMessage, formatDmHistory } = require('../db/dmHist
 const { BOT_PERSONA_CONVERSATION, BOT_PERSONA_DM } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getCurrentSlot, getMentionDelayMs, getParisDay } = require('../bot/scheduling');
+const { getDailyVibe, isUrgentQuery, decideMentionResponse, queueRelance } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
 const { getRandomReaction } = require('../bot/reactions');
 const { formatContext } = require('../features/context');
 const { scheduleDelayedReplyAfterEmoji } = require('../features/delayedReply');
+const { LIGHT_TAG_CLAUSE } = require('../features/greetings');
 const { scheduleDiscordToFile } = require('./sync');
 const { sendWelcomeMessage } = require('../features/welcome');
 const { YOUTUBE_KEYWORDS } = require('../bot/keywords');
@@ -69,8 +71,9 @@ async function handleMentionReply(message, userQuery) {
     const channelTopic = shared.botConfig.conversations.channels.find(c => c.channelId === message.channelId)?.topic || message.channel.name;
     const intentBlock = getChannelIntentBlock(message.channel.name, channelTopic, dirEntry?.officialDescription || '');
 
+    const vibe = getDailyVibe();
     const taggedMembers = [...message.mentions.users.values()].filter(u => u.id !== shared.discord.user.id).map(u => '@' + u.username);
-    const taggedBlock = taggedMembers.length > 0 ? `Membres tagués : ${taggedMembers.join(', ')}. Inclus-les naturellement si pertinent.` : '';
+    const taggedBlock = taggedMembers.length > 0 ? `Membres tagués : ${taggedMembers.join(', ')}. Tu peux les évoquer naturellement SANS les re-tagger — ils ont déjà été notifiés.` : '';
 
     const needsYoutube = YOUTUBE_KEYWORDS.some(kw => userQuery.toLowerCase().includes(kw));
     let youtubeBlock = '';
@@ -82,7 +85,7 @@ async function handleMentionReply(message, userQuery) {
       } catch (_) {}
     }
 
-    const dynamicPrompt = `${toneInstruction}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds uniquement à ${message.author.username}.`;
+    const dynamicPrompt = `${toneInstruction}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -129,24 +132,45 @@ function registerMessageHandlers() {
     } catch (err) { pushLog('ERR', `DM handler échoué pour ${message.author.username} : ${err.message}`, 'error'); }
   });
 
-  // @mention handler
+  // @mention handler v2.0.7 — urgence + vibe + relance demain
   shared.discord.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild || message.guild.id !== GUILD_ID) return;
     if (!shared.discord.user || !message.mentions.has(shared.discord.user)) return;
     const userQuery = message.content.replace(/<@!?\d+>/g, '').trim();
     if (!userQuery) return;
     const slot = getCurrentSlot();
-    if (slot.status === 'sleep') {
-      const age = Date.now() - message.createdTimestamp;
-      if (age > 2 * 60 * 60 * 1000) { pushLog('SYS', `💤 @mention ignorée (trop vieux)`); return; }
-      const paris = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-      const wakeHour = getParisDay() === 0 ? 10 : 9;
-      let msUntilWake = ((wakeHour - paris.getHours()) * 60 - paris.getMinutes()) * 60 * 1000;
-      if (msUntilWake < 0) msUntilWake = 0;
-      if (msUntilWake > 10 * 60 * 60 * 1000) { pushLog('SYS', `💤 @mention ignorée (réveil trop loin)`); return; }
-      setTimeout(() => handleMentionReply(message, userQuery), msUntilWake);
+    const urgent = isUrgentQuery(userQuery);
+    const decision = decideMentionResponse(slot, urgent);
+
+    // Décision : skip total (agency)
+    if (decision.action === 'skip') {
+      pushLog('SYS', `🙅 @mention ignorée volontairement (vibe ${getDailyVibe().name}) → ${message.author.username}`);
       return;
     }
+
+    // Décision : reporter au lendemain (non-urgent + vibe lazy, ou sleep)
+    if (decision.action === 'defer_tomorrow') {
+      queueRelance({
+        userId: message.author.id,
+        username: message.author.username,
+        channelId: message.channelId,
+        messageId: message.id,
+        query: userQuery,
+      });
+      pushLog('SYS', `📬 @mention différée à demain → ${message.author.username} (non-urgent, vibe ${getDailyVibe().name})`);
+      return;
+    }
+
+    // Urgent : délai très court, on zappe tous les autres délais
+    if (decision.action === 'fast') {
+      const fastDelay = decision.delay || 0;
+      pushLog('SYS', `⚡ @mention URGENTE → ${message.author.username} (délai ${Math.round(fastDelay / 1000)}s)`);
+      if (fastDelay > 0) setTimeout(() => handleMentionReply(message, userQuery), fastDelay);
+      else handleMentionReply(message, userQuery);
+      return;
+    }
+
+    // Normal : garde le délai de slot classique
     const delayMs = getMentionDelayMs(slot);
     if (delayMs > 0) setTimeout(() => handleMentionReply(message, userQuery), delayMs);
     else handleMentionReply(message, userQuery);
