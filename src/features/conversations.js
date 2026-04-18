@@ -47,9 +47,10 @@ async function postRandomConversation() {
       if (ctx.length > 20) contextBlock = `\nContexte récent (évite de répéter) :\n${ctx}`;
     } catch (_) {}
     const content = await callClaude(
-      BOT_PERSONA + `\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlockC}\n${modeBlock}` + contextBlock,
+      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlockC}\n${modeBlock}` + contextBlock,
       `Max 3 phrases. Direct. Adapte-toi au salon.`,
-      150
+      150,
+      BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
     await simulateTyping(channel, 1000 + Math.random() * 2000);
@@ -101,7 +102,7 @@ async function replyToConversations() {
     const dirEntryR = await getChannelDirectory(ch.channelId);
     const intentBlockR = getChannelIntentBlock(channel.name, ch.topic, dirEntryR?.officialDescription || '');
     const context = formatContext(msgs, null, 80);
-    const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds uniquement à ${lastMsg.author.username}.`;
+    const dynamicPrompt = `${toneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds uniquement à ${lastMsg.author.username}.`;
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
       const emoji = getRandomReaction(msgContent);
@@ -113,7 +114,7 @@ async function replyToConversations() {
       scheduleDelayedSpontaneousReply(lastMsg, ch, slot, mood, emoji);
       return;
     }
-    const reply = await callClaude(systemPrompt, `${lastMsg.author.username} dit : "${msgContent}"\n1-2 phrases.`, 150);
+    const reply = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\n1-2 phrases.`, 150, BOT_PERSONA_CONVERSATION);
     const replyResolved = resolveMentionsInText(reply, guild);
     if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
     await sendHuman(channel, replyResolved, lastMsg);

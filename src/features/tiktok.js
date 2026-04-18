@@ -15,9 +15,10 @@ let tiktokCron = null;
 async function generateLiveIntro(title) {
   if (!ANTHROPIC_API_KEY) return 'Le live vient de démarrer 🔥';
   return callClaude(
-    BOT_PERSONA + '\nTu annonces un live TikTok.',
+    '\nTu annonces un live TikTok.',
     `Titre : "${title}". Accroche 2 phrases max. Direct. 🔥`,
-    150
+    150,
+    BOT_PERSONA
   );
 }
 

@@ -18,9 +18,10 @@ async function postActuForChannel(ch) {
     if (!channel || !ANTHROPIC_API_KEY) return false;
     const month = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
     const content = await callClaude(
-      BOT_PERSONA + "\nTu résumes les actus gaming récentes.",
+      "\nTu résumes les actus gaming récentes.",
       `Récap actus pour : ${ch.topic}. 4-6 actus avec emojis. Ton Brainee. Commence direct.`,
-      600
+      600,
+      BOT_PERSONA
     );
     const embed = new EmbedBuilder()
       .setColor(0x5b7fff)

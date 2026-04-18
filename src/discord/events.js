@@ -82,7 +82,7 @@ async function handleMentionReply(message, userQuery) {
       } catch (_) {}
     }
 
-    const systemPrompt = `${BOT_PERSONA_CONVERSATION}\n${toneInstruction}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds uniquement à ${message.author.username}.`;
+    const dynamicPrompt = `${toneInstruction}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds uniquement à ${message.author.username}.`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -93,7 +93,7 @@ async function handleMentionReply(message, userQuery) {
       scheduleDelayedReplyAfterEmoji(message, userQuery, emoji, slot, mood);
       return;
     }
-    const reply = await callClaude(systemPrompt, `${message.author.username} dit : "${userQuery}"\nMax 3 phrases.`, 250);
+    const reply = await callClaude(dynamicPrompt, `${message.author.username} dit : "${userQuery}"\nMax 3 phrases.`, 250, BOT_PERSONA_CONVERSATION);
     const replyResolved = resolveMentionsInText(reply, message.guild);
     if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
     await sendHuman(message.channel, replyResolved + youtubeBlock, message);
@@ -116,10 +116,10 @@ function registerMessageHandlers() {
       const profile = await getMemberProfile(message.author.id);
       const toneInstruction = getToneInstruction(profile, message.author.username);
       const mood = refreshDailyMood();
-      const systemPrompt = `${BOT_PERSONA_DM}\n\n${toneInstruction}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
+      const dynamicPrompt = `${toneInstruction}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
       const userPrompt = `${message.author.username} : "${userContent}"`;
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
-      const reply = await callClaude(systemPrompt, userPrompt, 350);
+      const reply = await callClaude(dynamicPrompt, userPrompt, 350, BOT_PERSONA_DM);
       if (Math.random() < 0.15 && reply.length > 80) { await sendHuman(message.channel, reply); }
       else { await message.reply(reply); }
       await appendDmMessage(message.author.id, message.author.username, 'user', userContent);

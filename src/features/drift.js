@@ -108,9 +108,10 @@ async function handleDrift(guild, channelId, channelName, driftResult) {
 
     if (driftResult.action === 'moderate') {
       const moderateMsg = await callClaude(
-        BOT_PERSONA_CONVERSATION + '\n\nTu interviens dans un salon Discord qui dérive sérieusement.',
+        '\nTu interviens dans un salon Discord qui dérive sérieusement.',
         `Le salon ${channelName} dérive sur : "${driftResult.dominantTheme}". Raison : ${driftResult.reason}. Lance une intervention ferme mais humaine — pas de message admin froid, pas de liste de règles. Style Brainee direct. Max 2 phrases.`,
-        100
+        100,
+        BOT_PERSONA_CONVERSATION
       );
       const moderateResolved = resolveMentionsInText(moderateMsg, guild);
       await simulateTyping(originChannel, 1000);

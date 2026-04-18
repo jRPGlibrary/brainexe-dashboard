@@ -14,9 +14,10 @@ let anecdoteCron = null;
 async function generateAnecdote(ch) {
   const mood = refreshDailyMood();
   return callClaude(
-    BOT_PERSONA + `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nTu génères des anecdotes gaming courtes, vraies, surprenantes.`,
+    `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nTu génères des anecdotes gaming courtes, vraies, surprenantes.`,
     `Anecdote gaming sur : ${ch.topic}. 2-3 phrases max. Direct. Fin : 🕹️ *[Jeu concerné]*`,
-    400
+    400,
+    BOT_PERSONA
   );
 }
 

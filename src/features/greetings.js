@@ -20,9 +20,10 @@ async function postMorningGreeting() {
     const mood = refreshDailyMood();
     const dayCtx = day === 0 ? 'dimanche, journée chill' : day === 6 ? 'samedi, pas de boulot' : 'jour de semaine';
     const content = await callClaude(
-      BOT_PERSONA + `\nHumeur : ${mood}. Tu viens de te lever.`,
+      `\nHumeur : ${mood}. Tu viens de te lever.`,
       `C'est ${dayCtx}. Check morning — qui est là, qui bosse, qui geek. Somnolent. Max 2 phrases.`,
-      120
+      120,
+      BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
     await simulateTyping(channel, 800);
@@ -44,9 +45,10 @@ async function postLunchBack() {
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel) return;
     const content = await callClaude(
-      BOT_PERSONA + '\nTu reviens de ta pause.',
+      '\nTu reviens de ta pause.',
       `Retour de pause dans ${ch.topic}. 1-2 phrases. Décontracté.`,
-      100
+      100,
+      BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
     await simulateTyping(channel, 600);
@@ -68,9 +70,10 @@ async function postGoodnight() {
     const channel = guild.channels.cache.get(targetId);
     if (!channel) return;
     const content = await callClaude(
-      BOT_PERSONA + '\nFin de soirée gaming.',
+      '\nFin de soirée gaming.',
       `Message fin de soirée naturel. Style "je finis cette quête et je dors... normalement". 1-2 phrases. Jamais "bonsoir".`,
-      100
+      100,
+      BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
     await simulateTyping(channel, 600);
@@ -89,9 +92,10 @@ async function postNightWakeup() {
     const channel = guild.channels.cache.get('1481028189680570421');
     if (!channel) return;
     const content = await callClaude(
-      BOT_PERSONA + '\nRéveil nocturne, mode zombie.',
+      '\nRéveil nocturne, mode zombie.',
       `Message ultra court — "j'arrive pas à dormir et je pense encore à [jeu/boss]". 1 phrase MAX.`,
-      80
+      80,
+      BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
     await channel.send(contentResolved);
