@@ -50,7 +50,7 @@ function startConvCron() {
     if (slot.maxConv > 0) { pushLog('SYS', `🔍 Drift check déclenché [${slot.label}]`); runDriftCheck(); }
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v2.0.3 — conv + drift check toutes les 3h`, 'success');
+  pushLog('SYS', `✅ Crons v2.0.6 — conv + drift check toutes les 3h`, 'success');
 }
 
 function startBackupInterval() {
