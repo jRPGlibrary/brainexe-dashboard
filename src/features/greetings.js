@@ -5,8 +5,13 @@ const { callClaude } = require('../ai/claude');
 const { BOT_PERSONA } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getParisDay } = require('../bot/scheduling');
+const { getDailyVibe, shouldTagPerson } = require('../bot/adaptiveSchedule');
 const { simulateTyping, resolveMentionsInText } = require('../bot/messaging');
 const { updateConvStats, getQuietestChannel } = require('./convStats');
+
+// Instructions injectées quand on ne veut pas de tag
+const NO_TAG_CLAUSE = `IMPORTANT : Ne tagge personne dans ce message — pas de @pseudo. Reste ambiant, personne n'a besoin d'être notifié.`;
+const LIGHT_TAG_CLAUSE = `IMPORTANT : Évite les tags sauf vraiment nécessaire. Ne tagge personne si pas strictement indispensable.`;
 
 async function postMorningGreeting() {
   const cfg = shared.botConfig.conversations;
@@ -18,10 +23,11 @@ async function postMorningGreeting() {
     if (!channel) return;
     const day = getParisDay();
     const mood = refreshDailyMood();
+    const vibe = getDailyVibe();
     const dayCtx = day === 0 ? 'dimanche, journée chill' : day === 6 ? 'samedi, pas de boulot' : 'jour de semaine';
     const content = await callClaude(
-      `\nHumeur : ${mood}. Tu viens de te lever.`,
-      `C'est ${dayCtx}. Check morning — qui est là, qui bosse, qui geek. Somnolent. Max 2 phrases.`,
+      `\nHumeur : ${mood}. Vibe du jour : ${vibe.name} (${vibe.desc}). Tu viens de te lever.\n${NO_TAG_CLAUSE}`,
+      `C'est ${dayCtx}. Check morning — qui est là, qui bosse, qui geek. Somnolent. Max 2 phrases. Pas de @ à quelqu'un.`,
       120,
       BOT_PERSONA
     );
@@ -30,7 +36,7 @@ async function postMorningGreeting() {
     await channel.send(contentResolved);
     shared.lastAnyBotPostTime = Date.now();
     await updateConvStats('1481028189680570421');
-    pushLog('SYS', `☕ Morning greeting posté`, 'success');
+    pushLog('SYS', `☕ Morning greeting posté (vibe ${vibe.name})`, 'success');
   } catch (err) { pushLog('ERR', `Morning échoué : ${err.message}`, 'error'); }
 }
 
@@ -44,9 +50,10 @@ async function postLunchBack() {
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel) return;
+    const vibe = getDailyVibe();
     const content = await callClaude(
-      '\nTu reviens de ta pause.',
-      `Retour de pause dans ${ch.topic}. 1-2 phrases. Décontracté.`,
+      `\nTu reviens de ta pause. Vibe : ${vibe.name}.\n${NO_TAG_CLAUSE}`,
+      `Retour de pause dans ${ch.topic}. 1-2 phrases. Décontracté. Pas de @ à quelqu'un.`,
       100,
       BOT_PERSONA
     );
@@ -69,9 +76,10 @@ async function postGoodnight() {
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(targetId);
     if (!channel) return;
+    const vibe = getDailyVibe();
     const content = await callClaude(
-      '\nFin de soirée gaming.',
-      `Message fin de soirée naturel. Style "je finis cette quête et je dors... normalement". 1-2 phrases. Jamais "bonsoir".`,
+      `\nFin de soirée gaming. Vibe : ${vibe.name}.\n${NO_TAG_CLAUSE}`,
+      `Message fin de soirée naturel. Style "je finis cette quête et je dors... normalement". 1-2 phrases. Jamais "bonsoir". Pas de @ à quelqu'un.`,
       100,
       BOT_PERSONA
     );
@@ -92,8 +100,8 @@ async function postNightWakeup() {
     const channel = guild.channels.cache.get('1481028189680570421');
     if (!channel) return;
     const content = await callClaude(
-      '\nRéveil nocturne, mode zombie.',
-      `Message ultra court — "j'arrive pas à dormir et je pense encore à [jeu/boss]". 1 phrase MAX.`,
+      `\nRéveil nocturne, mode zombie.\n${NO_TAG_CLAUSE}`,
+      `Message ultra court — "j'arrive pas à dormir et je pense encore à [jeu/boss]". 1 phrase MAX. Pas de @ à quelqu'un.`,
       80,
       BOT_PERSONA
     );
@@ -104,4 +112,39 @@ async function postNightWakeup() {
   } catch (err) { pushLog('ERR', `Night wakeup échoué : ${err.message}`, 'error'); }
 }
 
-module.exports = { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup };
+// Relance d'une mention reçue hier et non traitée — tag la personne
+async function postRelanceMention({ userId, username, channelId, messageId, query }) {
+  if (!ANTHROPIC_API_KEY) return;
+  try {
+    const guild = await shared.discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.get(channelId);
+    if (!channel) return;
+
+    const vibe = getDailyVibe();
+    const tagAllowed = true; // relance explicite = tag autorisé (rôle propre)
+    const tagInstruction = tagAllowed
+      ? `Tu commences par taguer <@${userId}> pour qu'il/elle voit la relance.`
+      : LIGHT_TAG_CLAUSE;
+
+    const content = await callClaude(
+      `\nVibe : ${vibe.name}. Tu avais zappé un message hier d'une personne qui voulait ton avis.\n${tagInstruction}`,
+      `Hier ${username} t'avait écrit : "${query}"\nTu relances maintenant, avec une mini-excuse naturelle ("désolée j'ai zappé hier", "j'ai mis du temps mais..."). Puis tu réponds/réagis à son message. Max 3 phrases.`,
+      200,
+      BOT_PERSONA
+    );
+    let finalContent = content;
+    // Garantir le mention tag du user pour la relance
+    if (!finalContent.includes(`<@${userId}>`)) {
+      finalContent = `<@${userId}> ${finalContent}`;
+    }
+    const resolved = resolveMentionsInText(finalContent, guild);
+    await simulateTyping(channel, 1000);
+    await channel.send(resolved);
+    shared.lastAnyBotPostTime = Date.now();
+    await updateConvStats(channelId);
+    pushLog('SYS', `↩️ Relance envoyée à ${username} (hier : "${query.slice(0, 40)}...")`, 'success');
+  } catch (err) { pushLog('ERR', `Relance échouée : ${err.message}`, 'error'); }
+}
+
+module.exports = { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup, postRelanceMention, NO_TAG_CLAUSE, LIGHT_TAG_CLAUSE };
