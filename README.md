@@ -1,6 +1,6 @@
-# 🧠 BrainEXE Dashboard `v2.0.6`
+# 🧠 BrainEXE Dashboard `v2.0.8`
 
-> **v2.0.6 — Discipline Salon + Intelligence élargie** — Brainee sait enfin pourquoi chaque salon existe. Elle lit les vraies descriptions officielles, adapte chaque message au bon contexte, et ne ramène plus le gaming là où personne ne lui a rien demandé. Plus intelligente, plus cultivée, plus humaine.
+> **v2.0.8 — GNews API + Actualités réelles** — Les actualités gaming ne sont plus inventées au hasard. Brainee récupère les vraies news récentes via GNews API, les déduplique, et les résume en style Brainee avec les liens. Plus crédible, plus utile, plus à jour.
 
 ---
 
@@ -44,6 +44,7 @@ brainexe-dashboard/
 | `GUILD_ID` | ID du serveur | ✅ |
 | `ANTHROPIC_API_KEY` | Claude API | ✅ |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 | ✅ |
+| `GNEWS_API_KEY` | GNews API pour actualités gaming | ✅ |
 | `TIKTOK_USERNAME` | Pseudo TikTok | ✅ |
 | `MONGODB_URI` | Atlas URI | ✅ |
 | `PORT` | Auto Railway | Auto |
@@ -88,7 +89,7 @@ Tu verras un objet par salon avec la description officielle et le résumé du bu
 
 ---
 
-## 🤖 Fonctionnalités bot — Vue complète v2.0.6
+## 🤖 Fonctionnalités bot — Vue complète v2.0.8
 
 ### 1. Auto-Role + Reaction Roles
 Auto-role `👁️ Lurker` à l'arrivée. 10 reaction roles gérés nativement.
@@ -112,8 +113,15 @@ Embed fin avec durée, pic viewers, likes, top gifts. Fix v2.0.6 : valeurs corre
 
 ---
 
-### 5. Actus Bi-Mensuelles
+### 5. Actus Bi-Mensuelles v2.0.8
 1er et 15 du mois à 10h. 9 salons sur 12h.
+
+**GNews API integration v2.0.8** :
+- Récupère vraies actualités gaming récentes (40 jours) via GNews
+- Filtrage multi-langue : français d'abord, fallback anglais si insuffisant
+- Déduplication par URLs stockées en MongoDB (max 100)
+- Claude résume et formate avec les liens en style Brainee
+- Fallback Claude pur si GNews ne retourne rien
 
 ---
 
@@ -333,6 +341,9 @@ Sujet sensible → ton doux TOUJOURS.
 **Embeds TikTok cassés (valeurs manquantes)**
 → Fix intégré en v2.0.6 — toutes les valeurs numériques castées en String
 
+**Actus gaming obsolètes ou invoquées au hasard**
+→ Fix v2.0.8 : GNews API récupère vraies news récentes, déduplication MongoDB, Claude résume uniquement
+
 **YouTube retourne des résultats hors-sujet**
 → Fix v2.0.2 : `extractYoutubeQuery()` via Claude avant l'appel API
 
@@ -345,7 +356,24 @@ Sujet sensible → ton doux TOUJOURS.
 
 ---
 
-### ⭐ `v2.0.6` — Discipline Salon + Intelligence élargie *(actuelle)*
+### ⭐ `v2.0.8` — GNews API + Actualités réelles *(actuelle)*
+
+- **`fetchGamingNews(topic, postedUrls)`** : requête GNews API (FR + EN fallback)
+- **Déduplication par MongoDB** : `botState.postedNewsUrls` (max 100 URLs)
+- **Actualités vraies + récentes** : 40 jours retour avec filtrage par topic
+- **Claude résume + style Brainee** : inclut les liens Markdown dans le résumé
+- **Fallback Claude pur** : si GNews ne retourne rien
+- Ajout `GNEWS_API_KEY` dans config.js et env Railway
+
+---
+
+### `v2.0.7` — Préparation GNews
+
+- Structure actus refactorisée pour intégration API
+
+---
+
+### `v2.0.6` — Discipline Salon + Intelligence élargie
 
 - **`channelDirectory`** : nouvelle collection MongoDB — description officielle de chaque salon
 - **`initChannelDirectory()`** : lit le premier message fondateur au boot (30s de délai), résume le but via Claude, persiste en MongoDB
