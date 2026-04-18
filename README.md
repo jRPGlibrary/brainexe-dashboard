@@ -1,6 +1,6 @@
-# 🧠 BrainEXE Dashboard `v2.0.6`
+# 🧠 BrainEXE Dashboard `v2.0.7`
 
-> **v2.0.6 — Discipline Salon + Intelligence élargie** — Brainee sait enfin pourquoi chaque salon existe. Elle lit les vraies descriptions officielles, adapte chaque message au bon contexte, et ne ramène plus le gaming là où personne ne lui a rien demandé. Plus intelligente, plus cultivée, plus humaine.
+> **v2.0.7 — Planning Adaptatif + Moins de Robotisme** — Brainee est maintenant plus humaine. Elle génère chaque jour une "vibe" (chatty, introvert, impulsive...) qui influence son comportement. Les horaires ne sont plus fixes (9h pile) mais flottants ±20-30 min. Elle peut refuser de répondre, repousser à demain, ou être hyperactive selon son humeur. Moins de tags, moins de structure rigide, plus d'âme.
 
 ---
 
@@ -54,7 +54,7 @@ brainexe-dashboard/
 
 ```bash
 git add .
-git commit -m "feat: v2.0.6"
+git commit -m "feat: v2.0.7"
 git push
 ```
 
@@ -88,7 +88,7 @@ Tu verras un objet par salon avec la description officielle et le résumé du bu
 
 ---
 
-## 🤖 Fonctionnalités bot — Vue complète v2.0.6
+## 🤖 Fonctionnalités bot — Vue complète v2.0.7
 
 ### 1. Auto-Role + Reaction Roles
 Auto-role `👁️ Lurker` à l'arrivée. 10 reaction roles gérés nativement.
@@ -117,137 +117,135 @@ Embed fin avec durée, pic viewers, likes, top gifts. Fix v2.0.6 : valeurs corre
 
 ---
 
-### 6. Planning horaire complet v2.0.0
+### 6. Planning horaire adaptatif v2.0.7 — NOUVEAU
 
-| Tranche | Statut | Conv max | Intervalle |
-|---|---|---|---|
-| 01h – 09h | 💤 Dort | 0 | — |
-| 09h – 10h | ☕ Réveil mou | 1 | — |
-| 10h – 12h30 | 🧠 Active | 3 | 35 min |
-| 12h30 – 14h | 🍕 Pause déj | 0 | @mention 2-8 min |
-| 14h – 17h | ⚡ Productive | 4 | 25 min |
-| 17h – 18h | 🚶 Transition | 1 | — |
-| 18h – 23h30 | 🎮 Gaming | 6 | 18 min |
-| 23h30 – 01h | 🌙 Hyperfocus | 1 | — |
+**Concept clé** : chaque jour, Brainee génère une "vibe" quotidienne qui influence toute son activité :
+
+#### Vibes disponibles (tirées au hasard chaque matin)
+- **chatty** : elle relance facilement, chattiness 95%
+- **introvert** : peu sociable, chattiness 35%
+- **impulsive** : décisions last-minute, impulse 60%
+- **lazy** : fainéante, chattiness 40%
+- **focus** : concentrée, chattiness 50%
+- **excited** : hypée, chattiness 90%
+- **grumpy** : de mauvais poil, chattiness 55%
+- **balanced** : équilibrée, chattiness 70% (par défaut)
+
+#### Horaires flottants (±jitter aléatoire chaque jour)
+Au lieu de dire bonjour à 9h00 pile, Brainee choisit aléatoirement entre 8h30 et 9h25. Même logique pour :
+- **Lunch back** : 14h ± 25 min
+- **Goodnight** : 23h ± 45 min  
+- **Night wakeup** : 3h-4h ± 60 min (rare, 10%)
+
+#### Comportement par slot horaire (inchangé en base, modulé par vibe)
+
+| Tranche | Statut | Conv max | Intervalle | Vibe-modulé |
+|---|---|---|---|---|
+| 01h – 09h | 💤 Dort | 0 | — | Skip possible si vibe lazy |
+| 09h – 10h | ☕ Réveil | 1 | — | 60-95% post (selon chattiness) |
+| 10h – 12h30 | 🧠 Active | 3 | 35 min | Accéléré si excited, ralenti si introvert |
+| 12h30 – 14h | 🍕 Pause | 0 | @mention 2-8 min | Skip si très lazy |
+| 14h – 17h | ⚡ Productive | 4 | 25 min | Normal |
+| 17h – 18h | 🚶 Transition | 1 | — | Skip possible si introvert |
+| 18h – 23h30 | 🎮 Gaming | 6 | 18 min | Accéléré si excited/impulsive |
+| 23h30 – 01h | 🌙 Hyperfocus | 1 | — | Skip si lazy |
 
 Weekend : quotas augmentés. Samedi soirée jusqu'à 1h (8 conv max, 15 min).
 Dimanche : mode chill/nostalgie.
 
-**Comportements spéciaux** : morning greeting 09h/09h30/10h (85%), lunch back 14h (33%), goodnight 23h (33%), night wakeup 03h30 (10%).
+---
+
+### 7. Agency — Brainee peut refuser ou différer (v2.0.7)
+
+#### Sur @mention (mention directe)
+- **Urgent** (détecté par keywords ou question directe) → réponse rapide (1-5 min)
+- **Normal** → délai selon slot (0-8 min)
+- **Non-urgent + vibe lazy/introvert** → report au lendemain à 10-12h avec relance @mention
+- **Skip aléatoire** → ignore complètement (5-40% selon chattiness de la vibe)
+
+#### Sur conv ambiante (lancée de elle-même)
+- **Skip par vibe** : si chattiness basse, chance de skip le cron de conv (jusqu'à 75%)
+- **Impulsion spontanée** : chaque minute, petite chance de post impulsif hors-cron si excited (5-60% selon vibe.impulse)
 
 ---
 
-### 7. Discipline Salon v2.0.6 — Le cœur de la mise à jour
+### 8. Discipline Salon v2.0.6+ — Toujours actif
 
-Brainee lit la description officielle de chaque salon (premier message fondateur) et l'utilise comme contrainte absolue.
+Brainee lit la description officielle de chaque salon (premier message) et l'utilise comme contrainte absolue.
 
-**16 catégories de salons**, chacune avec ses propres règles :
-
-| Catégorie | Comportement |
-|---|---|
-| `general-social` | QG du serveur — tout est possible, journées/humeurs/actus. Pas de gaming par défaut. |
-| `tdah-neuro` | Pensées TDAH, hyperfocus sur N'IMPORTE QUEL sujet. Pas de gaming sauf si un membre l'amène. |
-| `humour-chaos` | 4 registres égaux : memes, humour neuro, gaming ABSURDE, chaos. Pas d'automatisme gaming. |
-| `off-topic` | Fourre-tout : films, séries, musique, vie. Pas gaming par défaut. |
-| `creative` | Encouragement créatif, réaction sur la DA. Pas de débats gaming. |
-| `music-focus` | Musique, OST, playlists, concentration. |
-| `focus` | Productivité, méthodes, fatigue cognitive. |
-| `ia-tools` | Outils IA, workflows, usages concrets. |
-| `dev-tools` | Code, langages, bugs, scripts. |
-| `creative-visual` | DA, palettes, style visuel. |
-| `nostalgie` | Souvenirs gaming, époque, mémoire affective. |
-| `lore` | Théories, détails cachés, narration. |
-| `jrpg` | JRPG complet à fond. |
-| `retro` | Retro gaming à fond. |
-| `indie` | Indé à fond. |
-| `rpg` | RPG à fond. |
-| `gaming-core` | Gaming naturel, non robotisé. |
+**16 catégories de salons**, chacune avec ses propres règles.
 
 ---
 
-### 8. Intelligence élargie v2.0.6
+### 9. Intelligence élargie v2.0.6
 
-**Système d'outils intégré dans la persona** — quand des infos web sont disponibles dans le contexte, Brainee les utilise naturellement :
-> *"ah ouais ils ont annoncé ça ? j'avais pas vu 👀"*
-
-Elle ne mentionne jamais les outils ou API. Elle reformule toujours.
-
-**Humeur du jour corrigée** — plus de "hyperfocus gaming" générique. L'humeur hyperfocus signifie maintenant "va loin dans le vrai thème du salon".
-
-**Modes de conversation corrigés** — les 4 modes (débat, chaos, deep, simple) s'adaptent au salon. Plus de gaming par défaut dans tous les modes.
+Système d'outils intégré dans la persona — quand des infos web sont disponibles, elle les utilise naturellement sans mentionner les outils.
 
 ---
 
-### 9. @Brainee Mention Directe v2.0.5+
+### 10. @Brainee Mention Directe v2.0.7+
 
-1. Délai simulé selon la tranche horaire
-2. Contexte 100 messages avec identification précise des replies
-3. Profil membre + toneScore + humeur du jour
-4. Mémoire salon + description officielle (v2.0.6)
-5. Membres tagués injectés dans le prompt
-6. Recherche YouTube propre via extraction Claude
-7. 10% réaction emoji seule → retour 15-45 min avec excuse contextuelle
-8. 25% réaction emoji + texte
-9. Résolution mentions `@Pseudo → <@id>` et `#salon → <#id>` partout
-
----
-
-### 10. Persona Brainee v2.0.6
-
-**Culture gaming** (dans les bons salons) : JRPG complet, Castlevania toute la série, Metroid toute la série, Mega Man Classic/X/Zero, soulslike, indie, retro, next-gen, pixel art, lore, OST (Uematsu, Mitsuda, Yamane).
-
-**Culture large** (tous salons) : films (Blade Runner, Matrix, Alien, Dune, Hereditary, Se7en...), musique (K-pop, metal, dubstep, lo-fi, OST), manga (Naruto, AoT, Fairy Tail, Shaman King + OAV gaming), bouffe (tacos, kebab, curry, ramen).
-
-**Daily mood** : energique / chill / hyperfocus / zombie — corrigé, plus de biais gaming.
+1. **Détection urgence** — heuristique sur keywords + structure du message
+2. **Délai simulé** selon la tranche horaire ET la vibe du jour
+3. **Contexte 100 messages** avec identification précise des replies
+4. **Profil membre** + toneScore + humeur du jour + vibe du jour
+5. **Mémoire salon** + description officielle
+6. **Membres tagués** — injectés mais pas re-tagged (reply notify = assez)
+7. **Recherche YouTube** propre via extraction Claude
+8. **10% réaction emoji seule** → retour 15-45 min avec excuse contextuelle
+9. **25% réaction emoji + texte**
+10. **Résolution mentions** `@Pseudo → <@id>` et `#salon → <#id>` — **FIXE v2.0.7** : gère now `.`, emojis, diacritiques
 
 ---
 
-### 11. DMs v2.0.5
+### 11. Persona Brainee v2.0.7
 
-Historique privé persistant MongoDB (`dmHistory`, 30 messages max).
+**Culture gaming** : JRPG, Castlevania, Metroid, Mega Man, soulslike, indie, retro, next-gen, lore, OST.
+
+**Culture large** : films SF/thriller/horreur, musique, manga, bouffe, dev/IA, création artistique, neurodivergence.
+
+**Tags v2.0.7 — STRICT** : évite les @ autant que possible. Une reply Discord notifie déjà. Ne tag que si vraiment nécessaire. Jamais plus d'un tag par message.
+
+---
+
+### 12. DMs v2.0.5
+
+Historique privé MongoDB (30 messages max).
 Ton plus intime — posé, à l'écoute, peut creuser les sujets.
 Fragmentation 15% en DM (plus douce qu'en serveur).
 
 ---
 
-### 12. Retour tardif après emoji v2.0.4
+### 13. Retour tardif après emoji v2.0.4
 
-Quand elle tire le 10% emoji-seul, retour 15-45 min avec excuse contextuelle selon l'heure :
-> *"j'étais sur un boss, IMPOSSIBLE de répondre à ce moment précis 😭"*
-> *"j'avais la bouche pleine sérieusement 😂"*
+Quand elle tire le 10% emoji-seul, retour 15-45 min avec excuse contextuelle.
 
 ---
 
-### 13. Mémoire par salon v2.0.3
+### 14. Mémoire par salon v2.0.3
 
-`channelMemory` MongoDB — toneProfile, frequentThemes, insideJokes, heatLevel, offTopicTolerance. Enrichi toutes les 6h en background.
+`channelMemory` MongoDB — enrichi toutes les 6h en background.
 
 ---
 
-### 14. Détection de dérive thématique v2.0.3
+### 15. Détection de dérive thématique v2.0.3
 
 Score de dérive 1-10 sur les 30 derniers messages.
 4 niveaux : observe → suggest (70%) → redirect (20%) → moderate (10%).
 
 ---
 
-### 15. Threads automatiques v2.0.6
+### 16. Threads automatiques v2.0.6
 
-Créés uniquement si :
-- Engagement humain détecté (réaction ou reply sur le message)
-- Salon autorisé (11 salons gaming/lore uniquement)
-- Contenu assez long (>100 caractères)
-- Jeu précis détecté (50+ triggers)
-
-**Salons autorisés** : retro-général, jrpg-corner, rpg-général, indie-général, next-gen-général, hidden-gems, lore-et-théories, pixel-art-love, nostalgie, game-of-the-moment, open-world-rpg.
+Créés uniquement si engagement humain + salon autorisé + contenu assez long + jeu précis détecté.
+Salons autorisés : 11 salons gaming/lore uniquement.
 
 ---
 
-### 16. Profils membres v1.8.0
+### 17. Profils membres v1.8.0
 
 toneScore 1-10 : +0.15 emoji rire, +0.10 message long, -0.05 très court.
 Niveaux : 1-3 chaleureux / 4-6 ironie légère / 7-10 piques assumées.
-Sujet sensible → ton doux TOUJOURS.
 
 ---
 
@@ -280,10 +278,10 @@ Sujet sensible → ton doux TOUJOURS.
 | POST | `/api/welcome/test` | Tester welcome |
 | POST | `/api/post` | Post manuel |
 
-### Bot v2.0.6
+### Bot v2.0.7
 | Méthode | Route | Description |
 |---|---|---|
-| GET | `/api/slot` | Tranche active + humeur |
+| GET | `/api/slot` | Tranche active + humeur + vibe |
 | POST | `/api/drift/check` | Check dérive manuel |
 | GET | `/api/channel-memory` | Mémoires salons |
 | GET | `/api/channel-memory/:id` | Mémoire d'un salon |
@@ -318,95 +316,90 @@ Sujet sensible → ton doux TOUJOURS.
 
 ## 🔧 Dépannage
 
+**Brainee parle trop / pas assez**
+→ La vibe du jour module le comportement — attendre le lendemain ou redéployer pour forcer une nouvelle vibe
+
+**@mention complètement ignorée (agency)**
+→ Normal v2.0.7 — elle peut refuser selon sa vibe (skip aléatoire). Réessayer quelques heures après.
+
+**Mention différée jusqu'à demain**
+→ Pas urgente + vibe lazy/introvert = relance le lendemain vers 10-12h avec @mention
+
+**Tags qui ne résolvent pas (emojis, points dans noms)**
+→ Fix v2.0.7 — `resolveMentionsInText()` est maintenant plus robuste avec normalisation Unicode
+
 **channelDirectory vide après le boot**
 → Attendre 35-40s après le démarrage
-→ Vérifier via `GET /api/channel-directory`
-→ Si vide : vérifier que `ANTHROPIC_API_KEY` et `MONGODB_URI` sont définis
-
-**Brainee parle encore de gaming hors-sujet**
-→ Le channelDirectory n'est pas encore initialisé — attendre le premier boot complet
-→ Vérifier la description officielle du salon via `/api/channel-directory`
 
 **Threads créés sans engagement**
-→ Normal avant v2.0.6 — désormais `hasEngagement` requis + salon de la liste autorisée
-
-**Embeds TikTok cassés (valeurs manquantes)**
-→ Fix intégré en v2.0.6 — toutes les valeurs numériques castées en String
-
-**YouTube retourne des résultats hors-sujet**
-→ Fix v2.0.2 : `extractYoutubeQuery()` via Claude avant l'appel API
-
-**DMs non reçus**
-→ Vérifier Message Content Intent dans Discord Developer Portal
+→ Normal avant v2.0.6 — désormais `hasEngagement` requis
 
 ---
 
 ## 🔄 Changelog complet
 
----
+### ⭐ `v2.0.7` — Planning Adaptatif + Agency + Moins de Tags *(actuelle)*
 
-### ⭐ `v2.0.6` — Discipline Salon + Intelligence élargie *(actuelle)*
+**Nouveau système de vibe quotidienne** :
+- `getDailyVibe()` : 8 vibes tirées au hasard chaque matin (chatty, introvert, impulsive, lazy, focus, excited, grumpy, balanced)
+- Chaque vibe module : chattiness, impulse, responsiveness, tagPenalty, urgencyBias
+- Reset quotidien à minuit (Paris)
 
-- **`channelDirectory`** : nouvelle collection MongoDB — description officielle de chaque salon
-- **`initChannelDirectory()`** : lit le premier message fondateur au boot (30s de délai), résume le but via Claude, persiste en MongoDB
-- **`normalizeLoose()`** + **`getChannelCategory()`** : catégorise chaque salon (16 types)
-- **`getChannelIntentBlock()`** : contrainte d'écriture absolue injectée dans les 5 fonctions IA
-- **`getModeInjectionForChannel()`** : modes adaptes à chaque catégorie de salon
-- **`BOT_PERSONA_CONVERSATION`** remplacée : discipline salon absolue + système d'outils web + illusion humaine + interdits explicites
-- **`getMoodInjection()`** corrigé : hyperfocus sur le vrai thème du salon, pas forcément gaming
-- **`CONV_MODES`** corrigés : plus de gaming hardcodé dans les 4 modes
-- **`shouldCreateThread()`** : engagement humain requis + `THREAD_ALLOWED_CHANNELS` (11 salons)
-- **`sendHuman()`** : `resolveMentionsInText` intégré directement
-- Fix embeds TikTok : `String(viewerCount ?? 0)`, lien cliquable propre
-- Route `/api/channel-directory`
+**Horaires flottants** :
+- `getDailyFloatingSchedule()` : morning ± 25 min, lunch ± 25 min, goodnight ± 45 min, nightWakeup ± 60 min
+- Chaque jour = horaires différents (plus humain, moins robotisé)
+- FloatingEventsCron toutes les 2 min : détecte si on est dans la fenêtre du jour
 
----
+**Agency — Brainee peut refuser / différer** :
+- `decideMentionResponse()` : urgence détectée → rapide; non-urgent + vibe lazy → report au lendemain; aléatoire chance de skip total
+- `isUrgentQuery()` : heuristique keywords + ponctuation + structure
+- `queueRelance` : queue en mémoire de mentions à relancer le lendemain vers 10-12h
 
-### `v2.0.5` — DMs + Résolution mentions
+**Moins de tags — règle stricte** :
+- v2.0.7 renforce la persona : reply Discord notifie déjà, pas besoin de @pseudo
+- `NO_TAG_CLAUSE` injecté dans prompts de greeting/conv ambiante
+- `LIGHT_TAG_CLAUSE` pour replies (avertissement à Claude)
+- `shouldTagPerson()` roll dice selon vibe.tagPenalty
+- Jamais plus d'un tag par message
 
-- `INTENTS_DIRECT_MESSAGES` · `dmHistory` MongoDB · `BOT_PERSONA_DM`
-- DM handler avec historique 30 msgs · fragmentation 15%
-- `resolveMentionsInText()` partout (mentions + salons)
+**Bug fix mentions** :
+- `resolveMentionsInText()` complètement réécrit v2.0.7
+- Gère now : pseudos avec `.`, emojis, diacritiques, caractères spéciaux
+- Normalization Unicode + fuzzy matching de salons/users
+- Regex permissive + lookup intelligent
 
----
+**Crons v2.0.7** :
+- `startConvCron()` restructuré : floatingEventsCron + relanceCron en plus
+- Skip probabiliste selon vibe
+- Post impulsif aléatoire (hors-cron)
+- Reset quotidien à minuit
 
-### `v2.0.4` — Delayed Reply After Emoji
-
-- `getEmojiExcuse()` · `scheduleDelayedReplyAfterEmoji()` · `scheduleDelayedSpontaneousReply()`
-
----
-
-### `v2.0.3` — Channel Memory + Thematic Drift
-
-- `channelMemory` MongoDB · `detectThematicDrift()` · `handleDrift()` 4 niveaux · drift cron 3h
-
----
-
-### `v2.0.2` — Full Human Update
-
-- Persona étendue · typing · fragmentation · emoji · mood · YouTube fix
+**Nouvelle fonction** :
+- `postRelanceMention()` : envoie la relance du jour d'avant à ~10-12h, avec @mention de la personne
 
 ---
 
-### `v2.0.1` — Threads auto · formatContext() précis
+### `v2.0.6` — Discipline Salon + Intelligence élargie
+
+- `channelDirectory` MongoDB — description officielle de chaque salon
+- `initChannelDirectory()` : lit le premier message au boot, résume via Claude
+- 16 catégories de salons avec règles propres
+- `getModeInjectionForChannel()` : modes adaptés au salon
+- Engagement humain requis pour threads auto
+- Embeds TikTok fixes : valeurs castées en String
 
 ---
 
-### `v2.0.0` — Human Planning
+### Versions antérieures
 
-- Grilles horaires semaine/samedi/dimanche · comportements spéciaux · maxPerDay 16
-
----
-
-### `v1.9.0` — MongoDB State Migration
-
-- `getBotState/setBotState` · persistance inter-redeploys Railway
-
----
-
-### `v1.8.0` → `v1.0.0`
-
-Voir historique complet dans le changelog Discord (message Brainee.exe).
+v2.0.5 : DMs + résolution mentions
+v2.0.4 : Delayed reply après emoji
+v2.0.3 : Channel memory + drift detection
+v2.0.2 : Full human update
+v2.0.1 : Threads auto
+v2.0.0 : Human planning (grilles horaires)
+v1.9.0 : MongoDB state migration
+v1.8.0+ : Profiles, persona, reactions, welcome...
 
 ---
 
