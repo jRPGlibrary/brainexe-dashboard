@@ -23,7 +23,7 @@ const { formatContext } = require('./context');
 const { scheduleDelayedSpontaneousReply } = require('./delayedReply');
 const {
   getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded,
-  updateConvStats, getQuietestChannel,
+  updateConvStats, getQuietestChannel, hasUnansweredLastPost, isDeepTopicChannel,
 } = require('./convStats');
 
 async function postRandomConversation() {
@@ -41,6 +41,19 @@ async function postRandomConversation() {
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel || !ANTHROPIC_API_KEY) return;
+
+    // No-insist : si Brainee a posté dans ce salon et que personne n'a répondu depuis,
+    // on ne relance PAS dessus (évite le monologue).
+    const alone = await hasUnansweredLastPost(ch.channelId, async (id) => {
+      const g = await shared.discord.guilds.fetch(GUILD_ID);
+      await g.channels.fetch();
+      return g.channels.cache.get(id);
+    });
+    if (alone) {
+      pushLog('SYS', `🔇 Skip ${ch.channelName} — dernier post sans réponse humaine (no-insist)`);
+      return;
+    }
+    const isDeep = isDeepTopicChannel(ch.channelName);
     const mode = getRandomMode(slot);
     const mood = refreshDailyMood();
     updateInternalStatesForSlot(slot);
@@ -59,10 +72,13 @@ async function postRandomConversation() {
       const ctx = formatContext(msgs, null, 80);
       if (ctx.length > 20) contextBlock = `\nContexte récent (évite de répéter) :\n${ctx}`;
     } catch (_) {}
+    const deepInject = isDeep
+      ? `\nCONTEXTE SALON : c'est un salon de thématique profonde (${channel.name}). Lance un angle vraiment fouillé, qui donne envie de creuser. Pas de question générique. Tu peux être plus précise, citer un détail, un souvenir, un mécanisme, une référence. Laisse l'entrée ouverte mais pas vague. Si personne ne rebondit, c'est ok — tu n'insistes pas.`
+      : '';
     const content = await callClaude(
-      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${intentBlockC}\n${modeBlock}\n${NO_TAG_CLAUSE}` + contextBlock,
+      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${intentBlockC}\n${modeBlock}${deepInject}\n${NO_TAG_CLAUSE}` + contextBlock,
       `Max 3 phrases. Direct. Adapte-toi au salon. Pas de @ à quelqu'un — c'est un lance-conv ambiant.`,
-      adjustMaxTokens(150),
+      adjustMaxTokens(isDeep ? 200 : 150),
       BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
@@ -73,8 +89,17 @@ async function postRandomConversation() {
     if (shouldCreateThread(content, channel.name, false)) {
       try {
         const tName = await callClaude('Nom de fil Discord court (max 60 car, pas de guillemets, emoji adapté).', `Nom pour : "${sanitizeForJson(content)}"`, 60);
-        await sentMsg.startThread({ name: tName.replace(/"/g, '').trim().slice(0, 100), autoArchiveDuration: 1440, reason: 'Fil conv Brainee' });
-        pushLog('SYS', `🧵 Fil conv créé`, 'success');
+        const cleanName = tName.replace(/"/g, '').trim().slice(0, 100);
+        const thread = await sentMsg.startThread({ name: cleanName, autoArchiveDuration: 1440, reason: 'Fil conv Brainee' });
+        // Premier message dans le fil : titre + invitation (pas de tag, c'est un lance-conv ambiant)
+        const threadIntro = await callClaude(
+          `\nTu viens d'ouvrir un fil Discord "${cleanName}" pour creuser un sujet que tu viens de lancer.`,
+          `Écris l'ouverture du fil : 1 ligne de titre en gras "**[titre]**", puis 1-2 phrases d'invitation à venir discuter ici. Style Brainee, direct, oral. Pas de @.`,
+          140,
+          BOT_PERSONA
+        );
+        await thread.send(resolveMentionsInText(threadIntro, guild));
+        pushLog('SYS', `🧵 Fil conv créé + intro postée`, 'success');
       } catch (_) {}
     }
     pushLog('SYS', `💬 Conv [${mode.name}] ${ch.channelName} [${slot.label}] (${getConvDailyCount()}/${getConvMaxPerDay()})`, 'success');
@@ -148,8 +173,24 @@ async function replyToConversations() {
     if (shouldCreateThread(reply, channel.name, hasEngagement)) {
       try {
         const tName = await callClaude('Nom de fil Discord court (max 60 car, pas de guillemets, emoji adapté).', `Nom pour : "${reply}"`, 60);
-        await lastMsg.startThread({ name: tName.replace(/"/g, '').trim().slice(0, 100), autoArchiveDuration: 1440, reason: 'Fil reply Brainee' });
-        pushLog('SYS', `🧵 Fil reply créé (avec engagement)`, 'success');
+        const cleanName = tName.replace(/"/g, '').trim().slice(0, 100);
+        const thread = await lastMsg.startThread({ name: cleanName, autoArchiveDuration: 1440, reason: 'Fil reply Brainee' });
+        const threadIntro = await callClaude(
+          `\nTu viens d'ouvrir un fil Discord "${cleanName}" depuis un message de ${lastMsg.author.username}.`,
+          `Écris l'ouverture : 1 ligne titre en gras "**[titre]**", puis 1-2 phrases d'invitation. Style Brainee. Pas de @.`,
+          140,
+          BOT_PERSONA_CONVERSATION
+        );
+        // Tag l'auteur du message déclencheur + quelques participants récents actifs
+        const recentParticipants = [...new Set(
+          [...msgs.values()]
+            .filter(m => !m.author?.bot && m.author?.id !== lastMsg.author.id)
+            .map(m => m.author?.id)
+            .filter(Boolean)
+        )].slice(0, 3);
+        const tagLine = [lastMsg.author.id, ...recentParticipants].map(id => `<@${id}>`).join(' ');
+        await thread.send(`${tagLine} ${resolveMentionsInText(threadIntro, guild)}`);
+        pushLog('SYS', `🧵 Fil reply créé + intro (${recentParticipants.length + 1} tagués)`, 'success');
       } catch (_) {}
     }
     pushLog('SYS', `💬 Reply → ${lastMsg.author.username} (mood: ${mood})`, 'success');

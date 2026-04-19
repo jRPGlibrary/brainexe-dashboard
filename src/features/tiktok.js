@@ -23,7 +23,31 @@ async function generateLiveIntro(title) {
   );
 }
 
-async function sendLiveStartEmbed(title, viewerCount) {
+function pickTikTokCover(roomInfo) {
+  try {
+    const cover = roomInfo?.cover?.url_list || roomInfo?.cover?.urlList;
+    if (Array.isArray(cover) && cover.length) return cover[cover.length - 1];
+    const screenshot = roomInfo?.dynamic_cover?.url_list || roomInfo?.dynamic_cover?.urlList;
+    if (Array.isArray(screenshot) && screenshot.length) return screenshot[0];
+  } catch (_) {}
+  return null;
+}
+
+function pickTikTokAvatar(roomInfo) {
+  try {
+    const owner = roomInfo?.owner || roomInfo?.ownerInfo;
+    const avatar = owner?.avatar_larger?.url_list
+      || owner?.avatarLarger?.urlList
+      || owner?.avatar_medium?.url_list
+      || owner?.avatarMedium?.urlList
+      || owner?.avatar_thumb?.url_list
+      || owner?.avatarThumb?.urlList;
+    if (Array.isArray(avatar) && avatar.length) return avatar[avatar.length - 1];
+  } catch (_) {}
+  return null;
+}
+
+async function sendLiveStartEmbed(title, viewerCount, roomInfo = null) {
   try {
     const cfg = shared.botConfig.tiktokLive;
     const guild = await shared.discord.guilds.fetch(GUILD_ID);
@@ -33,21 +57,36 @@ async function sendLiveStartEmbed(title, viewerCount) {
     if (!channel) return;
     const hook = await generateLiveIntro(title);
     const now = new Date().toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
+    const liveUrl = `https://www.tiktok.com/@${cfg.username}/live`;
+    const profileUrl = `https://www.tiktok.com/@${cfg.username}`;
+    const cover = pickTikTokCover(roomInfo);
+    const avatar = pickTikTokAvatar(roomInfo);
+
     const embed = new EmbedBuilder()
       .setColor(0xff0050)
-      .setTitle('🔴  brain.exe_modded EST EN LIVE !')
-      .setDescription(`*"${hook}"*`)
+      .setTitle(`🔴  @${cfg.username} EST EN LIVE !`)
+      .setURL(liveUrl)
+      .setDescription(`*"${hook}"*\n\n▶ **[Rejoindre le live](${liveUrl})**`)
       .addFields(
-        { name: '🎮 Titre', value: title || 'Live en cours', inline: true },
-        { name: '👥 Viewers', value: String(viewerCount ?? 0), inline: true },
-        { name: '\u200b', value: '\u200b', inline: true },
-        { name: '✨ Soutiens', value: '👏 Tapote • 📤 Partage • ➕ Abonne-toi' },
-        { name: '▶ Rejoindre', value: `[Clique ici](https://www.tiktok.com/@${cfg.username}/live)` }
+        { name: '🎮 Titre', value: title || 'Live en cours', inline: false },
+        { name: '👥 Viewers', value: `\`${viewerCount ?? 0}\``, inline: true },
+        { name: '🔗 Chaîne', value: `[@${cfg.username}](${profileUrl})`, inline: true },
+        { name: '✨ Soutiens', value: '👏 Tapote • 📤 Partage • ➕ Abonne-toi', inline: false }
       )
-      .setFooter({ text: `Brainee • ${now}` })
+      .setFooter({ text: `Brainee • Live démarré à ${now}`, iconURL: avatar || undefined })
       .setTimestamp();
+
+    if (avatar) embed.setAuthor({ name: `@${cfg.username}`, iconURL: avatar, url: profileUrl });
+    if (cover) embed.setImage(cover);
+    else if (avatar) embed.setThumbnail(avatar);
+
     const pingRole = guild.roles.cache.find(r => r.name === cfg.pingRoleName);
-    await channel.send({ content: pingRole ? `<@&${pingRole.id}> 🔴 **Live démarré !**` : '🔴 **Live démarré !**', embeds: [embed] });
+    await channel.send({
+      content: pingRole
+        ? `<@&${pingRole.id}> 🔴 **LIVE !** — ${title ? `_${title}_` : 'ça commence'} 🚀`
+        : `🔴 **LIVE !** — ${title ? `_${title}_` : 'ça commence'} 🚀`,
+      embeds: [embed],
+    });
     pushLog('SYS', `📺 Live start : "${title}"`, 'success');
     broadcast('tiktokLive', { status: 'started', title, viewers: viewerCount });
   } catch (err) { pushLog('ERR', `Live start échoué : ${err.message}`, 'error'); }
@@ -62,43 +101,33 @@ async function sendLiveEndEmbed(title) {
     if (!channel) return;
     const dMin = Math.floor((liveStartTime ? Date.now() - liveStartTime : 0) / 60000);
     const dStr = dMin >= 60 ? `${Math.floor(dMin / 60)}h ${dMin % 60}min` : `${dMin}min`;
-    const topG = Object.entries(liveStats.giftDetails).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n, c]) => `**${n}** ×${c}`).join(' • ') || 'Aucun gift';
+    const topG = Object.entries(liveStats.giftDetails)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([n, c]) => `🎁 **${n}** ×${c}`)
+      .join('\n') || '_Aucun gift cette fois_';
+    const profileUrl = `https://www.tiktok.com/@${cfg.username}`;
+    const endTime = new Date().toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
+
     const embed = new EmbedBuilder()
       .setColor(0x36393f)
-      .setTitle('⚫  Live terminé — brain.exe_modded')
+      .setTitle(`⚫  Live terminé — @${cfg.username}`)
+      .setURL(profileUrl)
+      .setDescription(title ? `_${title}_` : '_Merci d\'être passés 💜_')
       .addFields(
-        { name: '⏱️ Durée', value: dStr, inline: true },
-        { name: '👥 Pic', value: String(liveStats.peakViewers ?? 0), inline: true },
-        { name: '❤️ Likes', value: String(liveStats.totalLikes ?? 0), inline: true },
-        { name: '🏆 Top gifts', value: topG },
-        { name: '💜 Merci', value: 'Merci à tous qui étaient là 🙏' }
+        { name: '⏱️ Durée', value: `\`${dStr}\``, inline: true },
+        { name: '👥 Pic viewers', value: `\`${liveStats.peakViewers ?? 0}\``, inline: true },
+        { name: '❤️ Likes', value: `\`${liveStats.totalLikes ?? 0}\``, inline: true },
+        { name: '🏆 Top gifts', value: topG, inline: false },
+        { name: '🔔 Prochain live', value: `Active le rôle **${cfg.pingRoleName}** pour être notifié.`, inline: false }
       )
-      .setFooter({ text: 'Brainee' })
+      .setFooter({ text: `Brainee • Live terminé à ${endTime}` })
       .setTimestamp();
+
     await channel.send({ embeds: [embed] });
     pushLog('SYS', `📺 Live end — ${dStr}`, 'success');
     broadcast('tiktokLive', { status: 'ended', duration: dStr });
   } catch (err) { pushLog('ERR', `Live end échoué : ${err.message}`, 'error'); }
-}
-
-async function sendTikTokStatusEmbed(status) {
-  try {
-    const cfg = shared.botConfig.tiktokLive;
-    const guild = await shared.discord.guilds.fetch(GUILD_ID);
-    await guild.channels.fetch();
-    const channel = guild.channels.cache.get(cfg.channelId);
-    if (!channel) return;
-    const isOnline = status === 'online';
-    const embed = new EmbedBuilder()
-      .setColor(isOnline ? 0xff0050 : 0x36393f)
-      .setTitle(isOnline ? '🟢 brain.exe_modded EN LIGNE' : '⚪ brain.exe_modded HORS LIGNE')
-      .setDescription(isOnline ? 'Le livestream est actif !' : 'En attente d\'une nouvelle session...')
-      .setFooter({ text: 'Brainee' })
-      .setTimestamp();
-    await channel.send({ embeds: [embed] });
-    pushLog('SYS', `📺 TikTok status → ${status}`, 'info');
-    broadcast('tiktokLive', { status });
-  } catch (err) { pushLog('ERR', `TikTok status échoué : ${err.message}`, 'error'); }
 }
 
 function connectToTikTokLive() {
@@ -119,15 +148,15 @@ function connectToTikTokLive() {
       title = s.roomInfo?.title || title;
       tiktokOfflineNotified = false;
       pushLog('SYS', `📺 Live : "${title}"`, 'success');
-      sendLiveStartEmbed(title, s.roomInfo?.userCount || 0);
-      sendTikTokStatusEmbed('online');
+      sendLiveStartEmbed(title, s.roomInfo?.userCount || 0, s.roomInfo);
     })
     .catch(e => {
       if (!tiktokOfflineNotified) {
         tiktokOfflineNotified = true;
         pushLog('SYS', `📺 TikTok hors ligne — tentative en arrière-plan`, 'info');
-        sendTikTokStatusEmbed('offline');
       }
+      // Statut offline volontairement non publié dans le salon — le watcher tourne en fond,
+      // on ne spamme Discord QUE quand un vrai live démarre.
     });
   conn.on('roomUser', d => { if ((d.viewerCount || 0) > liveStats.peakViewers) liveStats.peakViewers = d.viewerCount; });
   conn.on('like', d => { if (d.totalLikeCount) liveStats.totalLikes = d.totalLikeCount; });
