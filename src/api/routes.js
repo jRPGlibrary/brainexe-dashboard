@@ -88,7 +88,7 @@ function registerRoutes(app) {
   // Channel directory
   app.get('/api/channel-directory', async (req, res) => { if (!shared.mongoDb) return res.json([]); try { const docs = await shared.mongoDb.collection('channelDirectory').find({}).toArray(); res.json(docs); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-  // Emotional state (v2.0.9)
+  // Emotional state (v2.1.0)
   app.get('/api/emotions/state', (req, res) => {
     res.json({ ok: true, internalState: getInternalState(), temperament: getTemperament(), emotionStack: getEmotionStack() });
   });

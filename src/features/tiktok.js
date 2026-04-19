@@ -92,6 +92,7 @@ function connectToTikTokLive() {
     .then(s => {
       tiktokConnection = conn;
       liveActive = true;
+      shared.tiktokLiveActive = true;
       liveStartTime = Date.now();
       liveStats = { peakViewers: 0, totalLikes: 0, totalGifts: 0, giftDetails: {} };
       title = s.roomInfo?.title || title;
@@ -113,6 +114,7 @@ function connectToTikTokLive() {
     if (!liveActive) return;
     sendLiveEndEmbed(title);
     liveActive = false;
+    shared.tiktokLiveActive = false;
     liveStartTime = null;
     tiktokConnection = null;
   };

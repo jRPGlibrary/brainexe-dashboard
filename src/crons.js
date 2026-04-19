@@ -174,7 +174,7 @@ function startConvCron() {
     } catch (err) { pushLog('ERR', `emotionDailyCron: ${err.message}`, 'error'); }
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v2.0.9 — vibe + planning flottant + relances + émotions + bonds`, 'success');
+  pushLog('SYS', `✅ Crons v2.1.0 — vibe + planning flottant + relances + émotions + bonds + sidebar`, 'success');
 }
 
 function slot_is_active(h) {

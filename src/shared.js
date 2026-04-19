@@ -14,4 +14,5 @@ module.exports = {
   debounceDiscord: null,
   debounceFile: null,
   lastAnyBotPostTime: 0,
+  tiktokLiveActive: false,
 };

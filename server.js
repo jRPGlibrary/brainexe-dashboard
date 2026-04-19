@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.0.9
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.1.0
  * ================================================
  * Architecture refactorée — entry point minimal
  * Toute la logique est dans src/
@@ -62,6 +62,7 @@ const { startAnecdoteCron, checkAnecdoteMissed } = require('./src/features/anecd
 const { startActusCron, checkActusMissed } = require('./src/features/actus');
 const { startConvCron, startBackupInterval } = require('./src/crons');
 const { startTikTokLiveWatcher } = require('./src/features/tiktok');
+const { startSidebarCron } = require('./src/features/sidebar');
 const { initChannelDirectory } = require('./src/db/channelDir');
 const { refreshDailyMood, getDailyMood } = require('./src/bot/mood');
 const { getCurrentSlot } = require('./src/bot/scheduling');
@@ -90,7 +91,7 @@ discord.once('ready', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(' 🧠 BRAINEXE — Brainee v2.0.9 (refactoré)');
+  console.log(' 🧠 BRAINEXE — Brainee v2.1.0 (sidebar + live status)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   const vibe = getDailyVibe();
   console.log(` ✅ Bot : ${discord.user.tag}`);
@@ -105,6 +106,7 @@ discord.once('ready', async () => {
   startActusCron();
   startConvCron();
   startTikTokLiveWatcher();
+  startSidebarCron();
   startBackupInterval();
 
   connectMongoDB().catch(e => pushLog('ERR', `MongoDB init : ${e.message}`, 'error'));
@@ -119,7 +121,7 @@ discord.once('ready', async () => {
     pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
   ), 30000);
 
-  await syncDiscordToFile('Démarrage v2.0.9');
+  await syncDiscordToFile('Démarrage v2.1.0');
 });
 
 server.listen(PORT, '0.0.0.0', () => console.log(`🌐 Port ${PORT}`));
