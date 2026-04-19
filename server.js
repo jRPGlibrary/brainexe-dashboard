@@ -65,6 +65,7 @@ const { startTikTokLiveWatcher } = require('./src/features/tiktok');
 const { initChannelDirectory } = require('./src/db/channelDir');
 const { refreshDailyMood, getDailyMood } = require('./src/bot/mood');
 const { getCurrentSlot } = require('./src/bot/scheduling');
+const { getDailyVibe } = require('./src/bot/adaptiveSchedule');
 const { registerRoutes } = require('./src/api/routes');
 
 // ── API ROUTES ────────────────────────────────────────────────
@@ -91,8 +92,9 @@ discord.once('ready', async () => {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(' 🧠 BRAINEXE — Brainee v2.0.9 (refactoré)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  const vibe = getDailyVibe();
   console.log(` ✅ Bot : ${discord.user.tag}`);
-  console.log(` ⏰ Slot : ${slot.label} | 🎭 Humeur : ${getDailyMood()}`);
+  console.log(` ⏰ Slot : ${slot.label} | 🎭 Humeur : ${getDailyMood()} | 🎨 Vibe : ${vibe.name}`);
   console.log(` 🌐 Dashboard : http://localhost:${PORT}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 

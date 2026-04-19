@@ -5,25 +5,71 @@ const { getBondSignal } = require('../db/memberBonds');
 const { getDailyMood } = require('./mood');
 const { getCurrentSlot } = require('./scheduling');
 
+// Normalise un nom pour comparaison : lowercase, strip diacritiques, strip emojis,
+// strip tout sauf lettres/chiffres/_/- (mais garde les caractères Unicode lettres)
+function normalizeName(s) {
+  if (!s) return '';
+  try {
+    return s
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F9FF}\u{2600}-\u{27BF}]/gu, '')
+      .replace(/[^\p{L}\p{N}_\-.]/gu, '')
+      .replace(/^[-._]+|[-._]+$/g, '')
+      .trim();
+  } catch (_) {
+    return s.toLowerCase().replace(/[^a-z0-9_\-.]/g, '');
+  }
+}
+
 function resolveMentionsInText(text, guild) {
   if (!text || !guild) return text;
   let out = text;
 
-  out = out.replace(/@([A-Za-z0-9_\-\u00C0-\u024F]{2,})/g, (match, rawName) => {
-    const name = rawName.toLowerCase();
-    const member = guild.members.cache.find(m =>
-      m.user.username?.toLowerCase() === name ||
-      m.displayName?.toLowerCase() === name
+  // Extraction permissive : tout après @ ou # jusqu'au prochain délimiteur non-pseudo
+  const MENTION_CHARS = "[^\\s@#<>()\\[\\]{}\"',;:!?\\n\\r\\t]+";
+
+  // @mentions → membres
+  out = out.replace(new RegExp(`@(${MENTION_CHARS})`, 'g'), (match, rawName) => {
+    const normInput = normalizeName(rawName);
+    if (!normInput || normInput.length < 2) return match;
+
+    const members = guild.members.cache;
+    let member = members.find(m =>
+      normalizeName(m.user?.username) === normInput ||
+      normalizeName(m.displayName) === normInput ||
+      normalizeName(m.user?.globalName) === normInput ||
+      normalizeName(m.nickname) === normInput
     );
+
+    if (!member) {
+      member = members.find(m => {
+        const uName = normalizeName(m.user?.username);
+        const dName = normalizeName(m.displayName);
+        return (uName && normInput.startsWith(uName) && uName.length >= 3) ||
+               (dName && normInput.startsWith(dName) && dName.length >= 3);
+      });
+    }
+
     return member ? `<@${member.id}>` : match;
   });
 
-  out = out.replace(/#([a-z0-9_\-\u00C0-\u024F]+)/g, (match, rawName) => {
-    const name = rawName.toLowerCase();
-    const channel = guild.channels.cache.find(c =>
-      c.name?.toLowerCase() === name ||
-      c.name?.toLowerCase().replace(/[^a-z0-9]/g, '-') === name
-    );
+  // #channels → salons
+  out = out.replace(new RegExp(`#(${MENTION_CHARS})`, 'g'), (match, rawName) => {
+    const normInput = normalizeName(rawName);
+    if (!normInput) return match;
+
+    const channels = guild.channels.cache;
+    let channel = channels.find(c => c.name && normalizeName(c.name) === normInput);
+
+    if (!channel) {
+      channel = channels.find(c => {
+        const n = normalizeName(c.name);
+        return n && (n.includes(normInput) || normInput.includes(n)) && Math.min(n.length, normInput.length) >= 3;
+      });
+    }
+
     return channel ? `<#${channel.id}>` : match;
   });
 
@@ -86,4 +132,4 @@ async function sendHuman(channel, content, replyTo = null, opts = {}) {
   return channel.send(part2);
 }
 
-module.exports = { resolveMentionsInText, simulateTyping, sendHuman };
+module.exports = { resolveMentionsInText, simulateTyping, sendHuman, normalizeName };

@@ -8,6 +8,7 @@ const { getChannelDirectory } = require('../db/channelDir');
 const { BOT_PERSONA, BOT_PERSONA_CONVERSATION } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getCurrentSlot, getRandomMode, getSlotIntervalMs } = require('../bot/scheduling');
+const { getDailyVibe, shouldSkipConvCron } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock, getModeInjectionForChannel } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
 const { getRandomReaction, shouldCreateThread } = require('../bot/reactions');
@@ -16,6 +17,7 @@ const {
   updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens,
 } = require('../bot/emotions');
 const { ensureMemberBond, applyInteractionToBond, describeBond } = require('../db/memberBonds');
+const { NO_TAG_CLAUSE, LIGHT_TAG_CLAUSE } = require('./greetings');
 const { formatContext } = require('./context');
 const { scheduleDelayedSpontaneousReply } = require('./delayedReply');
 const {
@@ -42,6 +44,7 @@ async function postRandomConversation() {
     const mood = refreshDailyMood();
     updateInternalStatesForSlot(slot);
     applyNaturalDecay();
+    const vibe = getDailyVibe();
     const channelMemory = await getChannelMemory(ch.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntryC = await getChannelDirectory(ch.channelId);
@@ -56,8 +59,8 @@ async function postRandomConversation() {
       if (ctx.length > 20) contextBlock = `\nContexte récent (évite de répéter) :\n${ctx}`;
     } catch (_) {}
     const content = await callClaude(
-      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${intentBlockC}\n${modeBlock}` + contextBlock,
-      `Max 3 phrases. Direct. Adapte-toi au salon.`,
+      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${intentBlockC}\n${modeBlock}\n${NO_TAG_CLAUSE}` + contextBlock,
+      `Max 3 phrases. Direct. Adapte-toi au salon. Pas de @ à quelqu'un — c'est un lance-conv ambiant.`,
       adjustMaxTokens(150),
       BOT_PERSONA
     );
@@ -112,12 +115,13 @@ async function replyToConversations() {
     const bond = await ensureMemberBond(lastMsg.author.id, lastMsg.author.username);
     const bondBlock = describeBond(bond, lastMsg.author.username);
     const emotionBlock = getEmotionalInjection();
+    const vibe = getDailyVibe();
     const channelMemory = await getChannelMemory(ch.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntryR = await getChannelDirectory(ch.channelId);
     const intentBlockR = getChannelIntentBlock(channel.name, ch.topic, dirEntryR?.officialDescription || '');
     const context = formatContext(msgs, null, 80);
-    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur : ${mood}. ${getMoodInjection(mood)}\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds uniquement à ${lastMsg.author.username}.`;
+    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${LIGHT_TAG_CLAUSE}`;
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
       const emoji = getRandomReaction(msgContent);

@@ -3,8 +3,12 @@ const shared = require('./shared');
 const { pushLog } = require('./logger');
 const { getCurrentSlot, getParisHour } = require('./bot/scheduling');
 const { resetDailyMoodDate, refreshDailyMood } = require('./bot/mood');
+const {
+  getDailyVibe, resetDailyVibe, getDailyFloatingSchedule,
+  shouldSkipConvCron, rollImpulse, popAllPendingRelances,
+} = require('./bot/adaptiveSchedule');
 const { postRandomConversation, replyToConversations } = require('./features/conversations');
-const { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup } = require('./features/greetings');
+const { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup, postRelanceMention } = require('./features/greetings');
 const { runDriftCheck } = require('./features/drift');
 const { getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded } = require('./features/convStats');
 const {
@@ -15,19 +19,32 @@ const { runDailyBondEvolution } = require('./db/memberBonds');
 const { readGuildState } = require('./discord/sync');
 const fs = require('fs');
 
-let convCron = null, replyCron = null, morningCron = null, morningCronWE = null, morningCronSun = null;
-let lunchBackCron = null, goodnightCron = null, nightWakeupCron = null, moodResetCron = null, driftCron = null;
+let convCron = null, replyCron = null, floatingEventsCron = null;
+let moodResetCron = null, driftCron = null, relanceCron = null;
 let emotionHourlyCron = null, emotionDailyCron = null;
 
+// Flags "déjà tiré aujourd'hui" pour les events flottants (reset à minuit)
+const firedToday = { morning: '', lunch: '', goodnight: '', nightWakeup: '', relance: '' };
+
+function parisDateISO() {
+  return new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+}
+
 function startConvCron() {
-  [convCron, replyCron, morningCron, morningCronWE, morningCronSun, lunchBackCron, goodnightCron, nightWakeupCron, moodResetCron, driftCron, emotionHourlyCron, emotionDailyCron]
+  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron]
     .forEach(c => { if (c) { try { c.stop(); } catch {} } });
 
+  // Initialise la vibe et le planning flottant dès le boot
+  getDailyVibe();
+  getDailyFloatingSchedule();
+
+  // Conv ambiante — probabiliste + vibe-aware
   convCron = cron.schedule('0 * * * *', () => {
     const cfg = shared.botConfig.conversations;
     if (!cfg.enabled) return;
     const slot = getCurrentSlot();
     if (slot.maxConv === 0) return;
+    if (shouldSkipConvCron()) { pushLog('SYS', `😶 Skip conv (vibe ${getDailyVibe().name})`); return; }
     resetDailyCountIfNeeded().catch(() => {});
     const count = getConvDailyCount();
     const max = getConvMaxPerDay();
@@ -36,24 +53,103 @@ function startConvCron() {
     if (Math.random() < prob) { pushLog('SYS', `💬 Conv [${slot.label}] (${count}/${max}, ${Math.round(prob * 100)}%)`); postRandomConversation(); }
   }, { timezone: 'Europe/Paris' });
 
+  // Reply — vibe-aware
   replyCron = cron.schedule('0 */2 * * *', () => {
     const cfg = shared.botConfig.conversations;
     if (!cfg.enabled || !cfg.canReply) return;
     if (getCurrentSlot().maxConv === 0) return;
-    if (Math.random() < 0.4) replyToConversations();
+    const vibe = getDailyVibe();
+    const baseProba = 0.4 * vibe.responsiveness;
+    if (Math.random() < baseProba) replyToConversations();
   }, { timezone: 'Europe/Paris' });
 
-  morningCron    = cron.schedule('0 9 * * 1-5', () => { if (Math.random() < 0.85) postMorningGreeting(); }, { timezone: 'Europe/Paris' });
-  morningCronWE  = cron.schedule('30 9 * * 6',  () => { if (Math.random() < 0.85) postMorningGreeting(); }, { timezone: 'Europe/Paris' });
-  morningCronSun = cron.schedule('0 10 * * 0',  () => { if (Math.random() < 0.85) postMorningGreeting(); }, { timezone: 'Europe/Paris' });
-  lunchBackCron  = cron.schedule('0 14 * * *',  () => { if (Math.random() < 0.33) setTimeout(postLunchBack, Math.floor(Math.random() * 15 * 60 * 1000)); }, { timezone: 'Europe/Paris' });
-  goodnightCron  = cron.schedule('0 23 * * *',  () => { if (Math.random() < 0.33) setTimeout(postGoodnight, Math.floor(Math.random() * 30 * 60 * 1000)); }, { timezone: 'Europe/Paris' });
-  nightWakeupCron = cron.schedule('30 3 * * *', () => { if (Math.random() < 0.10) postNightWakeup(); }, { timezone: 'Europe/Paris' });
-  moodResetCron  = cron.schedule('1 0 * * *',   () => { resetDailyMoodDate(); refreshDailyMood(); }, { timezone: 'Europe/Paris' });
+  // Events flottants : morning/lunch/goodnight/nightWakeup déclenchés autour d'une heure aléatoire du jour
+  floatingEventsCron = cron.schedule('*/2 * * * *', () => {
+    const today = parisDateISO();
+    const sched = getDailyFloatingSchedule();
+    const h = getParisHour();
+    const vibe = getDailyVibe();
 
+    // Morning — lun-dim avec jitter de jour
+    if (firedToday.morning !== today && h >= sched.morning && h < sched.morning + 1) {
+      firedToday.morning = today;
+      const proba = Math.min(0.95, 0.60 + vibe.chattiness * 0.35);
+      if (Math.random() < proba) {
+        pushLog('SYS', `☕ Morning flottant → ${h.toFixed(2)}h (vibe ${vibe.name}, ${Math.round(proba * 100)}%)`);
+        postMorningGreeting();
+      } else {
+        pushLog('SYS', `💤 Morning skip aujourd'hui (vibe ${vibe.name})`);
+      }
+    }
+
+    // Lunch back
+    if (firedToday.lunch !== today && h >= sched.lunchBack && h < sched.lunchBack + 1) {
+      firedToday.lunch = today;
+      const proba = 0.33 * vibe.chattiness * 2;
+      if (Math.random() < Math.min(0.66, proba)) {
+        pushLog('SYS', `🍕 Lunch back flottant → ${h.toFixed(2)}h`);
+        postLunchBack();
+      }
+    }
+
+    // Goodnight
+    if (firedToday.goodnight !== today && h >= sched.goodnight && h < sched.goodnight + 1) {
+      firedToday.goodnight = today;
+      const proba = 0.33 * vibe.chattiness * 1.6;
+      if (Math.random() < Math.min(0.66, proba)) {
+        pushLog('SYS', `🌙 Goodnight flottant → ${h.toFixed(2)}h`);
+        postGoodnight();
+      }
+    }
+
+    // Night wakeup (rare)
+    if (firedToday.nightWakeup !== today && h >= sched.nightWakeup && h < sched.nightWakeup + 1) {
+      firedToday.nightWakeup = today;
+      if (Math.random() < 0.10) {
+        pushLog('SYS', `👁️ Night wakeup flottant → ${h.toFixed(2)}h`);
+        postNightWakeup();
+      }
+    }
+
+    // Impulsion : post spontané hors-cron
+    if (slot_is_active(h) && rollImpulse()) {
+      pushLog('SYS', `⚡ Impulsion spontanée (vibe ${vibe.name})`);
+      postRandomConversation();
+    }
+  }, { timezone: 'Europe/Paris' });
+
+  // Reset quotidien mood + vibe + flags
+  moodResetCron = cron.schedule('1 0 * * *', () => {
+    resetDailyMoodDate();
+    refreshDailyMood();
+    resetDailyVibe();
+    Object.keys(firedToday).forEach(k => { firedToday[k] = ''; });
+    pushLog('SYS', `🌅 Nouvelle journée — vibe & planning régénérés`, 'success');
+  }, { timezone: 'Europe/Paris' });
+
+  // Drift check toutes les 3h (inchangé)
   driftCron = cron.schedule('0 */3 * * *', () => {
     const slot = getCurrentSlot();
     if (slot.maxConv > 0) { pushLog('SYS', `🔍 Drift check déclenché [${slot.label}]`); runDriftCheck(); }
+  }, { timezone: 'Europe/Paris' });
+
+  // Relance des mentions différées : tous les jours vers 10-12h (avec jitter)
+  relanceCron = cron.schedule('*/10 * * * *', () => {
+    const today = parisDateISO();
+    if (firedToday.relance === today) return;
+    const h = getParisHour();
+    const slot = getCurrentSlot();
+    if (h < 10 || h > 12) return;
+    if (slot.maxConv === 0) return;
+
+    const pending = popAllPendingRelances();
+    if (pending.length === 0) { firedToday.relance = today; return; }
+
+    firedToday.relance = today;
+    pushLog('SYS', `📬 Relance de ${pending.length} mention(s) du jour d'avant`);
+    pending.forEach((p, idx) => {
+      setTimeout(() => postRelanceMention(p), idx * (45 + Math.random() * 90) * 1000);
+    });
   }, { timezone: 'Europe/Paris' });
 
   // Decay des émotions + update des états internes selon le slot toutes les heures
@@ -78,7 +174,12 @@ function startConvCron() {
     } catch (err) { pushLog('ERR', `emotionDailyCron: ${err.message}`, 'error'); }
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v2.0.9 — conv + drift + émotions horaires + bonds journaliers`, 'success');
+  pushLog('SYS', `✅ Crons v2.0.9 — vibe + planning flottant + relances + émotions + bonds`, 'success');
+}
+
+function slot_is_active(h) {
+  // Simple : entre 10h et 23h30
+  return h >= 10 && h < 23.5;
 }
 
 function startBackupInterval() {
