@@ -11,6 +11,7 @@ let liveActive = false;
 let liveStartTime = null;
 let liveStats = { peakViewers: 0, totalLikes: 0, totalGifts: 0, giftDetails: {} };
 let tiktokCron = null;
+let tiktokOfflineNotified = false;
 
 async function generateLiveIntro(title) {
   if (!ANTHROPIC_API_KEY) return 'Le live vient de démarrer 🔥';
@@ -80,6 +81,26 @@ async function sendLiveEndEmbed(title) {
   } catch (err) { pushLog('ERR', `Live end échoué : ${err.message}`, 'error'); }
 }
 
+async function sendTikTokStatusEmbed(status) {
+  try {
+    const cfg = shared.botConfig.tiktokLive;
+    const guild = await shared.discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.get(cfg.channelId);
+    if (!channel) return;
+    const isOnline = status === 'online';
+    const embed = new EmbedBuilder()
+      .setColor(isOnline ? 0xff0050 : 0x36393f)
+      .setTitle(isOnline ? '🟢 brain.exe_modded EN LIGNE' : '⚪ brain.exe_modded HORS LIGNE')
+      .setDescription(isOnline ? 'Le livestream est actif !' : 'En attente d\'une nouvelle session...')
+      .setFooter({ text: 'Brainee' })
+      .setTimestamp();
+    await channel.send({ embeds: [embed] });
+    pushLog('SYS', `📺 TikTok status → ${status}`, 'info');
+    broadcast('tiktokLive', { status });
+  } catch (err) { pushLog('ERR', `TikTok status échoué : ${err.message}`, 'error'); }
+}
+
 function connectToTikTokLive() {
   const cfg = shared.botConfig.tiktokLive;
   if (!cfg.enabled || liveActive) return;
@@ -96,10 +117,18 @@ function connectToTikTokLive() {
       liveStartTime = Date.now();
       liveStats = { peakViewers: 0, totalLikes: 0, totalGifts: 0, giftDetails: {} };
       title = s.roomInfo?.title || title;
+      tiktokOfflineNotified = false;
       pushLog('SYS', `📺 Live : "${title}"`, 'success');
       sendLiveStartEmbed(title, s.roomInfo?.userCount || 0);
+      sendTikTokStatusEmbed('online');
     })
-    .catch(e => pushLog('ERR', `TikTok erreur connexion : ${e.message || e.toString()}`, 'error'));
+    .catch(e => {
+      if (!tiktokOfflineNotified) {
+        tiktokOfflineNotified = true;
+        pushLog('SYS', `📺 TikTok hors ligne — tentative en arrière-plan`, 'info');
+        sendTikTokStatusEmbed('offline');
+      }
+    });
   conn.on('roomUser', d => { if ((d.viewerCount || 0) > liveStats.peakViewers) liveStats.peakViewers = d.viewerCount; });
   conn.on('like', d => { if (d.totalLikeCount) liveStats.totalLikes = d.totalLikeCount; });
   conn.on('gift', d => {
@@ -120,7 +149,6 @@ function connectToTikTokLive() {
   };
   conn.on('streamEnd', onEnd);
   conn.on('disconnected', onEnd);
-  conn.on('error', e => pushLog('ERR', `TikTok erreur : ${e.message || e.toString() || JSON.stringify(e)}`, 'error'));
 }
 
 function startTikTokLiveWatcher() {

@@ -23,13 +23,15 @@ async function fetchGamingNews(topic, postedUrls = []) {
     if (!resFr.ok) throw new Error(`GNews FR ${resFr.status}: ${resFr.statusText}`);
     const dataFr = await resFr.json();
     if (!dataFr.articles) throw new Error(`GNews réponse invalide (pas de articles)`);
-    const articles = dataFr.articles.filter(a => !postedUrls.includes(a.url));
+    let articles = dataFr.articles.filter(a => !postedUrls.includes(a.url));
+    pushLog('DBG', `GNews FR "${topic}" → ${dataFr.articles.length} articles (${articles.length} neufs)`, 'debug');
     if (articles.length < 3) {
       const resEn = await fetch(`${base}&lang=en`);
       if (resEn.ok) {
         const dataEn = await resEn.json();
         if (dataEn.articles) {
           const extra = dataEn.articles.filter(a => !postedUrls.includes(a.url) && !articles.find(b => b.url === a.url));
+          pushLog('DBG', `GNews EN "${topic}" → ${dataEn.articles.length} articles (${extra.length} ajoutés)`, 'debug');
           articles.push(...extra);
         }
       }
@@ -54,6 +56,7 @@ async function postActuForChannel(ch) {
 
     const articles = await fetchGamingNews(ch.topic, postedUrls);
     let content;
+    pushLog('DBG', `Actus pour "${ch.topic}" → ${articles.length} articles trouvés`, 'debug');
 
     if (articles.length >= 2) {
       const selected = articles.slice(0, 6);
