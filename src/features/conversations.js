@@ -11,6 +11,7 @@ const { getCurrentSlot, getRandomMode, getSlotIntervalMs } = require('../bot/sch
 const { getDailyVibe, shouldSkipConvCron } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock, getModeInjectionForChannel } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
+const { sanitizeForJson } = require('../utils');
 const { getRandomReaction, shouldCreateThread } = require('../bot/reactions');
 const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
@@ -71,7 +72,7 @@ async function postRandomConversation() {
     await updateConvStats(ch.channelId);
     if (shouldCreateThread(content, channel.name, false)) {
       try {
-        const tName = await callClaude('Nom de fil Discord court (max 60 car, pas de guillemets, emoji adapté).', `Nom pour : "${content}"`, 60);
+        const tName = await callClaude('Nom de fil Discord court (max 60 car, pas de guillemets, emoji adapté).', `Nom pour : "${sanitizeForJson(content)}"`, 60);
         await sentMsg.startThread({ name: tName.replace(/"/g, '').trim().slice(0, 100), autoArchiveDuration: 1440, reason: 'Fil conv Brainee' });
         pushLog('SYS', `🧵 Fil conv créé`, 'success');
       } catch (_) {}

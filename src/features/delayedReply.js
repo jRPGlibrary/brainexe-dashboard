@@ -12,6 +12,7 @@ const { getChannelIntentBlock } = require('../bot/channelIntel');
 const { simulateTyping, resolveMentionsInText } = require('../bot/messaging');
 const { formatContext } = require('./context');
 const { updateConvStats } = require('./convStats');
+const { sanitizeForJson } = require('../utils');
 
 function getEmojiExcuse(slot, mood) {
   const bySlot = {
@@ -50,8 +51,8 @@ async function scheduleDelayedReplyAfterEmoji(message, userQuery, emojiUsed, slo
       const dirEntryD = await getChannelDirectory(message.channelId);
       const chTopicD = shared.botConfig.conversations.channels.find(c => c.channelId === message.channelId)?.topic || message.channel.name;
       const intentBlockD = getChannelIntentBlock(message.channel.name, chTopicD, dirEntryD?.officialDescription || '');
-      const dynamicPrompt = `${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\n${intentBlockD}\nContexte récent #${message.channel.name} :\n${contextLines}\nTu reviens après avoir réagi avec ${emojiUsed} sans répondre.`;
-      const userPrompt = `Tu dois répondre à cette question de ${message.author.username} que t'as laissée sans réponse : "${userQuery}"\nCommence par cette excuse (reformule légèrement si besoin) : "${excuse}"\nPuis réponds vraiment à la question. Max 3 phrases au total.`;
+      const dynamicPrompt = `${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\n${intentBlockD}\nContexte récent #${sanitizeForJson(message.channel.name)} :\n${contextLines}\nTu reviens après avoir réagi avec ${emojiUsed} sans répondre.`;
+      const userPrompt = `Tu dois répondre à cette question de ${sanitizeForJson(message.author.username)} que t'as laissée sans réponse : "${sanitizeForJson(userQuery)}"\nCommence par cette excuse (reformule légèrement si besoin) : "${excuse}"\nPuis réponds vraiment à la question. Max 3 phrases au total.`;
       const reply = await callClaude(dynamicPrompt, userPrompt, 250, BOT_PERSONA_CONVERSATION);
       const replyResolved = resolveMentionsInText(reply, message.guild);
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
@@ -84,8 +85,8 @@ async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, 
       const currentMood = refreshDailyMood();
       const dirEntryS = await getChannelDirectory(channelObj.channelId);
       const intentBlockS = getChannelIntentBlock(channel.name, channelObj.topic || '', dirEntryS?.officialDescription || '');
-      const dynamicPrompt = `${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\n${intentBlockS}\nContexte récent #${channel.name} :\n${context}\nTu reviens après avoir réagi avec ${emojiUsed} sans rien dire.`;
-      const userPrompt = `${lastMsg.author.username} avait dit : "${lastMsg.content}"\nTu avais juste réagi avec ${emojiUsed} sans répondre. Tu reviens maintenant.\nCommence par : "${excuse}"\nPuis réponds naturellement. Max 2-3 phrases.`;
+      const dynamicPrompt = `${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\n${intentBlockS}\nContexte récent #${sanitizeForJson(channel.name)} :\n${context}\nTu reviens après avoir réagi avec ${emojiUsed} sans rien dire.`;
+      const userPrompt = `${sanitizeForJson(lastMsg.author.username)} avait dit : "${sanitizeForJson(lastMsg.content)}"\nTu avais juste réagi avec ${emojiUsed} sans répondre. Tu reviens maintenant.\nCommence par : "${excuse}"\nPuis réponds naturellement. Max 2-3 phrases.`;
       const reply = await callClaude(dynamicPrompt, userPrompt, 200, BOT_PERSONA_CONVERSATION);
       const replyResolved = resolveMentionsInText(reply, guild);
       await simulateTyping(channel, 800 + Math.random() * 1500);

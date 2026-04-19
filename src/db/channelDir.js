@@ -2,7 +2,7 @@ const shared = require('../shared');
 const { pushLog } = require('../logger');
 const { GUILD_ID } = require('../config');
 const { callClaude } = require('../ai/claude');
-const { sleep } = require('../utils');
+const { sleep, sanitizeForJson } = require('../utils');
 
 async function getChannelDirectory(channelId) {
   if (!shared.mongoDb) return null;
@@ -31,13 +31,13 @@ async function initChannelDirectory() {
         const firstMsg = sorted.find(m => !m.author.bot || m.content.length > 50) || sorted[0];
         if (!firstMsg || !firstMsg.content) continue;
 
-        const description = firstMsg.content.slice(0, 1000);
+        const description = sanitizeForJson(firstMsg.content.slice(0, 1000));
         let purpose = '';
         const { ANTHROPIC_API_KEY } = require('../config');
         if (ANTHROPIC_API_KEY) {
           purpose = await callClaude(
             'Tu analyses la description officielle d\'un salon Discord pour en extraire le but en 1-2 phrases très courtes, directes, sans formatting.',
-            `Salon : #${ch.channelName}\nDescription : "${description}"\nRéponds uniquement avec le but du salon en 1-2 phrases.`,
+            `Salon : #${sanitizeForJson(ch.channelName)}\nDescription : "${description}"\nRéponds uniquement avec le but du salon en 1-2 phrases.`,
             80
           );
         }
