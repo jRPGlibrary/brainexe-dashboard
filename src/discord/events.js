@@ -166,7 +166,7 @@ function registerMessageHandlers() {
     } catch (err) { pushLog('ERR', `DM handler échoué pour ${message.author.username} : ${err.message}`, 'error'); }
   });
 
-  // @mention handler v2.0.7 — urgence + vibe + relance demain
+  // @mention handler v2.1.0 — urgence + vibe + relance demain
   shared.discord.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild || message.guild.id !== GUILD_ID) return;
     if (!shared.discord.user || !message.mentions.has(shared.discord.user)) return;

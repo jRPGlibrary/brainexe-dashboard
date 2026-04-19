@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 💞 MEMBER BONDS — Liens affectifs par membre v2.0.8
+ * 💞 MEMBER BONDS — Liens affectifs par membre v2.1.0
  * ================================================
  * Pour chaque membre, on stocke :
  *  - baseAttachment (0-100)   : affection de fond, évolue lentement (semaines)
