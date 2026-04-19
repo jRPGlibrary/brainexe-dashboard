@@ -68,6 +68,7 @@ const { refreshDailyMood, getDailyMood } = require('./src/bot/mood');
 const { getCurrentSlot } = require('./src/bot/scheduling');
 const { getDailyVibe } = require('./src/bot/adaptiveSchedule');
 const { registerRoutes } = require('./src/api/routes');
+const { getFundingData, calculateTotalCosts, updateBotStatus } = require('./src/project/funding');
 
 // ── API ROUTES ────────────────────────────────────────────────
 registerRoutes(app);
@@ -110,6 +111,16 @@ discord.once('ready', async () => {
   startBackupInterval();
 
   connectMongoDB().catch(e => pushLog('ERR', `MongoDB init : ${e.message}`, 'error'));
+
+  setTimeout(async () => {
+    try {
+      const data = await getFundingData();
+      const totalCosts = calculateTotalCosts(data);
+      updateBotStatus(data.totalDonated || 0, totalCosts);
+    } catch (e) {
+      pushLog('ERR', `Funding status init : ${e.message}`, 'error');
+    }
+  }, 3000);
 
   setTimeout(async () => {
     await checkAnecdoteMissed();

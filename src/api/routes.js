@@ -22,7 +22,7 @@ const { getInternalState, getEmotionStack, getTemperament, setInternalStateValue
 const { getMemberBond } = require('../db/memberBonds');
 const { updateSidebarChannels } = require('../features/sidebar');
 const { sleep } = require('../utils');
-const { getFundingData, addDonation, calculateTotalCosts } = require('../project/funding');
+const { getFundingData, addDonation, calculateTotalCosts, updateBotStatus } = require('../project/funding');
 
 function registerRoutes(app) {
   // State & logs
@@ -251,6 +251,7 @@ function registerRoutes(app) {
         remaining: Math.max(0, totalCosts - (updated.totalDonated || 0)),
       };
       broadcast('fundingUpdate', response);
+      updateBotStatus(response.totalDonated, totalCosts);
       res.json(response);
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

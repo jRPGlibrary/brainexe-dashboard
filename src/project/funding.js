@@ -6,6 +6,13 @@ function getCurrentMonth() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+// Mettre à jour le statut Discord du bot
+function updateBotStatus(totalDonated, totalCosts) {
+  if (!shared.discord || !shared.discord.user) return;
+  const status = `💰 ${totalDonated.toFixed(1)}€/${totalCosts.toFixed(1)}€`;
+  shared.discord.user.setActivity(status, { type: 'CUSTOM' }).catch(() => {});
+}
+
 // Obtenir ou créer le document de financement du mois courant
 async function getFundingData() {
   if (!shared.mongoDb) throw new Error('MongoDB non connecté');
@@ -47,4 +54,5 @@ module.exports = {
   getFundingData,
   addDonation,
   calculateTotalCosts,
+  updateBotStatus,
 };
