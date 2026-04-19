@@ -4,169 +4,148 @@ const { GUILD_ID } = require('../config');
 const { getCurrentSlot } = require('../bot/scheduling');
 const { getDailyMood } = require('../bot/mood');
 const { getInternalState } = require('../bot/emotions');
-const { EmbedBuilder } = require('discord.js');
+const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const cron = require('node-cron');
 
-let sidebarMessageId = null;
-let sidebarChannelId = null;
+const CATEGORY_NAME = '📊 SYSTÈME BRAINEXE';
+const SIDEBAR_KEYS = ['members', 'status', 'mood', 'activity', 'tiktok'];
+
+let sidebarCategoryId = null;
+let sidebarChannelIds = {};
 let sidebarCron = null;
 
 function getEnergyLabel(energy) {
-  if (energy >= 70) return 'Bouillant 🔥';
-  if (energy >= 50) return 'Énergique ⚡';
-  if (energy >= 30) return 'Tranquille 🌙';
-  return 'Fatigué 💤';
+  if (energy >= 70) return 'Bouillant';
+  if (energy >= 50) return 'Énergique';
+  if (energy >= 30) return 'Tranquille';
+  return 'Fatigué';
 }
 
-function getMembersCount(guild) {
-  return guild.memberCount || 0;
+function getMoodLabel(mood) {
+  const map = { energique: 'Énergique', chill: 'Chill', hyperfocus: 'Hyperfocus', zombie: 'Zombie' };
+  return map[mood] || mood;
 }
 
-async function buildSidebarEmbed(guild) {
+function getSidebarLines(guild) {
   const slot = getCurrentSlot();
   const mood = getDailyMood();
-  const internalState = getInternalState();
-  const energy = internalState.energy || 50;
-  const memberCount = getMembersCount(guild);
-
-  const isTikTokLive = shared.tiktokLiveActive === true;
-
-  const embed = new EmbedBuilder()
-    .setColor(0x7c5cbf)
-    .setTitle('📊 SYSTÈME BRAINEXE')
-    .setDescription('État du système en temps réel')
-    .addFields(
-      {
-        name: '👥 Membres',
-        value: `${memberCount} (total cumulé)`,
-        inline: true,
-      },
-      {
-        name: '🧠 État',
-        value: `${slot.label}`,
-        inline: true,
-      },
-      {
-        name: '\u200b',
-        value: '\u200b',
-        inline: true,
-      },
-      {
-        name: '⚡ Humeur',
-        value: `${mood.charAt(0).toUpperCase() + mood.slice(1)}`,
-        inline: true,
-      },
-      {
-        name: '🔥 Activité',
-        value: getEnergyLabel(energy),
-        inline: true,
-      },
-      {
-        name: '\u200b',
-        value: '\u200b',
-        inline: true,
-      },
-      {
-        name: '📱 TikTok',
-        value: isTikTokLive ? 'LIVE 🔴' : 'Offline ⚫',
-        inline: true,
-      }
-    )
-    .setFooter({
-      text: `Mis à jour à ${new Date().toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' })}`,
-    })
-    .setTimestamp();
-
-  return embed;
+  const state = getInternalState();
+  return {
+    members:  `👥┃Membres : ${guild.memberCount || 0}`,
+    status:   `🧠┃État : ${slot.label}`,
+    mood:     `⚡┃Humeur : ${getMoodLabel(mood)}`,
+    activity: `🔥┃Activité : ${getEnergyLabel(state.energy || 50)}`,
+    tiktok:   `📱┃TikTok : ${shared.tiktokLiveActive ? 'LIVE 🔴' : 'Offline'}`,
+  };
 }
 
-async function updateSidebarMessage() {
+async function ensureSidebarCategory(guild) {
+  const channels = await guild.channels.fetch();
+
+  if (sidebarCategoryId) {
+    const cat = channels.get(sidebarCategoryId);
+    if (cat) return cat;
+  }
+
+  const existing = channels.find(
+    c => c.type === ChannelType.GuildCategory && c.name === CATEGORY_NAME
+  );
+  if (existing) {
+    sidebarCategoryId = existing.id;
+    return existing;
+  }
+
+  const cat = await guild.channels.create({
+    name: CATEGORY_NAME,
+    type: ChannelType.GuildCategory,
+    position: 0,
+    reason: 'Sidebar BRAINEXE',
+  });
+  sidebarCategoryId = cat.id;
+  pushLog('SYS', `📊 Catégorie sidebar créée`, 'success');
+  return cat;
+}
+
+async function ensureSidebarVoiceChannels(guild, category) {
+  const channels = await guild.channels.fetch();
+
+  const existingVoice = channels
+    .filter(c => c.parentId === category.id && c.type === ChannelType.GuildVoice)
+    .sort((a, b) => a.position - b.position)
+    .toJSON();
+
+  if (existingVoice.length >= SIDEBAR_KEYS.length) {
+    SIDEBAR_KEYS.forEach((key, i) => {
+      sidebarChannelIds[key] = existingVoice[i].id;
+    });
+    return;
+  }
+
+  // Supprimer les éventuels canaux partiels
+  for (const ch of existingVoice) {
+    await ch.delete('Sidebar BRAINEXE reset').catch(() => {});
+  }
+
+  // Créer les 5 canaux vocaux verrouillés
+  const lines = getSidebarLines(guild);
+  for (const key of SIDEBAR_KEYS) {
+    const ch = await guild.channels.create({
+      name: lines[key],
+      type: ChannelType.GuildVoice,
+      parent: category.id,
+      permissionOverwrites: [
+        {
+          id: guild.id,
+          deny: [PermissionFlagsBits.Connect],
+          allow: [PermissionFlagsBits.ViewChannel],
+        },
+      ],
+      reason: 'Sidebar BRAINEXE',
+    });
+    sidebarChannelIds[key] = ch.id;
+  }
+  pushLog('SYS', '📊 Sidebar : 5 canaux vocaux créés', 'success');
+}
+
+async function updateSidebarChannels() {
   try {
     if (!shared.discord || !shared.discord.isReady()) return;
 
     const guild = await shared.discord.guilds.fetch(GUILD_ID);
     if (!guild) return;
 
-    let channel = null;
-    if (sidebarChannelId) {
-      channel = await guild.channels.fetch(sidebarChannelId).catch(() => null);
-    }
+    const category = await ensureSidebarCategory(guild);
+    await ensureSidebarVoiceChannels(guild, category);
 
-    // Cherche un channel existant (créé récemment ou avec un nom spécifique)
-    if (!channel) {
-      const existingChannels = await guild.channels.fetch();
-      channel = existingChannels.find(
-        (c) => c.name === 'système-brainexe' || c.name === '🤖-système' || c.name === 'infos-système'
-      );
+    const lines = getSidebarLines(guild);
 
-      // Si pas de channel trouvé, créé un
-      if (!channel) {
-        channel = await guild.channels.create({
-          name: '🤖-système',
-          type: 4, // GUILD_CATEGORY
-          reason: 'Sidebar BRAINEXE',
-        });
-        pushLog('SYS', `📌 Channel sidebar créé: ${channel.name}`, 'success');
-      }
-      sidebarChannelId = channel.id;
-    }
-
-    // Si c'est une catégorie, cherche un salon texte dedans, sinon crée un
-    if (channel.isCategory?.()) {
-      const textChannelInCategory = (await guild.channels.fetch()).find(
-        (c) => c.parentId === channel.id && c.isTextBased?.()
-      );
-      if (textChannelInCategory) {
-        channel = textChannelInCategory;
-      } else {
-        channel = await guild.channels.create({
-          name: 'infos',
-          type: 0, // GUILD_TEXT
-          parent: channel.id,
-          reason: 'Sidebar BRAINEXE',
-        });
+    for (const key of SIDEBAR_KEYS) {
+      const id = sidebarChannelIds[key];
+      if (!id) continue;
+      const ch = await guild.channels.fetch(id).catch(() => null);
+      if (!ch) { sidebarChannelIds[key] = null; continue; }
+      if (ch.name !== lines[key]) {
+        await ch.setName(lines[key]).catch(() => {});
       }
     }
-
-    const embed = await buildSidebarEmbed(guild);
-
-    // Update ou crée le message
-    if (sidebarMessageId) {
-      const message = await channel.messages.fetch(sidebarMessageId).catch(() => null);
-      if (message) {
-        await message.edit({ embeds: [embed] });
-        return;
-      }
-    }
-
-    // Crée un nouveau message
-    const msg = await channel.send({ embeds: [embed] });
-    sidebarMessageId = msg.id;
-    pushLog('SYS', '📊 Sidebar mise à jour', 'success');
   } catch (err) {
-    pushLog('ERR', `updateSidebarMessage: ${err.message}`, 'error');
+    pushLog('ERR', `updateSidebarChannels: ${err.message}`, 'error');
   }
 }
 
 function startSidebarCron() {
-  if (sidebarCron) {
-    try {
-      sidebarCron.stop();
-    } catch {}
-  }
+  if (sidebarCron) { try { sidebarCron.stop(); } catch {} }
 
-  // Update toutes les 30 secondes
-  sidebarCron = cron.schedule('*/30 * * * * *', () => {
-    updateSidebarMessage().catch((err) => {
-      pushLog('ERR', `Sidebar cron: ${err.message}`, 'error');
-    });
+  // 10 minutes — Discord rate limit: 2 renames max par 10min par canal
+  sidebarCron = cron.schedule('*/10 * * * *', () => {
+    updateSidebarChannels().catch(err =>
+      pushLog('ERR', `Sidebar cron: ${err.message}`, 'error')
+    );
   });
 
-  pushLog('SYS', '⏱️ Cron sidebar démarré (30s)', 'success');
+  updateSidebarChannels().catch(() => {});
+
+  pushLog('SYS', '⏱️ Cron sidebar démarré (10min)', 'success');
 }
 
-module.exports = {
-  buildSidebarEmbed,
-  updateSidebarMessage,
-  startSidebarCron,
-};
+module.exports = { updateSidebarChannels, startSidebarCron };
