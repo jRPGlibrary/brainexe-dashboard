@@ -62,6 +62,7 @@ const { startAnecdoteCron, checkAnecdoteMissed } = require('./src/features/anecd
 const { startActusCron, checkActusMissed } = require('./src/features/actus');
 const { startConvCron, startBackupInterval } = require('./src/crons');
 const { startTikTokLiveWatcher } = require('./src/features/tiktok');
+const { startSidebarCron } = require('./src/features/sidebar');
 const { initChannelDirectory } = require('./src/db/channelDir');
 const { refreshDailyMood, getDailyMood } = require('./src/bot/mood');
 const { getCurrentSlot } = require('./src/bot/scheduling');
@@ -105,6 +106,7 @@ discord.once('ready', async () => {
   startActusCron();
   startConvCron();
   startTikTokLiveWatcher();
+  startSidebarCron();
   startBackupInterval();
 
   connectMongoDB().catch(e => pushLog('ERR', `MongoDB init : ${e.message}`, 'error'));
