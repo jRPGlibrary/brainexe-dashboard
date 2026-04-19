@@ -1,4 +1,5 @@
 const { ANTHROPIC_API_KEY } = require('../config');
+const { sanitizeForJson } = require('../utils');
 
 const TIMEOUT_MS = 25000;
 const MAX_RETRIES = 2;
@@ -8,17 +9,19 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
 
   const system = cachedPrefix
     ? [
-        { type: 'text', text: cachedPrefix, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: systemPrompt },
+        { type: 'text', text: sanitizeForJson(cachedPrefix), cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: sanitizeForJson(systemPrompt) },
       ]
-    : systemPrompt;
+    : sanitizeForJson(systemPrompt);
 
-  const body = JSON.stringify({
+  const payload = {
     model: 'claude-sonnet-4-6',
     max_tokens: Math.min(Math.max(Math.floor(maxTokens), 50), 1024),
     system,
-    messages: [{ role: 'user', content: userPrompt }],
-  });
+    messages: [{ role: 'user', content: sanitizeForJson(userPrompt) }],
+  };
+
+  const body = JSON.stringify(payload);
 
   let lastErr;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
