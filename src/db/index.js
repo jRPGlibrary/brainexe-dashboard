@@ -14,7 +14,12 @@ async function connectMongoDB() {
     await shared.mongoDb.collection('channelMemory').createIndex({ channelId: 1 }, { unique: true });
     await shared.mongoDb.collection('dmHistory').createIndex({ userId: 1 }, { unique: true });
     await shared.mongoDb.collection('channelDirectory').createIndex({ channelId: 1 }, { unique: true });
-    pushLog('SYS', '✅ MongoDB Atlas connecté — memberProfiles + botState + channelMemory + dmHistory + channelDirectory', 'success');
+    await shared.mongoDb.collection('memberBonds').createIndex({ userId: 1 }, { unique: true });
+    pushLog('SYS', '✅ MongoDB Atlas connecté — memberProfiles + botState + channelMemory + dmHistory + channelDirectory + memberBonds', 'success');
+    try {
+      const { loadEmotionalState } = require('../bot/emotions');
+      await loadEmotionalState();
+    } catch (e) { pushLog('ERR', `loadEmotionalState boot: ${e.message}`, 'error'); }
   } catch (err) { pushLog('ERR', `MongoDB connexion échouée : ${err.message}`, 'error'); }
 }
 

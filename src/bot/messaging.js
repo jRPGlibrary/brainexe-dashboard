@@ -1,4 +1,9 @@
 const { sleep } = require('../utils');
+const { humanize } = require('./humanize');
+const { getHumanizationSignal } = require('./emotions');
+const { getBondSignal } = require('../db/memberBonds');
+const { getDailyMood } = require('./mood');
+const { getCurrentSlot } = require('./scheduling');
 
 // Normalise un nom pour comparaison : lowercase, strip diacritiques, strip emojis,
 // strip tout sauf lettres/chiffres/_/- (mais garde les caractères Unicode lettres)
@@ -78,9 +83,22 @@ async function simulateTyping(channel, durationMs = 2000) {
   } catch (_) {}
 }
 
-async function sendHuman(channel, content, replyTo = null) {
+async function sendHuman(channel, content, replyTo = null, opts = {}) {
   const guild = channel?.guild || replyTo?.guild || null;
   content = resolveMentionsInText(content, guild);
+
+  if (opts.skipHumanize !== true) {
+    try {
+      const bond = opts.bond || null;
+      const ctx = {
+        emotionalSignal: getHumanizationSignal(),
+        bondSignal: getBondSignal(bond),
+        mood: getDailyMood(),
+        slotStatus: getCurrentSlot()?.status || 'active',
+      };
+      content = humanize(content, ctx);
+    } catch (_) {}
+  }
 
   const shouldFragment = Math.random() < 0.20 && content.length > 60;
   if (!shouldFragment) {

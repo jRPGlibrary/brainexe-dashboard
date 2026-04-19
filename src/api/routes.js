@@ -18,6 +18,8 @@ const { getChannelMemory } = require('../db/channelMem');
 const { getDmHistory } = require('../db/dmHistory');
 const { getCurrentSlot, getParisHour, getParisDay } = require('../bot/scheduling');
 const { getDailyMood } = require('../bot/mood');
+const { getInternalState, getEmotionStack, getTemperament } = require('../bot/emotions');
+const { getMemberBond } = require('../db/memberBonds');
 const { sleep } = require('../utils');
 
 function registerRoutes(app) {
@@ -85,6 +87,25 @@ function registerRoutes(app) {
 
   // Channel directory
   app.get('/api/channel-directory', async (req, res) => { if (!shared.mongoDb) return res.json([]); try { const docs = await shared.mongoDb.collection('channelDirectory').find({}).toArray(); res.json(docs); } catch (e) { res.status(500).json({ error: e.message }); } });
+
+  // Emotional state (v2.0.9)
+  app.get('/api/emotions/state', (req, res) => {
+    res.json({ ok: true, internalState: getInternalState(), temperament: getTemperament(), emotionStack: getEmotionStack() });
+  });
+  app.get('/api/emotions/bonds', async (req, res) => {
+    if (!shared.mongoDb) return res.json({ ok: false, error: 'MongoDB non connecté' });
+    try {
+      const bonds = await shared.mongoDb.collection('memberBonds').find({}).sort({ baseAttachment: -1 }).limit(50).toArray();
+      res.json({ ok: true, bonds });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+  app.get('/api/emotions/bonds/:userId', async (req, res) => {
+    try {
+      const bond = await getMemberBond(req.params.userId);
+      if (!bond) return res.status(404).json({ ok: false, error: 'Aucun lien trouvé' });
+      res.json({ ok: true, bond });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
 
   // Welcome test
   app.post('/api/welcome/test', async (req, res) => { const cfg = shared.botConfig.welcome; if (!cfg.enabled) return res.json({ ok: false, error: 'Welcome désactivé' }); try { const guild = await shared.discord.guilds.fetch(GUILD_ID); await guild.channels.fetch(); const channel = guild.channels.cache.get(cfg.channelId); if (!channel) return res.status(404).json({ ok: false, error: 'Salon introuvable' }); const phrase = cfg.messages[Math.floor(Math.random() * cfg.messages.length)]; const embed = new EmbedBuilder().setColor(0x7c5cbf).setTitle('👾 Bienvenue TestMembre ! [TEST]').setDescription(`${phrase}\n\n📋 → <#1481028175474589827>\n🎭 → <#1481028181485027471>`).setFooter({ text: 'BrainEXE • Test' }).setTimestamp(); await channel.send({ content: '👋 **[TEST]**', embeds: [embed] }); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });

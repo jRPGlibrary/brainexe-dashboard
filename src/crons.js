@@ -11,11 +11,17 @@ const { postRandomConversation, replyToConversations } = require('./features/con
 const { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup, postRelanceMention } = require('./features/greetings');
 const { runDriftCheck } = require('./features/drift');
 const { getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded } = require('./features/convStats');
+const {
+  updateInternalStatesForSlot, applyNaturalDecay, applyDailyDrift,
+  decayEmotions, saveEmotionalState,
+} = require('./bot/emotions');
+const { runDailyBondEvolution } = require('./db/memberBonds');
 const { readGuildState } = require('./discord/sync');
 const fs = require('fs');
 
 let convCron = null, replyCron = null, floatingEventsCron = null;
 let moodResetCron = null, driftCron = null, relanceCron = null;
+let emotionHourlyCron = null, emotionDailyCron = null;
 
 // Flags "déjà tiré aujourd'hui" pour les events flottants (reset à minuit)
 const firedToday = { morning: '', lunch: '', goodnight: '', nightWakeup: '', relance: '' };
@@ -25,7 +31,7 @@ function parisDateISO() {
 }
 
 function startConvCron() {
-  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron]
+  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron]
     .forEach(c => { if (c) { try { c.stop(); } catch {} } });
 
   // Initialise la vibe et le planning flottant dès le boot
@@ -62,13 +68,11 @@ function startConvCron() {
     const today = parisDateISO();
     const sched = getDailyFloatingSchedule();
     const h = getParisHour();
-    const day = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' })).getDay();
     const vibe = getDailyVibe();
 
     // Morning — lun-dim avec jitter de jour
     if (firedToday.morning !== today && h >= sched.morning && h < sched.morning + 1) {
       firedToday.morning = today;
-      // Probabilité vibe-aware : 85% base, modulée par chattiness
       const proba = Math.min(0.95, 0.60 + vibe.chattiness * 0.35);
       if (Math.random() < proba) {
         pushLog('SYS', `☕ Morning flottant → ${h.toFixed(2)}h (vibe ${vibe.name}, ${Math.round(proba * 100)}%)`);
@@ -129,13 +133,12 @@ function startConvCron() {
     if (slot.maxConv > 0) { pushLog('SYS', `🔍 Drift check déclenché [${slot.label}]`); runDriftCheck(); }
   }, { timezone: 'Europe/Paris' });
 
-  // Relance des mentions différées : tous les jours vers 10-11h (avec jitter)
+  // Relance des mentions différées : tous les jours vers 10-12h (avec jitter)
   relanceCron = cron.schedule('*/10 * * * *', () => {
     const today = parisDateISO();
     if (firedToday.relance === today) return;
     const h = getParisHour();
     const slot = getCurrentSlot();
-    // Fenêtre de relance : entre 10h et 12h, slot actif
     if (h < 10 || h > 12) return;
     if (slot.maxConv === 0) return;
 
@@ -149,11 +152,33 @@ function startConvCron() {
     });
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v2.0.7 — vibe adaptative + planning flottant + relances`, 'success');
+  // Decay des émotions + update des états internes selon le slot toutes les heures
+  emotionHourlyCron = cron.schedule('30 * * * *', () => {
+    try {
+      const slot = getCurrentSlot();
+      updateInternalStatesForSlot(slot);
+      applyNaturalDecay();
+      decayEmotions();
+      saveEmotionalState().catch(() => {});
+      pushLog('SYS', `💗 Évolution émotionnelle horaire [${slot.label}]`);
+    } catch (err) { pushLog('ERR', `emotionHourlyCron: ${err.message}`, 'error'); }
+  }, { timezone: 'Europe/Paris' });
+
+  // Évolution journalière des bonds + drift des états internes à 00h05
+  emotionDailyCron = cron.schedule('5 0 * * *', async () => {
+    try {
+      applyDailyDrift();
+      await runDailyBondEvolution();
+      await saveEmotionalState();
+      pushLog('SYS', `💞 Évolution journalière bonds + états internes`, 'success');
+    } catch (err) { pushLog('ERR', `emotionDailyCron: ${err.message}`, 'error'); }
+  }, { timezone: 'Europe/Paris' });
+
+  pushLog('SYS', `✅ Crons v2.0.9 — vibe + planning flottant + relances + émotions + bonds`, 'success');
 }
 
 function slot_is_active(h) {
-  // Simple : entre 10h et 23h
+  // Simple : entre 10h et 23h30
   return h >= 10 && h < 23.5;
 }
 
