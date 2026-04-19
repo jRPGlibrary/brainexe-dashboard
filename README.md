@@ -1,4 +1,4 @@
-# 🧠 BrainEXE Dashboard `v2.1.0`
+# 🧠 BrainEXE Dashboard `v2.2.0`
 
 > **Brainee** — Bot Discord pour le serveur BrainEXE. Gaming, neurodivergence, communauté.
 
@@ -86,6 +86,36 @@ Stats live affichées directement dans la barre latérale Discord, comme les bot
 ---
 
 ## 📝 Changelog
+
+### `v2.2.0` — 🔴 Audit & polish (embeds TikTok, fils auto-invités, no-insist)
+
+**🐛 Corrections**
+- **TikTok offline** : le statut "HORS LIGNE" au démarrage est désormais **uniquement loggé** et n'est plus publié dans le salon `🔴・alertes-live` (spam supprimé)
+- Statut `online` redondant retiré au profit du seul `sendLiveStartEmbed`
+
+**🆕 Features**
+- **Embeds TikTok enrichis** :
+  - `sendLiveStartEmbed` : lien direct sur le titre, thumbnail + image de couverture du live (depuis `roomInfo.cover`), avatar TikTok (depuis `roomInfo.owner`), bouton texte "▶ Rejoindre le live", ligne `Viewers` claire et mise en forme avec \`code\`
+  - `sendLiveEndEmbed` : Top gifts en liste, rappel du rôle notification, lien vers la chaîne
+- **Fils Discord auto-intro** : quand Brainee ouvre un fil (dérive, conv ambiante, reply), elle poste un **premier message dans le fil** avec un titre en gras + invitation chaleureuse. Les participants récents sont tagués dans le fil de dérive (jusqu'à 5) pour les inviter à migrer
+- **No-insist** : si Brainee a posté dans un salon et que personne n'a répondu depuis (moins de 4h), elle ne repose plus dessus — elle part sur un autre sujet
+- **Biais topics profonds** : les salons thématiques (JRPG, RPG, retro, indie, next-gen, hidden-gems, lore, pixel-art, code-talk, ia-tools, tips-focus, cerveau-en-feu, etc.) sont boostés dans le choix du salon le plus silencieux + un bloc d'instructions "angle fouillé" est injecté dans le prompt pour éviter les questions génériques
+
+**🔧 Améliorations**
+- `package.json` : plages `^` permettant les MAJ patch/minor automatiques (sécurité)
+- Version bumpée partout (2.1.0 → 2.2.0)
+
+**⚠️ Dépendances majeures disponibles (non upgradées — breaking changes)**
+- `discord.js` 14.16 → 14.26 (safe)
+- `express` 4 → 5 (breaking)
+- `mongodb` 6 → 7 (breaking)
+- `node-cron` 3 → 4 (breaking)
+- `chokidar` 3 → 5 (breaking)
+- `dotenv` 16 → 17 (breaking)
+
+À planifier en v2.3 avec tests dédiés.
+
+---
 
 ### `v2.1.0` — 🎨 Refonte dashboard + Sidebar Discord
 

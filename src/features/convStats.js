@@ -52,11 +52,69 @@ async function updateConvStats(channelId) {
   }).catch(() => {});
 }
 
+// Salons "topic profonds" où Brainee doit être plus entreprenante (hors QG/général/off-topic).
+// Ces slugs sont matchés via le channelName (insensible aux emojis + tirets).
+const DEEP_TOPIC_HINTS = [
+  'jrpg', 'rpg', 'retro', 'indie', 'next-gen', 'hidden-gems',
+  'lore', 'pixel-art', 'nostalgie', 'open-world',
+  'code-talk', 'ia-et-tools', 'tips-focus', 'playlist-focus',
+  'cerveau-en-feu', 'hyperfocus', '3h-du-mat',
+  'game-of-the-moment', 'à-découvrir', 'a-decouvrir',
+];
+
+function isDeepTopicChannel(channelName = '') {
+  const name = channelName.toLowerCase();
+  return DEEP_TOPIC_HINTS.some(h => name.includes(h));
+}
+
+/**
+ * Détermine si Brainee doit s'abstenir de reposter dans un salon où elle a parlé
+ * la dernière fois sans qu'aucun humain n'ait répondu après elle.
+ * Évite le "50× la même chose" et le monologue.
+ */
+async function hasUnansweredLastPost(channelId, guildChannelResolver) {
+  try {
+    const last = shared.botConfig.conversations.lastPostByChannel || {};
+    const lastTs = last[channelId] || 0;
+    if (!lastTs) return false;
+    // On ne regarde que si Brainee a posté récemment (moins de 4h)
+    if (Date.now() - lastTs > 4 * 60 * 60 * 1000) return false;
+    const channel = await guildChannelResolver(channelId);
+    if (!channel?.messages) return false;
+    const msgs = await channel.messages.fetch({ limit: 20 });
+    const arr = [...msgs.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+    // Trouve le dernier message du bot
+    const botId = shared.discord?.user?.id;
+    const lastBotIdx = arr.findIndex(m => m.author?.id === botId);
+    if (lastBotIdx === -1) return false;
+    // Est-ce que quelqu'un d'humain a parlé APRÈS ?
+    const humanAfter = arr.slice(0, lastBotIdx).some(m => !m.author?.bot);
+    return !humanAfter;
+  } catch (_) {
+    return false;
+  }
+}
+
 function getQuietestChannel() {
   const active = shared.botConfig.conversations.channels.filter(c => c.enabled);
   if (!active.length) return null;
   const last = shared.botConfig.conversations.lastPostByChannel || {};
-  return [...active].sort((a, b) => (last[a.channelId] || 0) - (last[b.channelId] || 0))[0];
+  // Sort : salons "topic profond" boostés si non visités récemment (jamais parlé OU > 2h),
+  // sinon tri classique par ancienneté du dernier post.
+  const TWO_HOURS = 2 * 60 * 60 * 1000;
+  return [...active]
+    .map(c => {
+      const lastTs = last[c.channelId] || 0;
+      const isStale = !lastTs || (Date.now() - lastTs) > TWO_HOURS;
+      const deepBonus = (isDeepTopicChannel(c.channelName) && isStale) ? -1_000_000_000 : 0;
+      return { c, sortKey: lastTs + deepBonus };
+    })
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .map(x => x.c)[0];
 }
 
-module.exports = { getTodayStr, getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded, updateConvStats, getQuietestChannel };
+module.exports = {
+  getTodayStr, getConvDailyCount, getConvMaxPerDay,
+  resetDailyCountIfNeeded, updateConvStats, getQuietestChannel,
+  isDeepTopicChannel, hasUnansweredLastPost, DEEP_TOPIC_HINTS,
+};

@@ -45,7 +45,7 @@ async function detectThematicDrift(channelId, channelName, channelTopic, recentC
   }
 }
 
-async function handleDrift(guild, channelId, channelName, driftResult) {
+async function handleDrift(guild, channelId, channelName, driftResult, participantIds = []) {
   if (!driftResult || driftResult.action === 'observe') return;
   if (!ANTHROPIC_API_KEY) return;
 
@@ -78,11 +78,29 @@ async function handleDrift(guild, channelId, channelName, driftResult) {
             'Tu génères des noms de fils Discord courts (max 60 caractères, pas de guillemets, emoji gaming).',
             `Nom de fil pour ce sujet : "${sanitizeForJson(driftResult.dominantTheme)}". Max 60 car. Emoji adapté.`, 60
           );
+          const cleanThreadName = threadName.replace(/"/g, '').trim().slice(0, 100);
           const bridgeResolved = resolveMentionsInText(driftResult.bridgeMessage || `ce sujet mérite son propre espace 🧵`, guild);
           const sentMsg = await originChannel.send(bridgeResolved);
-          await sentMsg.startThread({ name: threadName.replace(/"/g, '').trim().slice(0, 100), autoArchiveDuration: 1440, reason: 'Fil dérive Brainee' });
+          const thread = await sentMsg.startThread({
+            name: cleanThreadName,
+            autoArchiveDuration: 1440,
+            reason: 'Fil dérive Brainee',
+          });
+
+          // Premier message dans le fil : intro + invitation (+ tag des participants actifs)
+          const threadIntro = await callClaude(
+            `\nTu viens d'ouvrir un fil Discord "${cleanThreadName}" sur le sujet "${driftResult.dominantTheme}".`,
+            `Écris un message d'ouverture pour ce fil : 1 ligne de titre en gras style "**[titre accrocheur]**", puis 1-2 phrases d'invitation à continuer la discussion ici. Ton style Brainee, oral, chaleureux. Pas de @.`,
+            140,
+            BOT_PERSONA_CONVERSATION
+          );
+          const tagLine = (Array.isArray(participantIds) && participantIds.length)
+            ? participantIds.slice(0, 5).map(id => `<@${id}>`).join(' ') + ' '
+            : '';
+          await thread.send(tagLine + resolveMentionsInText(threadIntro, guild));
+
           shared.lastAnyBotPostTime = Date.now();
-          pushLog('SYS', `🧵 Thread de redirection créé dans #${channelName}`, 'success');
+          pushLog('SYS', `🧵 Thread "${cleanThreadName}" créé + intro postée dans #${channelName} (${participantIds.length} participants tagués)`, 'success');
         } catch (threadErr) {
           pushLog('ERR', `Thread dérive échoué : ${threadErr.message}`, 'error');
         }
@@ -155,6 +173,17 @@ async function runDriftCheck() {
         const context = formatContext(msgs, null, 30);
         const memory = await getChannelMemory(ch.channelId);
 
+        // Extraction des participants humains actifs (hors bots) pour tag éventuel dans le fil
+        const participantIds = [];
+        const seen = new Set();
+        for (const m of msgs.values()) {
+          if (m.author?.bot) continue;
+          if (!m.author?.id || seen.has(m.author.id)) continue;
+          seen.add(m.author.id);
+          participantIds.push(m.author.id);
+          if (participantIds.length >= 5) break;
+        }
+
         const lastEnriched = memory?.lastEnrichedAt ? new Date(memory.lastEnrichedAt).getTime() : 0;
         if (Date.now() - lastEnriched > 6 * 60 * 60 * 1000) {
           enrichChannelMemory(ch.channelId, ch.channelName, ch.topic, context).catch(() => {});
@@ -162,7 +191,7 @@ async function runDriftCheck() {
 
         const drift = await detectThematicDrift(ch.channelId, ch.channelName, ch.topic, context, memory);
         if (drift && drift.action !== 'observe') {
-          await handleDrift(guild, ch.channelId, ch.channelName, drift);
+          await handleDrift(guild, ch.channelId, ch.channelName, drift, participantIds);
           await sleep(2000);
         }
       } catch (chErr) {
