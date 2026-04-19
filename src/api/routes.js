@@ -22,6 +22,7 @@ const { getInternalState, getEmotionStack, getTemperament, setInternalStateValue
 const { getMemberBond } = require('../db/memberBonds');
 const { updateSidebarChannels } = require('../features/sidebar');
 const { sleep } = require('../utils');
+const { getFundingData, addDonation, calculateTotalCosts } = require('../project/funding');
 
 function registerRoutes(app) {
   // State & logs
@@ -208,6 +209,52 @@ function registerRoutes(app) {
   app.post('/api/admin/sidebar/refresh', async (req, res) => {
     try { await updateSidebarChannels(); res.json({ ok: true }); }
     catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // ═════════════════════════════════════════════════════════
+  // PROJECT FUNDING — Soutien Projet Brainee
+  // ═════════════════════════════════════════════════════════
+
+  // Récupérer les données de soutien du mois courant
+  app.get('/api/project/funding', async (req, res) => {
+    try {
+      const data = await getFundingData();
+      const totalCosts = calculateTotalCosts(data);
+      res.json({
+        ok: true,
+        costs: data.costs,
+        totalCosts,
+        totalDonated: data.totalDonated || 0,
+        remaining: Math.max(0, totalCosts - (data.totalDonated || 0)),
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // Enregistrer une contribution (admin seulement)
+  app.post('/api/project/donation', async (req, res) => {
+    try {
+      const { amount } = req.body;
+      if (typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ ok: false, error: 'amount requis (nombre positif)' });
+      }
+      const updated = await addDonation(amount);
+      const totalCosts = calculateTotalCosts(updated);
+      const msg = `Contribution +${amount}€ enregistrée`;
+      pushLog('SYS', msg, 'success');
+      const response = {
+        ok: true,
+        costs: updated.costs,
+        totalCosts,
+        totalDonated: updated.totalDonated || 0,
+        remaining: Math.max(0, totalCosts - (updated.totalDonated || 0)),
+      };
+      broadcast('fundingUpdate', response);
+      res.json(response);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
   });
 }
 
