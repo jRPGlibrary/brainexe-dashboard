@@ -1,101 +1,104 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="light">
+<html lang="fr" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BrainEXE Dashboard</title>
+  <title>BrainEXE Admin · Live</title>
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
   <div class="app">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="logo">
-          🧠 <span>BrainEXE</span>
+          <div class="logo-badge">🧠</div>
+          <div>
+            <div style="font-weight:700">BrainEXE</div>
+            <div class="text-sm text-muted">Admin v2.2.0</div>
+          </div>
         </div>
-        <div class="logo-version">Dashboard v2.1.0</div>
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-group-label">Général</div>
+        <div class="nav-label">Live</div>
         <button class="nav-item active" data-section="overview">
-          <span class="icon">📊</span> Vue d'ensemble
+          <span>📊</span> Vue d'ensemble
+        </button>
+        <button class="nav-item" data-section="admin">
+          <span>🎛️</span> Admin live
         </button>
         <button class="nav-item" data-section="logs">
-          <span class="icon">📜</span> Logs
+          <span>📜</span> Logs
         </button>
 
-        <div class="nav-group-label">Serveur</div>
+        <div class="nav-label">Serveur</div>
         <button class="nav-item" data-section="channels">
-          <span class="icon">💬</span> Salons
+          <span>💬</span> Salons
         </button>
         <button class="nav-item" data-section="roles">
-          <span class="icon">🎭</span> Rôles
+          <span>🎭</span> Rôles
         </button>
         <button class="nav-item" data-section="members">
-          <span class="icon">👥</span> Membres
+          <span>👥</span> Membres
         </button>
 
-        <div class="nav-group-label">Bot</div>
+        <div class="nav-label">Bot</div>
         <button class="nav-item" data-section="automations">
-          <span class="icon">⚡</span> Automatisations
+          <span>⚡</span> Automatisations
         </button>
         <button class="nav-item" data-section="posts">
-          <span class="icon">📝</span> Posts manuels
+          <span>📝</span> Posts manuels
         </button>
 
-        <div class="nav-group-label">Système</div>
+        <div class="nav-label">Système</div>
         <button class="nav-item" data-section="backups">
-          <span class="icon">💾</span> Backups
+          <span>💾</span> Backups
         </button>
         <button class="nav-item" data-section="settings">
-          <span class="icon">⚙️</span> Paramètres
+          <span>⚙️</span> Paramètres
         </button>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="theme-switcher">
-          <button class="theme-btn" data-theme="light" title="Thème clair">☀️</button>
-          <button class="theme-btn" data-theme="dark" title="Thème sombre">🌙</button>
-          <button class="theme-btn" data-theme="sombre" title="Thème très sombre">⚫</button>
+        <div class="theme-switch">
+          <button class="theme-btn" data-theme="light" title="Light">☀️</button>
+          <button class="theme-btn" data-theme="dark" title="Dark">🌙</button>
+          <button class="theme-btn" data-theme="sombre" title="Sombre">⚫</button>
         </div>
       </div>
     </aside>
 
-    <!-- MAIN -->
     <main class="main">
       <header class="topbar">
         <div>
-          <div class="page-title">BrainEXE Dashboard</div>
-          <div class="page-subtitle">Gestion du serveur Discord & bot Brainee</div>
+          <div class="topbar-title" id="page-title">Vue d'ensemble</div>
+          <div class="topbar-subtitle" id="page-subtitle">Dashboard temps réel · toute modification est appliquée instantanément</div>
         </div>
         <div class="topbar-right">
-          <span id="ws-status" class="status-pill offline">
-            <span class="dot"></span>Connexion...
-          </span>
+          <span class="pill" id="member-pill">👥 <b id="member-count">—</b> membres</span>
+          <span class="pill" id="slot-pill">🧠 <span id="slot-label">—</span></span>
+          <span class="pill" id="mood-pill">⚡ <span id="mood-label">—</span></span>
+          <span class="pill offline" id="ws-pill"><span class="dot"></span>Connexion…</span>
         </div>
       </header>
 
       <div class="content">
         <section class="section active" id="section-overview"></section>
+        <section class="section" id="section-admin"></section>
+        <section class="section" id="section-logs"></section>
         <section class="section" id="section-channels"></section>
         <section class="section" id="section-roles"></section>
         <section class="section" id="section-members"></section>
         <section class="section" id="section-automations"></section>
         <section class="section" id="section-posts"></section>
-        <section class="section" id="section-logs"></section>
         <section class="section" id="section-backups"></section>
         <section class="section" id="section-settings"></section>
       </div>
     </main>
   </div>
 
-  <!-- TOAST CONTAINER -->
-  <div id="toast-container"></div>
-
-  <!-- MODAL -->
-  <div id="modal-backdrop" class="modal-backdrop"></div>
+  <div id="toasts"></div>
+  <div id="modal-bg" class="modal-bg"></div>
 
   <script src="app.js"></script>
 </body>

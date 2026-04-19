@@ -16,10 +16,11 @@ const { runDriftCheck } = require('../features/drift');
 const { connectToTikTokLive } = require('../features/tiktok');
 const { getChannelMemory } = require('../db/channelMem');
 const { getDmHistory } = require('../db/dmHistory');
-const { getCurrentSlot, getParisHour, getParisDay } = require('../bot/scheduling');
-const { getDailyMood } = require('../bot/mood');
-const { getInternalState, getEmotionStack, getTemperament } = require('../bot/emotions');
+const { getCurrentSlot, getParisHour, getParisDay, setForcedSlot, getForcedSlot, getAllSlots, WEEKDAY_SLOTS } = require('../bot/scheduling');
+const { getDailyMood, setDailyMood, MOODS, refreshDailyMood } = require('../bot/mood');
+const { getInternalState, getEmotionStack, getTemperament, setInternalStateValue } = require('../bot/emotions');
 const { getMemberBond } = require('../db/memberBonds');
+const { updateSidebarChannels } = require('../features/sidebar');
 const { sleep } = require('../utils');
 
 function registerRoutes(app) {
@@ -123,6 +124,91 @@ function registerRoutes(app) {
   app.post('/api/members/:id/ban', async (req, res) => { const { reason, deleteMessageDays } = req.body; try { const guild = await shared.discord.guilds.fetch(GUILD_ID); await guild.bans.create(req.params.id, { reason: reason || 'Dashboard', deleteMessageSeconds: Math.min((deleteMessageDays || 0) * 86400, 604800) }); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
   app.patch('/api/members/:id/roles', async (req, res) => { const { addRoles, removeRoles } = req.body; try { const guild = await shared.discord.guilds.fetch(GUILD_ID); await guild.roles.fetch(); const member = await guild.members.fetch(req.params.id); if (addRoles?.length) await member.roles.add(addRoles, 'Dashboard'); if (removeRoles?.length) await member.roles.remove(removeRoles, 'Dashboard'); res.json({ ok: true, roles: member.roles.cache.filter(r => r.name !== '@everyone').map(r => ({ id: r.id, name: r.name, color: '#' + r.color.toString(16).padStart(6, '0') })) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
   app.get('/api/members', async (req, res) => { try { const state = shared.guildCache || await readGuildState(); res.json({ ok: true, members: state.members || [] }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+
+  // ═════════════════════════════════════════════════════════
+  // ADMIN PANEL — Live control (v2.2.0)
+  // ═════════════════════════════════════════════════════════
+
+  // État complet pour le dashboard
+  app.get('/api/admin/status', async (req, res) => {
+    try {
+      const guild = await shared.discord.guilds.fetch(GUILD_ID).catch(() => null);
+      const memberCount = guild?.memberCount ?? 0;
+      const slot = getCurrentSlot();
+      const mood = getDailyMood();
+      const internalState = getInternalState();
+      res.json({
+        ok: true,
+        memberCount,
+        slot: { label: slot.label, status: slot.status, maxConv: slot.maxConv, forced: getForcedSlot() },
+        mood,
+        moods: MOODS,
+        slots: getAllSlots().map(s => ({ status: s.status, label: s.label })),
+        internalState,
+        tiktokLive: shared.tiktokLiveActive === true,
+        guildName: guild?.name || 'Discord',
+      });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  function refreshSidebar() { updateSidebarChannels().catch(() => {}); }
+
+  // Mood (humeur du jour)
+  app.post('/api/admin/mood', (req, res) => {
+    const { mood } = req.body;
+    if (!MOODS.includes(mood)) return res.status(400).json({ ok: false, error: 'Humeur invalide' });
+    setDailyMood(mood, true);
+    refreshSidebar();
+    broadcast('adminUpdate', { type: 'mood', value: mood });
+    res.json({ ok: true, mood });
+  });
+
+  app.post('/api/admin/mood/reroll', (req, res) => {
+    // Force un nouveau roll en resettant la date
+    const { resetDailyMoodDate } = require('../bot/mood');
+    resetDailyMoodDate();
+    const newMood = refreshDailyMood();
+    refreshSidebar();
+    broadcast('adminUpdate', { type: 'mood', value: newMood });
+    res.json({ ok: true, mood: newMood });
+  });
+
+  // Slot (état courant)
+  app.post('/api/admin/slot', (req, res) => {
+    const { status } = req.body;
+    setForcedSlot(status || null);
+    refreshSidebar();
+    const slot = getCurrentSlot();
+    broadcast('adminUpdate', { type: 'slot', value: slot });
+    res.json({ ok: true, slot, forced: status || null });
+  });
+
+  // Energy / Internal state (sliders)
+  app.post('/api/admin/state', (req, res) => {
+    const { key, value } = req.body;
+    const valid = ['energy', 'socialNeed', 'calmNeed', 'stimulation', 'mentalLoad', 'recognitionNeed'];
+    if (!valid.includes(key)) return res.status(400).json({ ok: false, error: 'Clé invalide' });
+    const n = Math.max(0, Math.min(100, parseInt(value) || 0));
+    setInternalStateValue(key, n);
+    refreshSidebar();
+    broadcast('adminUpdate', { type: 'state', key, value: n });
+    res.json({ ok: true, key, value: n });
+  });
+
+  // TikTok override
+  app.post('/api/admin/tiktok', (req, res) => {
+    const { live } = req.body;
+    shared.tiktokLiveActive = live === true;
+    refreshSidebar();
+    broadcast('adminUpdate', { type: 'tiktok', value: shared.tiktokLiveActive });
+    res.json({ ok: true, tiktokLive: shared.tiktokLiveActive });
+  });
+
+  // Sidebar refresh manuel
+  app.post('/api/admin/sidebar/refresh', async (req, res) => {
+    try { await updateSidebarChannels(); res.json({ ok: true }); }
+    catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
 }
 
 module.exports = { registerRoutes };
