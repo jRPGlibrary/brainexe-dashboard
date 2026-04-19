@@ -37,11 +37,33 @@ function getParisDay() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' })).getDay();
 }
 
+let forcedSlotStatus = null;
+
+function getAllSlots() {
+  const seen = new Set();
+  const all = [];
+  [...WEEKDAY_SLOTS, ...SATURDAY_SLOTS, ...SUNDAY_SLOTS].forEach(s => {
+    if (!seen.has(s.status)) { seen.add(s.status); all.push(s); }
+  });
+  return all;
+}
+
 function getCurrentSlot() {
+  if (forcedSlotStatus) {
+    const all = [...WEEKDAY_SLOTS, ...SATURDAY_SLOTS, ...SUNDAY_SLOTS];
+    const found = all.find(s => s.status === forcedSlotStatus);
+    if (found) return found;
+  }
   const h = getParisHour(), d = getParisDay();
   const slots = d === 6 ? SATURDAY_SLOTS : d === 0 ? SUNDAY_SLOTS : WEEKDAY_SLOTS;
   return slots.find(s => h >= s.start && h < s.end) || slots[0];
 }
+
+function setForcedSlot(status) {
+  forcedSlotStatus = status || null;
+}
+
+function getForcedSlot() { return forcedSlotStatus; }
 
 function getRandomMode(slot) {
   const { CONV_MODES } = require('./persona');
@@ -69,4 +91,5 @@ module.exports = {
   WEEKDAY_SLOTS, SATURDAY_SLOTS, SUNDAY_SLOTS,
   getParisHour, getParisDay, getCurrentSlot,
   getRandomMode, getMentionDelayMs, getSlotIntervalMs,
+  setForcedSlot, getForcedSlot, getAllSlots,
 };

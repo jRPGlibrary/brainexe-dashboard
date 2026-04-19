@@ -50,4 +50,26 @@ function resetDailyMoodDate() {
 
 function getDailyMood() { return dailyMood; }
 
-module.exports = { MOODS, refreshDailyMood, getMoodInjection, resetDailyMoodDate, getDailyMood };
+function setDailyMood(mood, applySeed = true) {
+  if (!MOODS.includes(mood)) return false;
+  dailyMood = mood;
+  dailyMoodDate = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+  pushLog('SYS', `🎛️ Humeur forcée : ${mood}`, 'success');
+
+  if (applySeed) {
+    try {
+      const { setInternalStateValue } = require('./emotions');
+      const seeds = {
+        energique:  { energy: 78, socialNeed: 70, stimulation: 65, mentalLoad: 30 },
+        chill:      { energy: 55, socialNeed: 45, stimulation: 40, mentalLoad: 30, calmNeed: 55 },
+        hyperfocus: { energy: 70, socialNeed: 35, stimulation: 85, mentalLoad: 50, calmNeed: 25 },
+        zombie:     { energy: 28, socialNeed: 30, stimulation: 25, mentalLoad: 65, calmNeed: 70 },
+      };
+      const seed = seeds[mood] || {};
+      Object.entries(seed).forEach(([k, v]) => setInternalStateValue(k, v));
+    } catch (_) {}
+  }
+  return true;
+}
+
+module.exports = { MOODS, refreshDailyMood, getMoodInjection, resetDailyMoodDate, getDailyMood, setDailyMood };
