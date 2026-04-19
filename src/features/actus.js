@@ -11,26 +11,32 @@ const { saveConfig } = require('../botConfig');
 let actusCron = null;
 
 async function fetchGamingNews(topic, postedUrls = []) {
-  if (!GNEWS_API_KEY) return [];
+  if (!GNEWS_API_KEY) {
+    pushLog('ERR', `GNews : API key manquante`, 'error');
+    return [];
+  }
   const query = encodeURIComponent(`gaming ${topic}`);
   const from = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const base = `https://gnews.io/api/v4/search?q=${query}&max=10&sortby=publishedAt&from=${from}&apikey=${GNEWS_API_KEY}`;
   try {
     const resFr = await fetch(`${base}&lang=fr`);
-    if (!resFr.ok) throw new Error(`GNews ${resFr.status}`);
+    if (!resFr.ok) throw new Error(`GNews FR ${resFr.status}: ${resFr.statusText}`);
     const dataFr = await resFr.json();
-    const articles = (dataFr.articles || []).filter(a => !postedUrls.includes(a.url));
+    if (!dataFr.articles) throw new Error(`GNews réponse invalide (pas de articles)`);
+    const articles = dataFr.articles.filter(a => !postedUrls.includes(a.url));
     if (articles.length < 3) {
       const resEn = await fetch(`${base}&lang=en`);
       if (resEn.ok) {
         const dataEn = await resEn.json();
-        const extra = (dataEn.articles || []).filter(a => !postedUrls.includes(a.url) && !articles.find(b => b.url === a.url));
-        articles.push(...extra);
+        if (dataEn.articles) {
+          const extra = dataEn.articles.filter(a => !postedUrls.includes(a.url) && !articles.find(b => b.url === a.url));
+          articles.push(...extra);
+        }
       }
     }
     return articles;
   } catch (err) {
-    pushLog('ERR', `GNews échouée : ${err.message}`, 'error');
+    pushLog('ERR', `GNews échouée pour "${topic}" : ${err.message}`, 'error');
     return [];
   }
 }

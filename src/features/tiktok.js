@@ -99,7 +99,7 @@ function connectToTikTokLive() {
       pushLog('SYS', `📺 Live : "${title}"`, 'success');
       sendLiveStartEmbed(title, s.roomInfo?.userCount || 0);
     })
-    .catch(e => pushLog('ERR', `TikTok échoué : ${JSON.stringify(e)}`, 'error'));
+    .catch(e => pushLog('ERR', `TikTok erreur connexion : ${e.message || e.toString()}`, 'error'));
   conn.on('roomUser', d => { if ((d.viewerCount || 0) > liveStats.peakViewers) liveStats.peakViewers = d.viewerCount; });
   conn.on('like', d => { if (d.totalLikeCount) liveStats.totalLikes = d.totalLikeCount; });
   conn.on('gift', d => {
@@ -120,7 +120,7 @@ function connectToTikTokLive() {
   };
   conn.on('streamEnd', onEnd);
   conn.on('disconnected', onEnd);
-  conn.on('error', e => pushLog('ERR', `TikTok erreur : ${JSON.stringify(e)}`, 'error'));
+  conn.on('error', e => pushLog('ERR', `TikTok erreur : ${e.message || e.toString() || JSON.stringify(e)}`, 'error'));
 }
 
 function startTikTokLiveWatcher() {
