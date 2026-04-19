@@ -1,11 +1,12 @@
 const { YOUTUBE_API_KEY } = require('../config');
 const { callClaude } = require('./claude');
 const { pushLog } = require('../logger');
+const { sanitizeForJson } = require('../utils');
 
 async function extractYoutubeQuery(userMessage) {
   const q = await callClaude(
     'Tu extrais une requête YouTube optimale depuis un message Discord. Réponds UNIQUEMENT avec la requête, max 8 mots.',
-    `Message : "${userMessage}"\nQuelle est la meilleure requête YouTube ?`,
+    `Message : "${sanitizeForJson(userMessage)}"\nQuelle est la meilleure requête YouTube ?`,
     50
   );
   return q.replace(/["']/g, '').trim();

@@ -1,6 +1,7 @@
 const shared = require('../shared');
 const { pushLog } = require('../logger');
 const { callClaude } = require('../ai/claude');
+const { sanitizeForJson } = require('../utils');
 
 async function getChannelMemory(channelId) {
   if (!shared.mongoDb) return null;
@@ -32,7 +33,7 @@ async function enrichChannelMemory(channelId, channelName, channelTopic, recentC
 
     const analysis = await callClaude(
       'Tu analyses la mémoire conversationnelle d\'un salon Discord pour un bot nommé Brainee. Réponds UNIQUEMENT en JSON valide, sans balises markdown, sans texte autour.',
-      `Salon : ${channelName} (topic officiel : ${channelTopic})\n\nMémoire existante :\n${existingStr}\n\nContexte récent (derniers messages) :\n${recentContext.slice(0, 1500)}\n\nAnalyse et retourne un JSON avec ces champs :\n{\n  "toneProfile": "description courte du ton dominant dans ce salon",\n  "frequentThemes": ["thème1", "thème2", "thème3"],\n  "insideJokes": ["blague ou référence interne si détectée"],\n  "heatLevel": 1-10,\n  "offTopicTolerance": 1-10,\n  "lastSummary": "résumé en 1 phrase des sujets récents"\n}`,
+      `Salon : ${sanitizeForJson(channelName)} (topic officiel : ${sanitizeForJson(channelTopic)})\n\nMémoire existante :\n${existingStr}\n\nContexte récent (derniers messages) :\n${sanitizeForJson(recentContext.slice(0, 1500))}\n\nAnalyse et retourne un JSON avec ces champs :\n{\n  "toneProfile": "description courte du ton dominant dans ce salon",\n  "frequentThemes": ["thème1", "thème2", "thème3"],\n  "insideJokes": ["blague ou référence interne si détectée"],\n  "heatLevel": 1-10,\n  "offTopicTolerance": 1-10,\n  "lastSummary": "résumé en 1 phrase des sujets récents"\n}`,
       300
     );
 

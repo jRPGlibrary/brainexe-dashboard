@@ -8,6 +8,7 @@ const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { EmbedBuilder } = require('discord.js');
 const cron = require('node-cron');
 const { saveConfig } = require('../botConfig');
+const { sanitizeForJson } = require('../utils');
 
 let anecdoteCron = null;
 
@@ -15,7 +16,7 @@ async function generateAnecdote(ch) {
   const mood = refreshDailyMood();
   return callClaude(
     `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nTu génères des anecdotes gaming courtes, vraies, surprenantes.`,
-    `Anecdote gaming sur : ${ch.topic}. 2-3 phrases max. Direct. Fin : 🕹️ *[Jeu concerné]*`,
+    `Anecdote gaming sur : ${sanitizeForJson(ch.topic)}. 2-3 phrases max. Direct. Fin : 🕹️ *[Jeu concerné]*`,
     400,
     BOT_PERSONA
   );
@@ -44,7 +45,7 @@ async function postDailyAnecdote() {
       .setTimestamp();
     const sentMsg = await channel.send({ content: '**🧠 Le saviez-vous ?**', embeds: [embed] });
     try {
-      const tName = await callClaude('Génères un nom de fil Discord court (max 60 car, pas de guillemets, emoji gaming).', `Nom de fil pour : ${text.slice(0, 200)}`, 60);
+      const tName = await callClaude('Génères un nom de fil Discord court (max 60 car, pas de guillemets, emoji gaming).', `Nom de fil pour : ${sanitizeForJson(text.slice(0, 200))}`, 60);
       await sentMsg.startThread({ name: tName.replace(/"/g, '').trim().slice(0, 100), autoArchiveDuration: 1440, reason: 'Fil anecdote Brainee' });
       pushLog('SYS', `🧵 Fil anecdote créé`, 'success');
     } catch (_) {}

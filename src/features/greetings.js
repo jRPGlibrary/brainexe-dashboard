@@ -8,6 +8,7 @@ const { getParisDay } = require('../bot/scheduling');
 const { getDailyVibe, shouldTagPerson } = require('../bot/adaptiveSchedule');
 const { simulateTyping, resolveMentionsInText } = require('../bot/messaging');
 const { updateConvStats, getQuietestChannel } = require('./convStats');
+const { sanitizeForJson } = require('../utils');
 
 // Instructions injectées quand on ne veut pas de tag
 const NO_TAG_CLAUSE = `IMPORTANT : Ne tagge personne dans ce message — pas de @pseudo. Reste ambiant, personne n'a besoin d'être notifié.`;
@@ -53,7 +54,7 @@ async function postLunchBack() {
     const vibe = getDailyVibe();
     const content = await callClaude(
       `\nTu reviens de ta pause. Vibe : ${vibe.name}.\n${NO_TAG_CLAUSE}`,
-      `Retour de pause dans ${ch.topic}. 1-2 phrases. Décontracté. Pas de @ à quelqu'un.`,
+      `Retour de pause dans ${sanitizeForJson(ch.topic)}. 1-2 phrases. Décontracté. Pas de @ à quelqu'un.`,
       100,
       BOT_PERSONA
     );

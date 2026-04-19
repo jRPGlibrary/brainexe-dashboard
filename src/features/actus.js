@@ -7,6 +7,7 @@ const { BOT_PERSONA } = require('../bot/persona');
 const { EmbedBuilder } = require('discord.js');
 const cron = require('node-cron');
 const { saveConfig } = require('../botConfig');
+const { sanitizeForJson } = require('../utils');
 
 let actusCron = null;
 
@@ -65,7 +66,7 @@ async function postActuForChannel(ch) {
       ).join('\n\n');
       content = await callClaude(
         '\nTu résumes des actualités gaming récentes fournies. Inclus chaque lien en format Markdown [titre](url) dans le résumé.',
-        `Actus gaming ${month} pour : ${ch.topic}\n\n${newsContext}\n\n4-6 actus avec emojis. Style Brainee. Commence direct. Intègre les liens.`,
+        `Actus gaming ${month} pour : ${sanitizeForJson(ch.topic)}\n\n${newsContext}\n\n4-6 actus avec emojis. Style Brainee. Commence direct. Intègre les liens.`,
         900,
         BOT_PERSONA
       );
@@ -75,7 +76,7 @@ async function postActuForChannel(ch) {
       pushLog('SYS', `⚠️ GNews sans résultats pour ${ch.channelName} → fallback Claude`, 'warn');
       content = await callClaude(
         '\nTu résumes les actus gaming récentes.',
-        `Récap actus pour : ${ch.topic}. 4-6 actus avec emojis. Ton Brainee. Commence direct.`,
+        `Récap actus pour : ${sanitizeForJson(ch.topic)}. 4-6 actus avec emojis. Ton Brainee. Commence direct.`,
         600,
         BOT_PERSONA
       );
