@@ -23,7 +23,9 @@ async function ensureSupportChannel() {
         topic: CHANNEL_DESCRIPTION,
         reason: 'Auto-création du salon de soutien Brainee',
       });
-      pushLog('SYS', `Salon "${CHANNEL_NAME}" créé`, 'success');
+      pushLog('SYS', `Salon "${CHANNEL_NAME}" créé ✓`, 'success');
+    } else {
+      pushLog('SYS', `Salon "${CHANNEL_NAME}" trouvé`, 'info');
     }
 
     await postSupportEmbed(channel);
@@ -34,9 +36,18 @@ async function ensureSupportChannel() {
 
 async function postSupportEmbed(channel) {
   try {
-    if (!channel) return;
-    const messages = await channel.messages.fetch({ limit: 10 });
-    if (messages.size > 0) return;
+    if (!channel) {
+      pushLog('ERR', 'Channel est null, impossible de poster l\'embed', 'error');
+      return;
+    }
+
+    const messages = await channel.messages.fetch({ limit: 5 });
+    const hasEmbed = messages.some(m => m.embeds?.length > 0);
+
+    if (hasEmbed) {
+      pushLog('SYS', 'Embed soutien déjà présent', 'info');
+      return;
+    }
 
     const embed = new EmbedBuilder()
       .setColor(0xff6b9d)
@@ -68,7 +79,7 @@ async function postSupportEmbed(channel) {
       .setTimestamp();
 
     await channel.send({ embeds: [embed] });
-    pushLog('SYS', 'Embed soutien posté', 'success');
+    pushLog('SYS', 'Embed soutien posté ✓', 'success');
   } catch (e) {
     pushLog('ERR', `Post support embed error: ${e.message}`, 'error');
   }
