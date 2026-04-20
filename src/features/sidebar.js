@@ -6,9 +6,10 @@ const { getDailyMood } = require('../bot/mood');
 const { getInternalState } = require('../bot/emotions');
 const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const cron = require('node-cron');
+const { getFundingData, calculateTotalCosts } = require('../project/funding');
 
 const CATEGORY_NAME = '📊 SYSTÈME BRAINEXE';
-const SIDEBAR_KEYS = ['members', 'status', 'mood', 'activity', 'tiktok'];
+const SIDEBAR_KEYS = ['members', 'status', 'mood', 'activity', 'tiktok', 'funding'];
 
 let sidebarCategoryId = null;
 let sidebarChannelIds = {};
@@ -26,16 +27,28 @@ function getMoodLabel(mood) {
   return map[mood] || mood;
 }
 
-function getSidebarLines(guild) {
+async function getSidebarLines(guild) {
   const slot = getCurrentSlot();
   const mood = getDailyMood();
   const state = getInternalState();
+
+  let fundingLine = '💰┃Soutien : —';
+  try {
+    const data = await getFundingData();
+    const totalCosts = calculateTotalCosts(data);
+    const donated = data.totalDonated || 0;
+    fundingLine = `💰┃Soutien : ${donated.toFixed(1)}€/${totalCosts.toFixed(1)}€`;
+  } catch (e) {
+    pushLog('ERR', `Sidebar funding line: ${e.message}`, 'error');
+  }
+
   return {
     members:  `👥┃Membres : ${guild.memberCount || 0}`,
     status:   `🧠┃État : ${slot.label}`,
     mood:     `⚡┃Humeur : ${getMoodLabel(mood)}`,
     activity: `🔥┃Activité : ${getEnergyLabel(state.energy || 50)}`,
     tiktok:   `📱┃TikTok : ${shared.tiktokLiveActive ? 'LIVE 🔴' : 'Offline'}`,
+    funding:  fundingLine,
   };
 }
 
@@ -104,7 +117,7 @@ async function ensureSidebarVoiceChannels(guild, category) {
     });
     sidebarChannelIds[key] = ch.id;
   }
-  pushLog('SYS', '📊 Sidebar : 5 canaux vocaux créés', 'success');
+  pushLog('SYS', `📊 Sidebar : ${SIDEBAR_KEYS.length} canaux vocaux créés`, 'success');
 }
 
 async function updateSidebarChannels() {
@@ -117,7 +130,7 @@ async function updateSidebarChannels() {
     const category = await ensureSidebarCategory(guild);
     await ensureSidebarVoiceChannels(guild, category);
 
-    const lines = getSidebarLines(guild);
+    const lines = await getSidebarLines(guild);
 
     for (const key of SIDEBAR_KEYS) {
       const id = sidebarChannelIds[key];
