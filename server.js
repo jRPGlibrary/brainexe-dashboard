@@ -69,6 +69,7 @@ const { getCurrentSlot } = require('./src/bot/scheduling');
 const { getDailyVibe } = require('./src/bot/adaptiveSchedule');
 const { registerRoutes } = require('./src/api/routes');
 const { getFundingData, calculateTotalCosts, updateBotStatus } = require('./src/project/funding');
+const { ensureSupportChannel } = require('./src/features/supportChannel');
 
 // ── API ROUTES ────────────────────────────────────────────────
 registerRoutes(app);
@@ -117,6 +118,7 @@ discord.once('ready', async () => {
       const data = await getFundingData();
       const totalCosts = calculateTotalCosts(data);
       updateBotStatus(data.totalDonated || 0, totalCosts);
+      await ensureSupportChannel();
     } catch (e) {
       pushLog('ERR', `Funding status init : ${e.message}`, 'error');
     }
