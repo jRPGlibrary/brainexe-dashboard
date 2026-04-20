@@ -115,14 +115,18 @@ discord.once('ready', async () => {
 
   setTimeout(async () => {
     try {
+      pushLog('SYS', 'Initialisation soutien Brainee...', 'info');
       const data = await getFundingData();
       const totalCosts = calculateTotalCosts(data);
+      pushLog('SYS', `Coûts: ${totalCosts}€ | Collecté: ${data.totalDonated || 0}€`, 'info');
       await updateBotStatus(data.totalDonated || 0, totalCosts);
+      pushLog('SYS', 'Status Discord mis à jour ✓', 'success');
       await ensureSupportChannel();
+      pushLog('SYS', 'Salon de soutien prêt ✓', 'success');
     } catch (e) {
-      pushLog('ERR', `Funding status init : ${e.message}`, 'error');
+      pushLog('ERR', `Soutien Brainee init : ${e.message}`, 'error');
     }
-  }, 3000);
+  }, 5000);
 
   setTimeout(async () => {
     await checkAnecdoteMissed();
