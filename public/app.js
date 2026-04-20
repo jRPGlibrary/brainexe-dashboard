@@ -10,6 +10,7 @@ const state = {
   config: null,
   admin: null,
   autoRole: '',
+  funding: null,
   ws: null,
   wsConnected: false,
   currentSection: 'overview',
@@ -144,6 +145,11 @@ function handleWS(msg) {
       refreshTopbar();
       if (state.currentSection === 'admin') renderAdmin();
       break;
+    case 'fundingUpdate':
+      state.funding = msg.data;
+      refreshTopbar();
+      if (state.currentSection === 'funding') renderFunding();
+      break;
   }
 }
 
@@ -164,6 +170,10 @@ function refreshTopbar() {
   document.getElementById('member-count').textContent = typeof count === 'number' ? count.toLocaleString('fr-FR') : count;
   document.getElementById('slot-label').textContent = a.slot?.label || '—';
   document.getElementById('mood-label').textContent = a.mood ? `${moodEmoji(a.mood)} ${a.mood}` : '—';
+  const f = state.funding || {};
+  const donated = f.totalDonated ?? 0;
+  const total = f.totalCosts ?? 0;
+  document.getElementById('funding-label').textContent = `${donated.toFixed(1)}€ / ${total.toFixed(1)}€`;
 }
 
 // ───────── NAVIGATION ─────────
@@ -186,6 +196,7 @@ function navigate(section) {
     posts:    ['📝 Posts manuels', 'Envoyer un message dans un salon'],
     backups:  ['💾 Backups', 'Snapshots de configuration'],
     settings: ['⚙️ Paramètres', 'Configuration générale'],
+    funding:  ['💰 Soutien Projet', 'Chaque contribution aide Brainee à grandir'],
   };
   const [title, sub] = titles[section] || [section, ''];
   document.getElementById('page-title').textContent = title;
@@ -199,6 +210,7 @@ function renderCurrentSection() {
     logs: renderLogs, channels: renderChannels, roles: renderRoles,
     members: renderMembers, automations: renderAutomations,
     posts: renderPosts, backups: renderBackups, settings: renderSettings,
+    funding: renderFunding,
   };
   const fn = map[state.currentSection];
   if (fn) fn();
@@ -481,6 +493,20 @@ function renderAdmin() {
       </div>
       ${renderDiscordPreview(a)}
     </div>
+
+    <div class="card mb-3">
+      <div class="card-header">
+        <div>
+          <div class="card-title">💰 Enregistrer une contribution</div>
+          <div class="card-subtitle">Ajouter une donation au total du mois</div>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">Montant (€)</label>
+        <input type="number" id="donation-amount" class="input" placeholder="10.00" min="0.01" step="0.01">
+      </div>
+      <button class="btn btn-block" onclick="addDonation()">✓ Enregistrer</button>
+    </div>
   `;
 }
 
@@ -524,6 +550,23 @@ async function refreshSidebarNow() {
     await api('/api/admin/sidebar/refresh', { method: 'POST' });
     toast('Sidebar Discord rafraîchie', 'success');
   } catch {}
+}
+async function addDonation() {
+  const input = document.getElementById('donation-amount');
+  const amount = parseFloat(input?.value || '0');
+  if (!amount || amount <= 0) {
+    toast('Montant invalide', 'error');
+    return;
+  }
+  try {
+    await api('/api/project/donation', { method: 'POST', body: { amount } });
+    toast(`${amount}€ enregistrés ✓`, 'success');
+    input.value = '';
+    await loadFunding();
+    renderAdmin();
+  } catch (e) {
+    toast(e.message || 'Erreur', 'error');
+  }
 }
 
 async function loadAdmin() {
@@ -1032,6 +1075,88 @@ function openCreateRole() {
   });
 }
 
+// ───────── FUNDING ─────────
+async function loadFunding() {
+  try {
+    const data = await api('/api/project/funding');
+    state.funding = data;
+    refreshTopbar();
+  } catch (e) {
+    console.error('Funding load error:', e);
+  }
+}
+
+function renderFunding() {
+  const sec = document.getElementById('section-funding');
+  const f = state.funding || {};
+  const donated = f.totalDonated ?? 0;
+  const total = f.totalCosts ?? 0;
+  const percent = total > 0 ? Math.min(100, (donated / total) * 100) : 0;
+
+  sec.innerHTML = `
+    <div class="card">
+      <h3>💰 Soutien du projet</h3>
+      <p style="color:var(--text-2);margin-top:8px;line-height:1.6">
+        Brainee a besoin de serveurs, d'API, et de stockage pour fonctionner.
+        Chaque euro collecté aide à couvrir ces frais et à faire grandir le projet.
+      </p>
+
+      <div style="margin-top:32px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+          <span style="font-weight:600">Progression ce mois</span>
+          <span style="color:var(--accent)">${donated.toFixed(2)}€ / ${total.toFixed(2)}€</span>
+        </div>
+        <div style="background:var(--surface-hover);border-radius:8px;height:20px;overflow:hidden">
+          <div style="background:var(--accent);height:100%;width:${percent}%;transition:width 0.3s"></div>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--text-3)">
+          ${percent.toFixed(0)}% · ${(total - donated).toFixed(2)}€ restant cette mois
+        </div>
+      </div>
+
+      <div style="margin-top:32px;padding:20px;background:var(--accent-bg);border-radius:12px;border-left:4px solid var(--accent)">
+        <div style="font-weight:600;margin-bottom:12px">🎁 Tu veux contribuer ?</div>
+        <p style="color:var(--text-2);margin-bottom:12px">
+          Les contributions se font sans engagement, de manière libre et directe via PayPal.
+        </p>
+        <a href="https://paypal.me/MatthieuMAUBERNARD" target="_blank" style="
+          display:inline-flex;
+          align-items:center;
+          gap:8px;
+          padding:10px 16px;
+          background:var(--accent);
+          color:white;
+          border-radius:6px;
+          font-weight:600;
+          text-decoration:none;
+        ">
+          💳 Soutenir via PayPal
+        </a>
+      </div>
+
+      <div style="margin-top:32px;padding:20px;background:var(--surface-active);border-radius:12px">
+        <div style="font-weight:600;margin-bottom:16px">📊 Détail des coûts</div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span>Serveur</span>
+          <span>${(f.costs?.server || 0).toFixed(2)}€</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span>API Claude</span>
+          <span>${(f.costs?.claude || 0).toFixed(2)}€</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span>Stockage</span>
+          <span>${(f.costs?.storage || 0).toFixed(2)}€</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:600;color:var(--accent)">
+          <span>Total</span>
+          <span>${total.toFixed(2)}€</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // ───────── BOOT ─────────
 async function boot() {
   theme.init();
@@ -1049,18 +1174,20 @@ async function boot() {
   connectWS();
 
   try {
-    const [stateRes, cfgRes, logsRes, autoRes, adminRes] = await Promise.all([
+    const [stateRes, cfgRes, logsRes, autoRes, adminRes, fundingRes] = await Promise.all([
       fetch('/api/state').then(r => r.json()).catch(() => ({})),
       fetch('/api/config').then(r => r.json()).catch(() => ({})),
       fetch('/api/logs').then(r => r.json()).catch(() => ({})),
       fetch('/api/autorole').then(r => r.json()).catch(() => ({})),
       fetch('/api/admin/status').then(r => r.json()).catch(() => ({})),
+      fetch('/api/project/funding').then(r => r.json()).catch(() => ({})),
     ]);
     if (stateRes.ok) { state.guild = stateRes.state; state.stats = stateRes.stats; }
     if (cfgRes.ok) state.config = cfgRes.config;
     if (logsRes.ok) state.logs = logsRes.logs || [];
     if (autoRes.ok) state.autoRole = autoRes.roleName || '';
     if (adminRes.ok) state.admin = adminRes;
+    if (fundingRes.ok) state.funding = fundingRes;
   } catch (err) {
     console.error('Boot error:', err);
   }
