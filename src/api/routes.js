@@ -251,7 +251,7 @@ function registerRoutes(app) {
         remaining: Math.max(0, totalCosts - (updated.totalDonated || 0)),
       };
       broadcast('fundingUpdate', response);
-      updateBotStatus(response.totalDonated, totalCosts);
+      updateBotStatus(response.totalDonated, totalCosts).catch(() => {});
       res.json(response);
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

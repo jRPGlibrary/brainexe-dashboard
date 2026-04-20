@@ -7,10 +7,14 @@ function getCurrentMonth() {
 }
 
 // Mettre à jour le statut Discord du bot
-function updateBotStatus(totalDonated, totalCosts) {
+async function updateBotStatus(totalDonated, totalCosts) {
   if (!shared.discord || !shared.discord.user) return;
-  const status = `💰 ${totalDonated.toFixed(1)}€/${totalCosts.toFixed(1)}€`;
-  shared.discord.user.setActivity(status, { type: 'CUSTOM' }).catch(() => {});
+  try {
+    const status = `💰 ${totalDonated.toFixed(1)}€/${totalCosts.toFixed(1)}€`;
+    await shared.discord.user.setActivity(status, { type: 'CUSTOM' });
+  } catch (e) {
+    console.error('updateBotStatus error:', e.message);
+  }
 }
 
 // Obtenir ou créer le document de financement du mois courant
