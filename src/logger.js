@@ -10,12 +10,13 @@ function broadcast(type, data) {
 }
 
 function pushLog(dir, msg, level = 'info') {
-  const time = new Date().toLocaleTimeString('fr-FR');
-  const entry = { time, dir, msg, level };
+  const ts = Date.now();
+  const entry = { ts, time: new Date(ts).toISOString(), dir, type: dir, msg, level };
   shared.changeLog.push(entry);
-  if (shared.changeLog.length > 200) shared.changeLog.shift();
-  broadcast('log', entry);
-  console.log(`[${time}] [${dir}] ${msg}`);
+  if (shared.changeLog.length > 300) shared.changeLog.shift();
+  broadcast('logUpdate', entry);
+  const timeStr = new Date(ts).toLocaleTimeString('fr-FR');
+  console.log(`[${timeStr}] [${dir}] ${msg}`);
 }
 
 module.exports = { broadcast, pushLog };

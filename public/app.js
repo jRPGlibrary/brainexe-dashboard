@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════
-   BRAINEXE DASHBOARD v2.2.0 — Live Admin Panel
+   BRAINEXE DASHBOARD v2.3.0 — Full Dashboard Refresh
    Toute modification → appliquée instantanément
    ═══════════════════════════════════════════════════ */
 
@@ -101,9 +101,20 @@ function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${proto}://${location.host}`);
   state.ws = ws;
+  state.wsReconnecting = false;
 
-  ws.onopen = () => { state.wsConnected = true; updateWsPill(); };
-  ws.onclose = () => { state.wsConnected = false; updateWsPill(); setTimeout(connectWS, 3000); };
+  ws.onopen = () => {
+    state.wsConnected = true;
+    state.wsReconnecting = false;
+    state.wsLastConnected = Date.now();
+    updateWsPill();
+  };
+  ws.onclose = () => {
+    state.wsConnected = false;
+    state.wsReconnecting = true;
+    updateWsPill();
+    setTimeout(connectWS, 3000);
+  };
   ws.onmessage = (ev) => {
     try { handleWS(JSON.parse(ev.data)); } catch {}
   };
@@ -156,10 +167,17 @@ function handleWS(msg) {
 function updateWsPill() {
   const pill = document.getElementById('ws-pill');
   if (state.wsConnected) {
+    const since = state.wsLastConnected ? new Date(state.wsLastConnected).toLocaleTimeString('fr-FR') : '';
     pill.className = 'pill online';
+    pill.title = since ? `Connecté depuis ${since}` : 'Connecté';
     pill.innerHTML = '<span class="dot"></span>Connecté';
+  } else if (state.wsReconnecting) {
+    pill.className = 'pill connecting';
+    pill.title = 'Reconnexion en cours…';
+    pill.innerHTML = '<span class="dot"></span>Reconnexion…';
   } else {
     pill.className = 'pill offline';
+    pill.title = 'Déconnecté';
     pill.innerHTML = '<span class="dot"></span>Déconnecté';
   }
 }
@@ -196,7 +214,12 @@ function navigate(section) {
     posts:    ['📝 Posts manuels', 'Envoyer un message dans un salon'],
     backups:  ['💾 Backups', 'Snapshots de configuration'],
     settings: ['⚙️ Paramètres', 'Configuration générale'],
-    funding:  ['💰 Soutien Projet', 'Chaque contribution aide Brainee à grandir'],
+    funding:   ['💰 Soutien Projet', 'Chaque contribution aide Brainee à grandir'],
+    health:    ['❤️ Santé système', 'Discord · MongoDB · Claude · Mémoire'],
+    emotions:  ['💗 Émotions', 'État émotionnel live de Brainee'],
+    bonds:     ['💞 Relations', 'Liens affectifs avec les membres'],
+    schedule:  ['🗓️ Planning', 'Grille horaire hebdomadaire du bot'],
+    audit:     ['📖 Historique', 'Actions admin effectuées depuis le dashboard'],
   };
   const [title, sub] = titles[section] || [section, ''];
   document.getElementById('page-title').textContent = title;
@@ -210,7 +233,8 @@ function renderCurrentSection() {
     logs: renderLogs, channels: renderChannels, roles: renderRoles,
     members: renderMembers, automations: renderAutomations,
     posts: renderPosts, backups: renderBackups, settings: renderSettings,
-    funding: renderFunding,
+    funding: renderFunding, health: renderHealth, emotions: renderEmotions,
+    bonds: renderBonds, schedule: renderSchedule, audit: renderAudit,
   };
   const fn = map[state.currentSection];
   if (fn) fn();
@@ -346,13 +370,21 @@ function renderDiscordPreview(a) {
   `;
 }
 
-function renderLogEntries(logs) {
+function renderLogEntries(logs, filter = '', typeFilter = '') {
   if (!logs.length) return '<div class="empty">Aucun événement</div>';
-  return logs.map(l => {
-    const t = l.time ? new Date(l.time).toLocaleTimeString('fr-FR') : '--:--:--';
+  const filterLow = filter.toLowerCase();
+  const filtered = logs.filter(l => {
+    if (typeFilter && (l.dir || l.type) !== typeFilter) return false;
+    if (filterLow && !String(l.msg || '').toLowerCase().includes(filterLow)) return false;
+    return true;
+  });
+  if (!filtered.length) return '<div class="log-empty-filtered">Aucun résultat pour ce filtre</div>';
+  return filtered.map(l => {
+    const t = l.ts ? new Date(l.ts).toLocaleTimeString('fr-FR') : (l.time ? l.time.slice(11, 19) : '--:--:--');
+    const dirClass = l.dir || l.type || '';
     return `<div class="log-entry">
       <span class="log-time">${t}</span>
-      <span class="log-type ${l.type || ''}">${l.type || '—'}</span>
+      <span class="log-type ${dirClass}">${dirClass || '—'}</span>
       <span class="log-msg">${escapeHtml(l.msg || '')}</span>
     </div>`;
   }).join('');
@@ -581,6 +613,10 @@ async function loadAdmin() {
 }
 
 // ───────── LOGS ─────────
+const LOG_TYPES = ['SYS', 'ERR', 'D2F', 'F2D', 'API', 'JOIN'];
+let _logFilter = '';
+let _logTypeFilter = '';
+
 function renderLogs() {
   const sec = document.getElementById('section-logs');
   sec.innerHTML = `
@@ -588,15 +624,30 @@ function renderLogs() {
       <div class="card-header">
         <div>
           <div class="card-title">Logs en direct</div>
-          <div class="card-subtitle">${state.logs.length} événements</div>
+          <div class="card-subtitle" id="logs-count">${state.logs.length} événements</div>
         </div>
-        <button class="btn btn-sm btn-ghost" onclick="state.logs = []; renderLogs()">🗑 Vider (local)</button>
+        <button class="btn btn-sm btn-ghost" onclick="state.logs = []; renderLogsStream()">🗑 Vider (local)</button>
       </div>
-      <div class="log-stream">
-        ${renderLogEntries([...state.logs].reverse())}
+      <div class="filter-bar">
+        <input class="input search" placeholder="Rechercher…" value="${escapeHtml(_logFilter)}"
+          oninput="_logFilter=this.value; renderLogsStream()">
+        <select class="select" onchange="_logTypeFilter=this.value; renderLogsStream()">
+          <option value="">Tous les types</option>
+          ${LOG_TYPES.map(t => `<option value="${t}" ${_logTypeFilter === t ? 'selected' : ''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="log-stream" id="logs-stream">
+        ${renderLogEntries([...state.logs].reverse(), _logFilter, _logTypeFilter)}
       </div>
     </div>
   `;
+}
+
+function renderLogsStream() {
+  const el = document.getElementById('logs-stream');
+  if (el) el.innerHTML = renderLogEntries([...state.logs].reverse(), _logFilter, _logTypeFilter);
+  const count = document.getElementById('logs-count');
+  if (count) count.textContent = `${state.logs.length} événements`;
 }
 
 // ───────── CHANNELS ─────────
@@ -672,6 +723,10 @@ function renderRoles() {
 }
 
 // ───────── MEMBERS ─────────
+let _membersData = [];
+let _memberSearch = '';
+let _memberSort = 'name';
+
 function renderMembers() {
   const sec = document.getElementById('section-members');
   sec.innerHTML = `
@@ -682,34 +737,63 @@ function renderMembers() {
           <div class="card-subtitle" id="members-count">Chargement…</div>
         </div>
       </div>
+      <div class="filter-bar">
+        <input class="input search" placeholder="Rechercher un membre…" value="${escapeHtml(_memberSearch)}"
+          oninput="_memberSearch=this.value; renderMembersList()">
+        <select class="select" onchange="_memberSort=this.value; renderMembersList()">
+          <option value="name" ${_memberSort==='name'?'selected':''}>Nom A→Z</option>
+          <option value="join_asc" ${_memberSort==='join_asc'?'selected':''}>Rejoint (ancien)</option>
+          <option value="join_desc" ${_memberSort==='join_desc'?'selected':''}>Rejoint (récent)</option>
+          <option value="bots_last" ${_memberSort==='bots_last'?'selected':''}>Bots en dernier</option>
+        </select>
+      </div>
       <div id="members-list" class="empty">Chargement…</div>
     </div>
   `;
   loadMembers();
 }
+
+function renderMembersList() {
+  const el = document.getElementById('members-list');
+  if (!el || !_membersData.length) return;
+  const searchLow = _memberSearch.toLowerCase();
+  let list = _membersData.filter(m =>
+    !searchLow || (m.displayName || m.username || '').toLowerCase().includes(searchLow)
+  );
+  list = list.slice().sort((a, b) => {
+    if (_memberSort === 'name') return (a.displayName || a.username || '').localeCompare(b.displayName || b.username || '');
+    if (_memberSort === 'join_asc') return (a.joinedAt || 0) > (b.joinedAt || 0) ? 1 : -1;
+    if (_memberSort === 'join_desc') return (a.joinedAt || 0) < (b.joinedAt || 0) ? 1 : -1;
+    if (_memberSort === 'bots_last') return (a.bot ? 1 : 0) - (b.bot ? 1 : 0);
+    return 0;
+  });
+  if (!list.length) { el.innerHTML = '<div class="empty">Aucun résultat</div>'; return; }
+  const shown = list.slice(0, 100);
+  el.innerHTML = `
+    <table class="table">
+      <thead><tr><th>Utilisateur</th><th>Rôles</th><th>Rejoint</th><th></th></tr></thead>
+      <tbody>
+        ${shown.map(m => `
+          <tr>
+            <td>${m.bot ? '🤖 ' : ''}${escapeHtml(m.displayName || m.username || m.id)}</td>
+            <td>${(m.roles || []).slice(0, 3).map(r => `<span class="badge">${escapeHtml(r)}</span>`).join(' ')}</td>
+            <td class="text-muted text-sm">${m.joinedAt ? new Date(m.joinedAt).toLocaleDateString('fr-FR') : '—'}</td>
+            <td></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    ${list.length > 100 ? `<div class="empty">… et ${list.length - 100} autres membres</div>` : ''}
+  `;
+  const count = document.getElementById('members-count');
+  if (count) count.textContent = `${list.length} / ${_membersData.length} membres`;
+}
+
 async function loadMembers() {
   try {
     const res = await api('/api/members');
-    const list = document.getElementById('members-list');
-    const members = res.members || [];
-    document.getElementById('members-count').textContent = `${members.length} membres`;
-    if (!members.length) { list.innerHTML = '<div class="empty">Aucun membre</div>'; return; }
-    list.innerHTML = `
-      <table class="table">
-        <thead><tr><th>Utilisateur</th><th>Rôles</th><th>Rejoint</th><th></th></tr></thead>
-        <tbody>
-          ${members.slice(0, 100).map(m => `
-            <tr>
-              <td>${escapeHtml(m.displayName || m.username || m.id)}</td>
-              <td>${(m.roles || []).slice(0, 3).map(r => `<span class="badge">${escapeHtml(r)}</span>`).join(' ')}</td>
-              <td class="text-muted text-sm">${m.joinedAt ? new Date(m.joinedAt).toLocaleDateString('fr-FR') : '—'}</td>
-              <td class="text-right text-muted text-sm">${m.bot ? '🤖' : ''}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      ${members.length > 100 ? `<div class="empty">… et ${members.length - 100} autres</div>` : ''}
-    `;
+    _membersData = res.members || [];
+    renderMembersList();
   } catch {}
 }
 
@@ -781,39 +865,75 @@ function renderPosts() {
     });
   });
   sec.innerHTML = `
-    <div class="card" style="max-width:680px">
-      <div class="card-header">
-        <div>
-          <div class="card-title">📝 Poster un message</div>
-          <div class="card-subtitle">Texte simple ou embed</div>
+    <div class="grid-2" style="max-width:960px">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">📝 Poster un message</div>
+            <div class="card-subtitle">Texte simple ou embed</div>
+          </div>
         </div>
-      </div>
-      <div class="field">
-        <div class="field-label">Salon cible</div>
-        <select class="select" id="post-channel">${options.join('')}</select>
-      </div>
-      <div class="field">
-        <div class="field-label">Format</div>
-        <div class="chip-group" id="post-format">
-          <button class="chip active" data-fmt="text" onclick="switchPostFormat('text')">Texte</button>
-          <button class="chip" data-fmt="embed" onclick="switchPostFormat('embed')">Embed</button>
+        <div class="field">
+          <div class="field-label">Salon cible</div>
+          <select class="select" id="post-channel">${options.join('')}</select>
         </div>
+        <div class="field">
+          <div class="field-label">Format</div>
+          <div class="chip-group" id="post-format">
+            <button class="chip active" data-fmt="text" onclick="switchPostFormat('text')">Texte</button>
+            <button class="chip" data-fmt="embed" onclick="switchPostFormat('embed')">Embed</button>
+          </div>
+        </div>
+        <div class="field hidden" id="post-title-field">
+          <div class="field-label">Titre (embed)</div>
+          <input class="input" id="post-title" placeholder="Titre de l'embed" oninput="updatePostPreview()">
+        </div>
+        <div class="field">
+          <div class="field-label">Contenu</div>
+          <textarea class="textarea" id="post-content" placeholder="Ton message…" oninput="updatePostPreview()"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="sendPost()">📤 Envoyer</button>
       </div>
-      <div class="field hidden" id="post-title-field">
-        <div class="field-label">Titre (embed)</div>
-        <input class="input" id="post-title" placeholder="Titre de l'embed">
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">👁️ Aperçu</div>
+            <div class="card-subtitle">Rendu Discord</div>
+          </div>
+        </div>
+        <div id="post-preview"><div class="empty text-sm">Tape un message pour voir l'aperçu</div></div>
       </div>
-      <div class="field">
-        <div class="field-label">Contenu</div>
-        <textarea class="textarea" id="post-content" placeholder="Ton message…"></textarea>
-      </div>
-      <button class="btn btn-primary btn-block" onclick="sendPost()">📤 Envoyer</button>
     </div>
   `;
 }
+
 function switchPostFormat(fmt) {
   document.querySelectorAll('#post-format .chip').forEach(c => c.classList.toggle('active', c.dataset.fmt === fmt));
   document.getElementById('post-title-field').classList.toggle('hidden', fmt !== 'embed');
+  updatePostPreview();
+}
+
+function updatePostPreview() {
+  const preview = document.getElementById('post-preview');
+  if (!preview) return;
+  const content = document.getElementById('post-content')?.value || '';
+  const fmt = document.querySelector('#post-format .chip.active')?.dataset.fmt;
+  const title = document.getElementById('post-title')?.value || '';
+  if (!content.trim()) {
+    preview.innerHTML = '<div class="empty text-sm">Tape un message pour voir l\'aperçu</div>';
+    return;
+  }
+  if (fmt === 'embed') {
+    preview.innerHTML = `
+      <div class="embed-preview">
+        ${title ? `<div class="ep-title">${escapeHtml(title)}</div>` : ''}
+        <div class="ep-desc">${escapeHtml(content)}</div>
+        <div class="ep-footer">BrainEXE · Aujourd'hui</div>
+      </div>`;
+  } else {
+    preview.innerHTML = `<div class="plain-preview">${escapeHtml(content)}</div>`;
+  }
 }
 async function sendPost() {
   const channelId = document.getElementById('post-channel').value;
@@ -853,19 +973,39 @@ async function loadBackups() {
     if (!files.length) { list.innerHTML = '<div class="empty">Aucun backup</div>'; return; }
     list.innerHTML = `
       <table class="table">
-        <thead><tr><th>Fichier</th><th>Taille</th><th>Date</th></tr></thead>
+        <thead><tr><th>Fichier</th><th>Taille</th><th>Date</th><th></th></tr></thead>
         <tbody>
           ${files.map(f => `
             <tr>
               <td style="font-family:monospace;font-size:12px">${escapeHtml(f.name || f)}</td>
               <td class="text-muted text-sm">${f.size ? (f.size / 1024).toFixed(1) + ' KB' : '—'}</td>
-              <td class="text-muted text-sm">${f.date || (f.mtime ? new Date(f.mtime).toLocaleString('fr-FR') : '—')}</td>
+              <td class="text-muted text-sm">${f.date || '—'}</td>
+              <td class="text-right" style="white-space:nowrap">
+                <a class="btn btn-sm btn-ghost" href="/api/backups/${encodeURIComponent(f.name)}/download" download title="Télécharger">⬇</a>
+                <button class="btn btn-sm btn-ghost" onclick="restoreBackupConfig('${escapeHtml(f.name)}')" title="Restaurer config">↩</button>
+                <button class="btn btn-sm btn-ghost" onclick="deleteBackup('${escapeHtml(f.name)}')" title="Supprimer" style="color:var(--danger)">🗑</button>
+              </td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     `;
   } catch {}
+}
+
+async function deleteBackup(name) {
+  confirmAction(`Supprimer ${name}`, `Ce fichier de backup sera supprimé définitivement.`, async () => {
+    await api(`/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    toast('Backup supprimé', 'success');
+    loadBackups();
+  }, { danger: true });
+}
+
+async function restoreBackupConfig(name) {
+  confirmAction(`Restaurer config depuis ${name}`, `Les sections botConfig de ce backup seront appliquées. La structure Discord ne sera pas modifiée.`, async () => {
+    const res = await api(`/api/backups/${encodeURIComponent(name)}/restore-config`, { method: 'POST' });
+    toast(`Config restaurée — ${res.sections} sections appliquées`, 'success');
+  });
 }
 async function createBackup() {
   try {
@@ -925,8 +1065,8 @@ function renderSettings() {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">ℹ️ BrainEXE v2.2.0</div>
-            <div class="card-subtitle">Live Admin Panel</div>
+            <div class="card-title">ℹ️ BrainEXE v2.3.0</div>
+            <div class="card-subtitle">Full Dashboard Refresh</div>
           </div>
         </div>
         <div class="text-sm text-muted flex flex-col gap-1">
@@ -960,24 +1100,31 @@ async function action(endpoint) {
 }
 
 async function deleteChannel(id, name) {
-  if (!confirm(`Supprimer #${name} ?`)) return;
-  try {
+  confirmAction(`Supprimer #${name}`, `Le salon #${name} sera supprimé définitivement de Discord.`, async () => {
     await api(`/api/channels/${id}`, { method: 'DELETE' });
     toast('Salon supprimé', 'success');
-  } catch {}
+  }, { danger: true });
 }
 
 async function deleteRole(id, name) {
-  if (!confirm(`Supprimer le rôle "${name}" ?`)) return;
-  try {
+  confirmAction(`Supprimer le rôle "${name}"`, `Le rôle "${name}" sera supprimé définitivement de Discord.`, async () => {
     await api(`/api/roles/${id}`, { method: 'DELETE' });
     toast('Rôle supprimé', 'success');
-  } catch {}
+  }, { danger: true });
 }
 
 // ───────── MODAL ─────────
-function openModal(title, body, onConfirm) {
+function confirmAction(title, message, onConfirm, { danger = false } = {}) {
+  const body = `
+    <p class="confirm-msg">${escapeHtml(message)}</p>
+    ${danger ? `<div class="confirm-warn">⚠️ Cette action est irréversible.</div>` : ''}
+  `;
+  openModal(title, body, onConfirm, danger);
+}
+
+function openModal(title, body, onConfirm, danger = false) {
   const bg = document.getElementById('modal-bg');
+  const confirmClass = danger ? 'btn btn-danger' : 'btn btn-primary';
   bg.innerHTML = `
     <div class="modal">
       <div class="modal-header">
@@ -987,7 +1134,7 @@ function openModal(title, body, onConfirm) {
       ${body}
       <div class="modal-actions">
         <button class="btn" onclick="closeModal()">Annuler</button>
-        <button class="btn btn-primary" id="modal-confirm">Confirmer</button>
+        <button class="${confirmClass}" id="modal-confirm">Confirmer</button>
       </div>
     </div>
   `;
@@ -1155,6 +1302,381 @@ function renderFunding() {
       </div>
     </div>
   `;
+}
+
+// ───────── HEALTH ─────────
+async function renderHealth() {
+  const sec = document.getElementById('section-health');
+  sec.innerHTML = '<div class="empty">Chargement…</div>';
+  try {
+    const h = await api('/api/health');
+    const uptime = h.uptimeMs ? formatDuration(h.uptimeMs) : '—';
+    const discordOk = h.discord?.ready;
+    const mongoOk = h.mongo?.ready;
+    const claudeOk = (h.claude?.consecutiveErrors || 0) < 3;
+    const ping = h.discord?.ping != null ? `${h.discord.ping}ms` : '—';
+    const claudeErrors = h.claude?.consecutiveErrors || 0;
+    const lastClaudeLat = h.claude?.lastLatencyMs != null ? `${h.claude.lastLatencyMs}ms` : '—';
+    const lastSuccess = h.claude?.lastSuccess ? new Date(h.claude.lastSuccess).toLocaleTimeString('fr-FR') : '—';
+    const lastError = h.claude?.lastError ? new Date(h.claude.lastError).toLocaleTimeString('fr-FR') : '—';
+
+    sec.innerHTML = `
+      <div class="health-grid mb-3">
+        <div class="health-card ${discordOk ? 'ok' : 'error'}">
+          <div class="health-label">Discord</div>
+          <div class="health-status">
+            <span class="health-dot ${discordOk ? 'ok' : 'error'}"></span>
+            ${discordOk ? 'Connecté' : 'Déconnecté'}
+          </div>
+          <div class="health-meta">
+            ${h.discord?.tag ? `Bot : ${escapeHtml(h.discord.tag)}<br>` : ''}
+            Latence WS : ${ping}
+          </div>
+        </div>
+
+        <div class="health-card ${mongoOk ? 'ok' : 'error'}">
+          <div class="health-label">MongoDB</div>
+          <div class="health-status">
+            <span class="health-dot ${mongoOk ? 'ok' : 'error'}"></span>
+            ${mongoOk ? 'Connecté' : 'Déconnecté'}
+          </div>
+          <div class="health-meta">Base de données cloud</div>
+        </div>
+
+        <div class="health-card ${claudeOk ? 'ok' : 'warn'}">
+          <div class="health-label">Claude API</div>
+          <div class="health-status">
+            <span class="health-dot ${claudeOk ? 'ok' : 'warn'}"></span>
+            ${claudeErrors === 0 ? 'OK' : `${claudeErrors} erreur${claudeErrors > 1 ? 's' : ''} consécutive${claudeErrors > 1 ? 's' : ''}`}
+          </div>
+          <div class="health-meta">
+            Appels : ${h.claude?.totalCalls || 0} · Erreurs : ${h.claude?.totalErrors || 0}<br>
+            Latence : ${lastClaudeLat}<br>
+            Dernier succès : ${lastSuccess}
+            ${claudeErrors > 0 ? `<br>Dernière erreur : ${lastError}<br><span style="color:var(--danger)">${escapeHtml(h.claude?.lastErrorMsg || '')}</span>` : ''}
+          </div>
+        </div>
+
+        <div class="health-card ok">
+          <div class="health-label">Système</div>
+          <div class="health-status"><span class="health-dot ok"></span>En ligne</div>
+          <div class="health-meta">
+            Uptime : ${uptime}<br>
+            Mémoire RSS : ${h.memoryMb || 0} Mo<br>
+            Logs en buffer : ${h.logsCount || 0}<br>
+            TikTok : ${h.tiktokLive ? '🔴 Live' : '⚫ Offline'}
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Rafraîchir</div>
+        </div>
+        <button class="btn btn-sm" onclick="renderHealth()">↻ Actualiser</button>
+      </div>
+    `;
+  } catch (e) {
+    sec.innerHTML = `<div class="card"><div class="empty text-sm" style="color:var(--danger)">Erreur : ${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+function formatDuration(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d > 0) return `${d}j ${h % 24}h`;
+  if (h > 0) return `${h}h ${m % 60}min`;
+  return `${m}min`;
+}
+
+// ───────── EMOTIONS ─────────
+async function renderEmotions() {
+  const sec = document.getElementById('section-emotions');
+  sec.innerHTML = '<div class="empty">Chargement…</div>';
+  try {
+    const res = await api('/api/emotions/state');
+    const internal = res.internalState || {};
+    const stack = res.emotionStack || [];
+    const temp = res.temperament || {};
+
+    const stateKeys = [
+      { k: 'energy',          label: '⚡ Énergie' },
+      { k: 'socialNeed',      label: '🗨️ Besoin social' },
+      { k: 'calmNeed',        label: '🌿 Besoin calme' },
+      { k: 'stimulation',     label: '🎯 Stimulation' },
+      { k: 'mentalLoad',      label: '🧠 Charge mentale' },
+      { k: 'recognitionNeed', label: '💖 Besoin reconnaissance' },
+    ];
+
+    const activeEmotions = stack.filter(e => e.intensity >= 15).sort((a, b) => b.intensity - a.intensity);
+
+    sec.innerHTML = `
+      <div class="grid-2 mb-3">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💫 États internes</div>
+            <button class="btn btn-sm" onclick="renderEmotions()">↻</button>
+          </div>
+          <div class="state-bars">
+            ${stateKeys.map(({ k, label }) => {
+              const val = Math.round(internal[k] ?? 50);
+              const color = val > 75 ? 'var(--danger)' : val > 50 ? 'var(--accent)' : val > 25 ? 'var(--success)' : 'var(--text-3)';
+              return `
+                <div class="state-bar">
+                  <div class="state-bar-label">
+                    <span>${label}</span>
+                    <span style="font-variant-numeric:tabular-nums;font-weight:600">${val}</span>
+                  </div>
+                  <div class="state-bar-track">
+                    <div class="state-bar-fill" style="width:${val}%;background:${color}"></div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🎭 Tempérament (stable)</div>
+          </div>
+          <div class="state-bars">
+            ${Object.entries(temp).map(([k, v]) => `
+              <div class="state-bar">
+                <div class="state-bar-label">
+                  <span>${k}</span>
+                  <span style="font-variant-numeric:tabular-nums;font-weight:600">${v}</span>
+                </div>
+                <div class="state-bar-track">
+                  <div class="state-bar-fill" style="width:${v}%"></div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">💗 Émotions actives</div>
+          <div class="card-subtitle">${activeEmotions.length} émotion${activeEmotions.length !== 1 ? 's' : ''} en ce moment</div>
+        </div>
+        ${activeEmotions.length ? `
+          <div class="emotion-stack">
+            ${activeEmotions.map(e => {
+              const opacity = e.intensity >= 50 ? '' : 'low';
+              return `<div class="emotion-chip ${opacity}">
+                ${escapeHtml(e.name)}
+                <span class="intensity">${Math.round(e.intensity)}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        ` : '<div class="empty">Aucune émotion active en ce moment</div>'}
+      </div>
+    `;
+  } catch (e) {
+    sec.innerHTML = `<div class="card"><div class="empty" style="color:var(--danger)">Erreur : ${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+// ───────── BONDS ─────────
+async function renderBonds() {
+  const sec = document.getElementById('section-bonds');
+  sec.innerHTML = '<div class="empty">Chargement…</div>';
+  try {
+    const res = await api('/api/emotions/bonds');
+    const bonds = res.bonds || [];
+    if (!bonds.length) {
+      sec.innerHTML = '<div class="card"><div class="empty">Aucune relation enregistrée pour l\'instant</div></div>';
+      return;
+    }
+    sec.innerHTML = `
+      <div class="card mb-3">
+        <div class="card-header">
+          <div class="card-title">💞 Relations membres</div>
+          <div class="card-subtitle">${bonds.length} membre${bonds.length > 1 ? 's' : ''} · tri par attachement</div>
+          <button class="btn btn-sm" onclick="renderBonds()">↻</button>
+        </div>
+        <div class="bond-grid">
+          ${bonds.map(b => {
+            const att = Math.round(b.baseAttachment || 0);
+            const trust = Math.round(b.baseTrust || 0);
+            const comfort = Math.round(b.baseComfort || 0);
+            const tier = att >= 65 ? 'strong' : att >= 40 ? 'mid' : 'low';
+            const tierLabel = att >= 65 ? 'Fort' : att >= 40 ? 'Moyen' : 'Faible';
+            const traj = b.emotionalTrajectory || [];
+            const sparkMax = Math.max(...traj.map(t => t.avgAttachment || 0), 1);
+            const spark = traj.slice(-10).map(t => {
+              const pct = Math.round(((t.avgAttachment || 0) / sparkMax) * 100);
+              return `<div class="bond-spark-bar" style="height:${Math.max(4, pct)}%" title="${t.day}: ${t.avgAttachment}"></div>`;
+            }).join('');
+            return `
+              <div class="bond-card">
+                <div class="bond-card-head">
+                  <div class="bond-name">${escapeHtml(b.username || b.userId || '—')}</div>
+                  <span class="bond-strength ${tier}">${tierLabel}</span>
+                </div>
+                <div class="bond-metrics">
+                  <div class="bond-metric">
+                    <div class="bond-metric-label">Attachement</div>
+                    <div class="bond-metric-value" style="color:var(--accent)">${att}</div>
+                  </div>
+                  <div class="bond-metric">
+                    <div class="bond-metric-label">Confiance</div>
+                    <div class="bond-metric-value">${trust}</div>
+                  </div>
+                  <div class="bond-metric">
+                    <div class="bond-metric-label">Confort</div>
+                    <div class="bond-metric-value">${comfort}</div>
+                  </div>
+                </div>
+                ${traj.length >= 2 ? `<div class="bond-spark">${spark}</div>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    sec.innerHTML = `<div class="card"><div class="empty" style="color:var(--danger)">Erreur : ${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+// ───────── SCHEDULE ─────────
+async function renderSchedule() {
+  const sec = document.getElementById('section-schedule');
+  sec.innerHTML = '<div class="empty">Chargement…</div>';
+  try {
+    const res = await api('/api/schedule');
+    const days = [
+      { label: 'Lun–Ven', slots: res.weekday },
+      { label: 'Samedi', slots: res.saturday },
+      { label: 'Dimanche', slots: res.sunday },
+    ];
+    const now = res.now || {};
+    const currentHour = Math.floor(now.hour || 0);
+    const currentDay = now.day; // 0=Sun,6=Sat
+    const slotColors = {
+      sleep: '#5b6ea7', wakeup: '#fbbf24', active: '#818cf8',
+      lunch: '#f59e0b', productive: '#22d3ee', transition: '#a78bfa',
+      gaming: '#ec4899', latenight: '#4338ca',
+    };
+
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+
+    const renderDay = (dayLabel, slots, isToday) => {
+      const cells = hours.map(h => {
+        const slot = slots.find(s => h >= s.start && h < s.end);
+        if (!slot) return `<div class="schedule-cell" data-tip="${h}h : —"></div>`;
+        const isCurrent = isToday && h === currentHour;
+        return `<div class="schedule-cell${isCurrent ? ' current' : ''}"
+          data-status="${slot.status}"
+          data-tip="${h}h : ${slot.label} (max ${slot.maxConv} conv)"
+          title="${h}h : ${slot.label}"></div>`;
+      }).join('');
+      return `<div class="schedule-day-label${isToday ? ' text-bold' : ''}" style="${isToday ? 'color:var(--accent)' : ''}">${dayLabel}</div>${cells}`;
+    };
+
+    const isToday = (dayLabel) => {
+      if (dayLabel === 'Samedi' && currentDay === 6) return true;
+      if (dayLabel === 'Dimanche' && currentDay === 0) return true;
+      if (dayLabel === 'Lun–Ven' && currentDay >= 1 && currentDay <= 5) return true;
+      return false;
+    };
+
+    const uniqueStatuses = [...new Set(days.flatMap(d => d.slots.map(s => s.status)))];
+
+    sec.innerHTML = `
+      <div class="card mb-3">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🗓️ Planning hebdomadaire</div>
+            <div class="card-subtitle">Slot actuel : ${escapeHtml(now.label || '—')} · ${now.forced ? '🔒 Forcé' : 'Automatique'}</div>
+          </div>
+          <button class="btn btn-sm" onclick="navigate('admin')">🎛️ Forcer un slot →</button>
+        </div>
+        <div class="schedule-wrap">
+          <div class="schedule-grid">
+            <div class="schedule-head"></div>
+            ${hours.map(h => `<div class="schedule-head">${h}</div>`).join('')}
+            ${days.map(d => renderDay(d.label, d.slots, isToday(d.label))).join('')}
+          </div>
+        </div>
+        <div class="schedule-legend">
+          ${uniqueStatuses.map(s => {
+            const slot = days.flatMap(d => d.slots).find(x => x.status === s);
+            return `<div class="schedule-legend-item">
+              <div class="schedule-legend-swatch" data-status="${s}" style="background:${slotColors[s] || '#888'}"></div>
+              <span>${slot ? slot.label : s}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    sec.innerHTML = `<div class="card"><div class="empty" style="color:var(--danger)">Erreur : ${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+// ───────── AUDIT ─────────
+const AUDIT_LABELS = {
+  'channel.delete': '🗑 Salon supprimé',
+  'role.delete': '🗑 Rôle supprimé',
+  'member.mute': '🔇 Membre muté',
+  'member.kick': '👢 Membre kické',
+  'member.ban': '🔨 Membre banni',
+  'post.send': '📤 Message posté',
+  'config.update': '⚙️ Config modifiée',
+  'admin.mood': '🎭 Humeur changée',
+  'admin.slot': '🧠 Slot forcé',
+  'admin.state': '💫 État interne',
+  'admin.tiktok': '📱 TikTok override',
+  'backup.create': '💾 Backup créé',
+  'backup.delete': '🗑 Backup supprimé',
+  'backup.restore-config': '↩ Config restaurée',
+  'autorole.update': '🎭 Auto-rôle modifié',
+  'funding.donation': '💰 Donation enregistrée',
+};
+
+async function renderAudit() {
+  const sec = document.getElementById('section-audit');
+  sec.innerHTML = '<div class="empty">Chargement…</div>';
+  try {
+    const res = await api('/api/audit');
+    const entries = res.entries || [];
+    if (!entries.length) {
+      sec.innerHTML = '<div class="card"><div class="empty">Aucune action enregistrée pour cette session</div></div>';
+      return;
+    }
+    sec.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📖 Historique des actions</div>
+          <div class="card-subtitle">${entries.length} action${entries.length > 1 ? 's' : ''} · session courante</div>
+          <button class="btn btn-sm" onclick="renderAudit()">↻</button>
+        </div>
+        <div>
+          ${entries.map(e => {
+            const time = e.ts ? new Date(e.ts).toLocaleString('fr-FR') : '—';
+            const label = AUDIT_LABELS[e.action] || e.action;
+            const detail = Object.entries(e.details || {})
+              .filter(([k]) => k !== 'preview')
+              .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+              .join(' · ');
+            return `<div class="audit-entry">
+              <span class="audit-time">${time}</span>
+              <span class="audit-action">${label}</span>
+              <span class="audit-details">${escapeHtml(detail)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    sec.innerHTML = `<div class="card"><div class="empty" style="color:var(--danger)">Erreur : ${escapeHtml(e.message)}</div></div>`;
+  }
 }
 
 // ───────── BOOT ─────────

@@ -1,13 +1,26 @@
 const { ANTHROPIC_API_KEY } = require('../config');
-const { sanitizeForJson, sanitizeString } = require('../utils');
+const { sanitizeForJson } = require('../utils');
+const shared = require('../shared');
 
 const TIMEOUT_MS = 25000;
 const MAX_RETRIES = 2;
 
+if (!shared.claudeHealth) {
+  shared.claudeHealth = {
+    totalCalls: 0,
+    totalErrors: 0,
+    lastCall: null,
+    lastSuccess: null,
+    lastError: null,
+    lastErrorMsg: null,
+    lastLatencyMs: null,
+    consecutiveErrors: 0,
+  };
+}
+
 async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefix = null) {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante');
 
-  // Deep sanitization of all inputs before processing
   const cleanSystemPrompt = sanitizeForJson(systemPrompt);
   const cleanUserPrompt = sanitizeForJson(userPrompt);
   const cleanCachedPrefix = cachedPrefix ? sanitizeForJson(cachedPrefix) : null;
@@ -27,6 +40,10 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
   };
 
   const body = JSON.stringify(payload);
+
+  const startedAt = Date.now();
+  shared.claudeHealth.totalCalls++;
+  shared.claudeHealth.lastCall = startedAt;
 
   let lastErr;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -48,7 +65,6 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
 
       if (!response.ok) {
         const e = await response.text();
-        // Don't retry on client errors (4xx except 429)
         if (response.status >= 400 && response.status < 500 && response.status !== 429) {
           throw new Error(`Anthropic ${response.status}: ${e}`);
         }
@@ -56,6 +72,10 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
       }
 
       const data = await response.json();
+      const latency = Date.now() - startedAt;
+      shared.claudeHealth.lastSuccess = Date.now();
+      shared.claudeHealth.lastLatencyMs = latency;
+      shared.claudeHealth.consecutiveErrors = 0;
       return data.content[0].text.trim();
     } catch (err) {
       clearTimeout(timer);
@@ -70,6 +90,10 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
       break;
     }
   }
+  shared.claudeHealth.totalErrors++;
+  shared.claudeHealth.consecutiveErrors++;
+  shared.claudeHealth.lastError = Date.now();
+  shared.claudeHealth.lastErrorMsg = (lastErr && lastErr.message) ? lastErr.message.slice(0, 180) : 'unknown';
   throw lastErr;
 }
 

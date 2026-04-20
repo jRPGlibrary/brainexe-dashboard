@@ -14,7 +14,7 @@
           <div class="logo-badge">🧠</div>
           <div>
             <div style="font-weight:700">BrainEXE</div>
-            <div class="text-sm text-muted">Admin v2.2.0</div>
+            <div class="text-sm text-muted">Admin v2.3.0</div>
           </div>
         </div>
       </div>
@@ -26,6 +26,9 @@
         </button>
         <button class="nav-item" data-section="admin">
           <span>🎛️</span> Admin live
+        </button>
+        <button class="nav-item" data-section="health">
+          <span>❤️</span> Santé système
         </button>
         <button class="nav-item" data-section="logs">
           <span>📜</span> Logs
@@ -49,10 +52,22 @@
         <button class="nav-item" data-section="posts">
           <span>📝</span> Posts manuels
         </button>
+        <button class="nav-item" data-section="emotions">
+          <span>💗</span> Émotions
+        </button>
+        <button class="nav-item" data-section="bonds">
+          <span>💞</span> Relations
+        </button>
+        <button class="nav-item" data-section="schedule">
+          <span>🗓️</span> Planning
+        </button>
 
         <div class="nav-label">Système</div>
         <button class="nav-item" data-section="backups">
           <span>💾</span> Backups
+        </button>
+        <button class="nav-item" data-section="audit">
+          <span>📖</span> Historique
         </button>
         <button class="nav-item" data-section="settings">
           <span>⚙️</span> Paramètres
@@ -82,20 +97,25 @@
           <span class="pill" id="slot-pill">🧠 <span id="slot-label">—</span></span>
           <span class="pill" id="mood-pill">⚡ <span id="mood-label">—</span></span>
           <span class="pill" id="funding-pill">💰 <span id="funding-label">—</span></span>
-          <span class="pill offline" id="ws-pill"><span class="dot"></span>Connexion…</span>
+          <span class="pill offline" id="ws-pill" title="État de la connexion temps réel"><span class="dot"></span>Connexion…</span>
         </div>
       </header>
 
       <div class="content">
         <section class="section active" id="section-overview"></section>
         <section class="section" id="section-admin"></section>
+        <section class="section" id="section-health"></section>
         <section class="section" id="section-logs"></section>
         <section class="section" id="section-channels"></section>
         <section class="section" id="section-roles"></section>
         <section class="section" id="section-members"></section>
         <section class="section" id="section-automations"></section>
         <section class="section" id="section-posts"></section>
+        <section class="section" id="section-emotions"></section>
+        <section class="section" id="section-bonds"></section>
+        <section class="section" id="section-schedule"></section>
         <section class="section" id="section-backups"></section>
+        <section class="section" id="section-audit"></section>
         <section class="section" id="section-settings"></section>
         <section class="section" id="section-funding"></section>
       </div>
