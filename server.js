@@ -117,7 +117,7 @@ discord.once('ready', async () => {
     try {
       const data = await getFundingData();
       const totalCosts = calculateTotalCosts(data);
-      updateBotStatus(data.totalDonated || 0, totalCosts);
+      await updateBotStatus(data.totalDonated || 0, totalCosts);
       await ensureSupportChannel();
     } catch (e) {
       pushLog('ERR', `Funding status init : ${e.message}`, 'error');
