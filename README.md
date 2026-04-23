@@ -1,4 +1,4 @@
-# 🧠 BrainEXE Dashboard `v2.2.0`
+# 🧠 BrainEXE Dashboard `v2.2.1`
 
 > **Brainee** — Bot Discord pour le serveur BrainEXE. Gaming, neurodivergence, communauté.
 
@@ -86,6 +86,13 @@ Stats live affichées directement dans la barre latérale Discord, comme les bot
 ---
 
 ## 📝 Changelog
+
+### `v2.2.1` — 🔧 Sync versions (hotfix)
+
+**🔧 Corrections**
+- Synchronisation de la version dans tous les fichiers (`package.json`, `server.js`, `README.md`, `BIBLE_BRAINEXE.md`, `src/api/routes.js`) — résolution du décalage involontaire vers `2.3.0`
+
+---
 
 ### `v2.2.0` — 🔴 Audit & polish (embeds TikTok, fils auto-invités, no-insist)
 
