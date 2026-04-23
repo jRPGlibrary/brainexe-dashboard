@@ -1,6 +1,6 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version**: 2.2.0  
+**Version**: 2.2.1  
 **Dernière mise à jour**: Avril 2026  
 **Créé pour**: Comprendre TOUT ce que fait ce bot et ce dashboard
 
@@ -102,7 +102,7 @@ Une page web moderne (localhost:3000) pour **contrôler le bot de façon facile*
 ### Les services externes (qui aident)
 
 | Service | Rôle | Exemple |
-|---------|------|---------|
+|---------|------|---------| 
 | **Discord** | C'est la plateforme — le serveur existe ici | Où le bot opère |
 | **Claude (Anthropic)** | L'IA qui génère les réponses intelligentes | Le cerveau de Brainee |
 | **YouTube API** | Quand on mentionne une vidéo, elle la cherche | `@Brainee cherche vidéo XYZ` |
