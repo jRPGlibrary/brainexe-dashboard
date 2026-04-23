@@ -1,8 +1,8 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.2.0
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.2.1
  * ================================================
- * Architecture refactorée — entry point minimal
+ * Architecture refactorisée — entry point minimal
  * Toute la logique est dans src/
  * ================================================
  */
@@ -25,17 +25,17 @@ const INTENTS_MESSAGE_CONTENT = discord_js.GatewayIntentBits?.MessageContent ?? 
 const INTENTS_GUILD_REACTIONS = discord_js.GatewayIntentBits?.GuildMessageReactions ?? 1024;
 const INTENTS_DIRECT_MESSAGES = discord_js.GatewayIntentBits?.DirectMessages ?? 4096;
 
-// ── SHARED STATE ─────────────────────────────────────────────
+// ── SHARED STATE ───────────────────────────────────────────────
 const shared = require('./src/shared');
 
 // ── CONFIG ────────────────────────────────────────────────────
 const { TOKEN, PORT } = require('./src/config');
 
-// ── BOT CONFIG ────────────────────────────────────────────────
+// ── BOT CONFIG ──────────────────────────────────────────────────
 const { loadConfig } = require('./src/botConfig');
 shared.botConfig = loadConfig();
 
-// ── EXPRESS + WEBSOCKET ───────────────────────────────────────
+// ── EXPRESS + WEBSOCKET ──────────────────────────────────────────
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
@@ -44,17 +44,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 shared.app = app;
 shared.wss = wss;
 
-// ── DISCORD CLIENT ────────────────────────────────────────────
+// ── DISCORD CLIENT ──────────────────────────────────────────────
 const discord = new Client({
   intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS, INTENTS_GUILD_MESSAGES, INTENTS_MESSAGE_CONTENT, INTENTS_GUILD_REACTIONS, INTENTS_DIRECT_MESSAGES],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 shared.discord = discord;
 
-// ── LOGGER (needs wss to be set) ──────────────────────────────
+// ── LOGGER (needs wss to be set) ──────────────────────────────────
 const { pushLog, broadcast } = require('./src/logger');
 
-// ── MODULES ───────────────────────────────────────────────────
+// ── MODULES ─────────────────────────────────────────────────────────
 const { connectMongoDB } = require('./src/db/index');
 const { readGuildState, syncDiscordToFile, startFileWatcher } = require('./src/discord/sync');
 const { registerDiscordEvents, registerMessageHandlers } = require('./src/discord/events');
@@ -71,10 +71,10 @@ const { registerRoutes } = require('./src/api/routes');
 const { getFundingData, calculateTotalCosts, updateBotStatus } = require('./src/project/funding');
 const { ensureSupportChannel } = require('./src/features/supportChannel');
 
-// ── API ROUTES ────────────────────────────────────────────────
+// ── API ROUTES ─────────────────────────────────────────────────────
 registerRoutes(app);
 
-// ── WEBSOCKET ─────────────────────────────────────────────────
+// ── WEBSOCKET ────────────────────────────────────────────────────────
 wss.on('connection', async (ws) => {
   pushLog('SYS', 'Dashboard connecté');
   try {
@@ -85,7 +85,7 @@ wss.on('connection', async (ws) => {
   } catch (_) {}
 });
 
-// ── BOOT ──────────────────────────────────────────────────────
+// ── BOOT ───────────────────────────────────────────────────────────
 console.log('🔍 DISCORD_TOKEN:', !!TOKEN, '| MONGODB_URI:', !!process.env.MONGODB_URI);
 if (!TOKEN) { console.error('❌ DISCORD_TOKEN manquant'); process.exit(1); }
 
@@ -93,7 +93,7 @@ discord.once('ready', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(' 🧠 BRAINEXE — Brainee v2.3.0 (audit + embeds TikTok riches + fils auto-invites)');
+  console.log(' 🧠 BRAINEXE — Brainee v2.2.1 (audit + embeds TikTok riches + fils auto-invites)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   const vibe = getDailyVibe();
   console.log(` ✅ Bot : ${discord.user.tag}`);
@@ -138,7 +138,7 @@ discord.once('ready', async () => {
     pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
   ), 30000);
 
-  await syncDiscordToFile('Démarrage v2.2.0');
+  await syncDiscordToFile('Démarrage v2.2.1');
 });
 
 server.listen(PORT, '0.0.0.0', () => console.log(`🌐 Port ${PORT}`));
