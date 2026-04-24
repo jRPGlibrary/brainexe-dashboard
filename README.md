@@ -48,19 +48,26 @@ http://localhost:3000
 
 ---
 
-## 🎨 Dashboard — v2.1.0
+## 🎨 Dashboard — v2.2.1
 
 Dashboard moderne avec **3 thèmes** (light / dark / sombre) et navigation par sections :
 
 - **📊 Vue d'ensemble** — Stats globales, slot actuel, humeur, logs récents, actions rapides
-- **📜 Logs** — Stream temps réel coloré par type (SYS/ERR/D2F/F2D/API/JOIN)
-- **💬 Salons** — Arborescence catégories/salons, création/édition/suppression
-- **🎭 Rôles** — Liste triée, création avec couleur, suppression
-- **👥 Membres** — Liste des membres avec rôles et date d'arrivée
+- **🎛️ Admin live** — Contrôle manuel du slot, de l'humeur, du TikTok et de l'état du bot
+- **❤️ Santé système** — Statut Discord / Mongo / Claude en temps réel (ping, latence, mémoire, uptime)
+- **📜 Logs** — Stream temps réel avec barre de filtre (source + niveau)
+- **💬 Salons** — Arborescence catégories/salons, création/édition/suppression (avec confirmation)
+- **🎭 Rôles** — Liste triée, création avec couleur, suppression (avec confirmation)
+- **👥 Membres** — Liste avec recherche et 4 modes de tri (nom, rôles, arrivée, récence)
 - **⚡ Automatisations** — Contrôles (anecdotes, actus, conversations, greetings, TikTok, drift)
-- **📝 Posts manuels** — Envoi de messages texte ou embed dans un salon
-- **💾 Backups** — Gestion des snapshots de configuration
+- **📝 Posts manuels** — Envoi de messages texte ou embed avec aperçu temps réel
+- **💗 Émotions** — État émotionnel live du bot (humeur, énergie, états internes)
+- **💞 Relations** — Liens affectifs membres (attachement, confiance, historique de l'évolution)
+- **🗓️ Planning** — Grille 24h × 3 types de jours (semaine / samedi / dimanche), slot courant surligné
+- **💾 Backups** — Liste, téléchargement, suppression et restauration de config depuis un snapshot
+- **📖 Historique** — Journal d'audit de toutes les actions du dashboard (500 entrées max)
 - **⚙️ Paramètres** — Sync, auto-rôle, welcome, thème
+- **💰 Soutien** — Données de financement et historique mensuel
 
 Architecture : `public/index.html` (structure) + `public/app.css` (thèmes) + `public/app.js` (logique) — pas de framework, juste du HTML/CSS/JS moderne.
 
@@ -87,10 +94,41 @@ Stats live affichées directement dans la barre latérale Discord, comme les bot
 
 ## 📝 Changelog
 
-### `v2.2.1` — 🔧 Sync versions (hotfix)
+### `v2.2.1` — 🛠️ Dashboard — refonte complète des sections et corrections
 
 **🔧 Corrections**
-- Synchronisation de la version dans tous les fichiers (`package.json`, `server.js`, `README.md`, `BIBLE_BRAINEXE.md`, `src/api/routes.js`) — résolution du décalage involontaire vers `2.3.0`
+- **Synchronisation de version** : correction du décalage involontaire vers `2.3.0` dans tous les fichiers (`package.json`, `server.js`, `README.md`, `BIBLE_BRAINEXE.md`, `src/api/routes.js`)
+- **"Invalid Date" dans les logs** : le backend stockait `time` en chaîne pré-formatée, le frontend ne pouvait pas reconstruire la date — corrigé en stockant l'epoch (`ts`) et l'ISO (`time`)
+- **Logs live absents** : le backend diffusait `'log'` mais le frontend écoutait `'logUpdate'` — alignés
+- **Couleurs des logs cassées** : le backend envoyait `dir`, le frontend utilisait `l.type` (undefined) — ajout de `type: dir` dans chaque entrée
+
+**🆕 Nouvelles sections dashboard**
+- **❤️ Santé système** — Indicateurs Discord (ping, statut), MongoDB (connecté/déconnecté), Claude (appels, erreurs, latence), mémoire et uptime
+- **💗 Émotions** — Lecture en direct du cœur émotionnel du bot (humeur, énergie, états, tempérament)
+- **💞 Relations** — Liens affectifs par membre (attachement, confiance, trajectoire)
+- **🗓️ Planning** — Grille visuelle 24h × semaine/samedi/dimanche, slot actuel mis en évidence
+- **📖 Historique** — Journal d'audit horodaté de toutes les actions dashboard (ring buffer 500 entrées)
+
+**🔧 Améliorations dashboard**
+- **Pill WebSocket 3 états** : `Connecté` / `Reconnexion…` / `Déconnecté` avec chrono depuis la dernière connexion
+- **Confirmation modale** pour les actions destructives (suppression salon/rôle) — remplace les `confirm()` natifs
+- **Barre de filtre des logs** : filtrage par source (SYS, ERR, D2F…) et par niveau (info, success, error, warn)
+- **Membres** : champ de recherche + 4 modes de tri (nom, rôles, date d'arrivée, activité récente)
+- **Posts manuels** : aperçu de l'embed en temps réel pendant la saisie
+- **Backups** : bouton de téléchargement direct, suppression avec confirmation, restauration de config depuis un snapshot
+
+**🔧 Nouveaux fichiers**
+- `src/audit.js` — ring buffer 500 entrées, broadcast `auditUpdate` via WebSocket
+- `src/ai/claude.js` — instrumentation santé : `totalCalls`, `totalErrors`, `consecutiveErrors`, `lastLatencyMs`
+
+**🔌 Nouveaux endpoints API**
+- `GET /api/health` — statut Discord / Mongo / Claude
+- `GET /api/schedule` — grille hebdomadaire des slots
+- `GET /api/audit` — journal d'audit (paramètre `?limit`)
+- `GET /api/backups/:name/download` — téléchargement sécurisé d'un backup
+- `DELETE /api/backups/:name` — suppression sécurisée d'un backup
+- `POST /api/backups/:name/restore-config` — restauration partielle de la config depuis un snapshot
+- `GET /api/project/funding/history` — historique agrégé des dons par mois
 
 ---
 
@@ -120,7 +158,7 @@ Stats live affichées directement dans la barre latérale Discord, comme les bot
 - `chokidar` 3 → 5 (breaking)
 - `dotenv` 16 → 17 (breaking)
 
-À planifier en v2.3 avec tests dédiés.
+À planifier ultérieurement avec tests dédiés.
 
 ---
 
@@ -181,6 +219,7 @@ brainexe-dashboard/
 │   ├── config.js                # Variables d'environnement
 │   ├── shared.js                # État partagé
 │   ├── logger.js                # Logs + broadcast WS
+│   ├── audit.js                 # 🆕 Ring buffer audit 500 entrées (v2.2.1)
 │   ├── crons.js                 # Orchestration cron jobs
 │   ├── botConfig.js             # Config bot persistée
 │   ├── utils.js                 # Helpers
@@ -261,7 +300,14 @@ Le dashboard et le bot exposent une API HTTP complète sur `http://localhost:300
 | `/api/post` | POST | Poster un message manuel |
 | `/api/backup` | POST | Créer un backup |
 | `/api/backups` | GET | Lister les backups |
+| `/api/backups/:name/download` | GET | Télécharger un backup |
+| `/api/backups/:name` | DELETE | Supprimer un backup |
+| `/api/backups/:name/restore-config` | POST | Restaurer la config depuis un backup |
 | `/api/emotions/state\|bonds` | GET | État émotionnel du bot |
+| `/api/health` | GET | Santé Discord / Mongo / Claude (ping, mémoire, uptime) |
+| `/api/schedule` | GET | Grille hebdomadaire des slots (semaine / samedi / dimanche) |
+| `/api/audit` | GET | Journal d'audit des actions dashboard (`?limit`) |
+| `/api/project/funding/history` | GET | Historique agrégé des dons par mois |
 
 ---
 
@@ -276,7 +322,8 @@ Le dashboard écoute en temps réel via WebSocket (`ws://localhost:3000`) :
 | `stats` | `{d2f, f2d, startTime}` | Stats de sync |
 | `configUpdate` | `{section, data}` | Mise à jour config |
 | `tiktokLive` | `{status, title, viewers}` | Events TikTok |
-| `logUpdate` | Log entry | Nouveau log |
+| `logUpdate` | Log entry | Nouveau log temps réel |
+| `auditUpdate` | Audit entry | Nouvelle action auditée |
 
 ---
 
