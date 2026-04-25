@@ -16,12 +16,14 @@ const {
   decayEmotions, saveEmotionalState,
 } = require('./bot/emotions');
 const { runDailyBondEvolution } = require('./db/memberBonds');
+const { addNarrativeArc } = require('./db/narrativeMemory');
 const { readGuildState } = require('./discord/sync');
+const { callClaude } = require('./ai/claude');
 const fs = require('fs');
 
 let convCron = null, replyCron = null, floatingEventsCron = null;
 let moodResetCron = null, driftCron = null, relanceCron = null;
-let emotionHourlyCron = null, emotionDailyCron = null;
+let emotionHourlyCron = null, emotionDailyCron = null, narrativeCron = null;
 
 // Flags "déjà tiré aujourd'hui" pour les events flottants (reset à minuit)
 const firedToday = { morning: '', lunch: '', goodnight: '', nightWakeup: '', relance: '' };
@@ -31,7 +33,7 @@ function parisDateISO() {
 }
 
 function startConvCron() {
-  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron]
+  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron, narrativeCron]
     .forEach(c => { if (c) { try { c.stop(); } catch {} } });
 
   // Initialise la vibe et le planning flottant dès le boot
@@ -174,7 +176,58 @@ function startConvCron() {
     } catch (err) { pushLog('ERR', `emotionDailyCron: ${err.message}`, 'error'); }
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v2.1.0 — vibe + planning flottant + relances + émotions + bonds + sidebar`, 'success');
+  // Analyse narrative des derniers messages — une fois par jour à 02h
+  narrativeCron = cron.schedule('0 2 * * *', async () => {
+    try {
+      const guild = await shared.discord.guilds.fetch(shared.botConfig.guildId);
+      if (!guild) return;
+      await guild.channels.fetch();
+
+      const allMessages = [];
+      const channels = guild.channels.cache.filter(c => c.isTextBased());
+
+      for (const ch of channels.values()) {
+        try {
+          const msgs = await ch.messages.fetch({ limit: 50 });
+          allMessages.push(...msgs.values());
+        } catch (_) {}
+      }
+
+      if (allMessages.length < 10) return;
+
+      const sortedMsgs = allMessages.sort((a, b) => b.createdTimestamp - a.createdTimestamp).slice(0, 50);
+      const msgSummary = sortedMsgs
+        .map(m => `[${m.author.username}] ${m.content.slice(0, 100)}`)
+        .join('\n');
+
+      const prompt = `Analyse ces 50 derniers messages Discord et identifie 3-4 "faits marquants" ou arcs narratifs intéressants — des éléments qui définissent la dynamique du groupe ou les tendances émergentes.\n\nMessages:\n${msgSummary}\n\nRetourne un JSON array avec objets {title, description, importance (1-5)}. Sois bref, ne repère que les vrais patterns.`;
+
+      let arcsJson = await callClaude('', prompt, 300);
+      arcsJson = arcsJson.replace(/```json|```/g, '').trim();
+
+      try {
+        const arcs = JSON.parse(arcsJson);
+        if (Array.isArray(arcs)) {
+          for (const arc of arcs) {
+            if (arc.title && arc.description) {
+              await addNarrativeArc({
+                title: arc.title,
+                description: arc.description,
+                importance: arc.importance || 3,
+              });
+            }
+          }
+          pushLog('SYS', `📖 Arcs narratifs mis à jour (${arcs.filter(a => a.title).length} identifiés)`, 'success');
+        }
+      } catch (parseErr) {
+        pushLog('ERR', `Narrative arc parsing: ${parseErr.message}`, 'error');
+      }
+    } catch (err) {
+      pushLog('ERR', `narrativeCron: ${err.message}`, 'error');
+    }
+  }, { timezone: 'Europe/Paris' });
+
+  pushLog('SYS', `✅ Crons v2.2.0 — vibe + planning flottant + relances + émotions + bonds + narrative memory`, 'success');
 }
 
 function slot_is_active(h) {
