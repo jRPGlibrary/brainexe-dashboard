@@ -15,7 +15,7 @@ const { sanitizeForJson } = require('../utils');
 const { getRandomReaction, shouldCreateThread } = require('../bot/reactions');
 const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
-  updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens,
+  updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
 } = require('../bot/emotions');
 const { ensureMemberBond, applyInteractionToBond, describeBond } = require('../db/memberBonds');
 const { NO_TAG_CLAUSE, LIGHT_TAG_CLAUSE } = require('./greetings');
@@ -25,6 +25,8 @@ const {
   getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded,
   updateConvStats, getQuietestChannel, hasUnansweredLastPost, isDeepTopicChannel,
 } = require('./convStats');
+const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
+const { formatNarrativeInjection } = require('../db/narrativeMemory');
 
 async function postRandomConversation() {
   const cfg = shared.botConfig.conversations;
@@ -66,6 +68,7 @@ async function postRandomConversation() {
     const modeBlock = getModeInjectionForChannel(mode, channel.name, ch.topic);
     const emotionBlock = getEmotionalInjection();
     const temperamentBlock = getTemperamentInjection();
+    const narrativeBlock = await formatNarrativeInjection();
     let contextBlock = '';
     try {
       const msgs = await channel.messages.fetch({ limit: 100 });
@@ -76,7 +79,7 @@ async function postRandomConversation() {
       ? `\nCONTEXTE SALON : c'est un salon de thématique profonde (${channel.name}). Lance un angle vraiment fouillé, qui donne envie de creuser. Pas de question générique. Tu peux être plus précise, citer un détail, un souvenir, un mécanisme, une référence. Laisse l'entrée ouverte mais pas vague. Si personne ne rebondit, c'est ok — tu n'insistes pas.`
       : '';
     const content = await callClaude(
-      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${intentBlockC}\n${modeBlock}${deepInject}\n${NO_TAG_CLAUSE}` + contextBlock,
+      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}\n${NO_TAG_CLAUSE}` + contextBlock,
       `Max 3 phrases. Direct. Adapte-toi au salon. Pas de @ à quelqu'un — c'est un lance-conv ambiant.`,
       adjustMaxTokens(isDeep ? 200 : 150),
       BOT_PERSONA
@@ -132,6 +135,25 @@ async function replyToConversations() {
     if (Date.now() - shared.lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
+
+    // v2.2.0 : Check if Brainee should respond (autonomy logic)
+    const vibe = getDailyVibe();
+    const internalState = getInternalState();
+    const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, msgContent, false);
+
+    if (!decision.should) {
+      pushLog('SYS', `🙅 Skip reply (${decision.reason}): ${decision.message ? decision.message : ''}`);
+      if (decision.message && Math.random() < 0.3) {
+        try {
+          await lastMsg.react('😴').catch(() => {});
+        } catch (_) {}
+      }
+      return;
+    }
+
+    // Record topic for fatigue tracking
+    await recordMessageTopic(msgContent);
+
     const profile = await getMemberProfile(lastMsg.author.id);
     const toneInstruction = getToneInstruction(profile, lastMsg.author.username);
     const mood = refreshDailyMood();
@@ -141,7 +163,6 @@ async function replyToConversations() {
     const bond = await ensureMemberBond(lastMsg.author.id, lastMsg.author.username);
     const bondBlock = describeBond(bond, lastMsg.author.username);
     const emotionBlock = getEmotionalInjection();
-    const vibe = getDailyVibe();
     const channelMemory = await getChannelMemory(ch.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntryR = await getChannelDirectory(ch.channelId);
