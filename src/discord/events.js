@@ -76,7 +76,7 @@ async function handleMentionReply(message, userQuery) {
     applyNaturalDecay();
     detectEmotionFromMessage(userQuery, { userId: message.author.id });
 
-    // v2.2.0 : Check if Brainee should respond (autonomy logic)
+    // v2.2.2 : Check if Brainee should respond (autonomy logic)
     // For mentions, we check but still respect the urgent flag from caller
     const vibe = getDailyVibe();
     const internalState = getInternalState();
