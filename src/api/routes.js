@@ -92,7 +92,7 @@ function registerRoutes(app) {
   // Channel directory
   app.get('/api/channel-directory', async (req, res) => { if (!shared.mongoDb) return res.json([]); try { const docs = await shared.mongoDb.collection('channelDirectory').find({}).toArray(); res.json(docs); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-  // Emotional state (v2.2.1)
+  // Emotional state (v2.2.2)
   app.get('/api/emotions/state', (req, res) => {
     res.json({ ok: true, internalState: getInternalState(), temperament: getTemperament(), emotionStack: getEmotionStack() });
   });
@@ -145,7 +145,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // ADMIN PANEL — Live control (v2.2.1)
+  // ADMIN PANEL — Live control (v2.2.2)
   // ═════════════════════════════════════════════════════════
 
   // État complet pour le dashboard
@@ -281,7 +281,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // HEALTH — statut Discord / Mongo / Claude (v2.2.1)
+  // HEALTH — statut Discord / Mongo / Claude (v2.2.2)
   // ═════════════════════════════════════════════════════════
   app.get('/api/health', async (req, res) => {
     try {
@@ -324,7 +324,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // SCHEDULE — grille hebdomadaire des slots (v2.2.1)
+  // SCHEDULE — grille hebdomadaire des slots (v2.2.2)
   // ═════════════════════════════════════════════════════════
   app.get('/api/schedule', (req, res) => {
     try {
@@ -344,7 +344,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // AUDIT LOG — historique des actions dashboard (v2.2.1)
+  // AUDIT LOG — historique des actions dashboard (v2.2.2)
   // ═════════════════════════════════════════════════════════
   app.get('/api/audit', (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
@@ -352,7 +352,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // BACKUPS — download / delete / restore (v2.2.1)
+  // BACKUPS — download / delete / restore (v2.2.2)
   // ═════════════════════════════════════════════════════════
   function safeBackupName(name) {
     if (typeof name !== 'string') return null;
@@ -410,7 +410,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // FUNDING — historique agrégé par mois (v2.2.1)
+  // FUNDING — historique agrégé par mois (v2.2.2)
   // ═════════════════════════════════════════════════════════
   app.get('/api/project/funding/history', async (req, res) => {
     if (!shared.mongoDb) return res.json({ ok: true, history: [] });
