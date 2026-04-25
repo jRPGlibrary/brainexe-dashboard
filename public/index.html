@@ -2,13 +2,14 @@
 <html lang="fr" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>BrainEXE Admin · Live</title>
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="mobile.css">
 </head>
 <body>
   <div class="app">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="logo">
           <div class="logo-badge">🧠</div>
@@ -88,9 +89,21 @@
 
     <main class="main">
       <header class="topbar">
-        <div>
-          <div class="topbar-title" id="page-title">Vue d'ensemble</div>
-          <div class="topbar-subtitle" id="page-subtitle">Dashboard temps réel · toute modification est appliquée instantanément</div>
+        <div class="topbar-left">
+          <button class="menu-toggle" id="menu-toggle"
+            aria-label="Ouvrir le menu de navigation"
+            aria-expanded="false"
+            aria-controls="sidebar">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <rect y="2"  width="16" height="2" rx="1"/>
+              <rect y="7"  width="16" height="2" rx="1"/>
+              <rect y="12" width="16" height="2" rx="1"/>
+            </svg>
+          </button>
+          <div>
+            <div class="topbar-title" id="page-title">Vue d'ensemble</div>
+            <div class="topbar-subtitle" id="page-subtitle">Dashboard temps réel · toute modification est appliquée instantanément</div>
+          </div>
         </div>
         <div class="topbar-right">
           <span class="pill" id="member-pill">👥 <b id="member-count">—</b> membres</span>
@@ -122,8 +135,9 @@
     </main>
   </div>
 
-  <div id="toasts"></div>
-  <div id="modal-bg" class="modal-bg"></div>
+  <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+  <div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
+  <div id="modal-bg" class="modal-bg" role="dialog" aria-modal="true"></div>
 
   <script src="app.js"></script>
 </body>
