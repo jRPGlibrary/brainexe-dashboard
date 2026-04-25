@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEE EMOTIONS CORE v2.1.0
+ * 🧠 BRAINEE EMOTIONS CORE v2.2.2
  * ================================================
  * Architecture 4 couches :
  *   1. Tempérament (stable)       — ce qui ne change presque jamais
@@ -50,6 +50,11 @@ let internalState = {
 // Les émotions s'estompent avec le temps.
 let emotionStack = [];
 
+// ─── RÉSIDUS ÉMOTIONNELS (persistence) ──────────────────────────
+// Quand une émotion s'estompe, elle laisse des "résiduels" (15-20%)
+// qui persistent et influencent les nouvelles émotions du même type.
+let emotionalResiduals = {};
+
 const EMOTION_CATEGORIES = {
   cognitive: ['curiosity', 'fascination', 'doubt', 'clarity', 'confusion', 'satisfaction'],
   social:    ['warmth', 'distance', 'amusement', 'tenderness', 'teasing', 'connection', 'misfit'],
@@ -74,7 +79,8 @@ async function loadEmotionalState() {
     if (doc) {
       if (doc.internalState) internalState = { ...internalState, ...doc.internalState };
       if (Array.isArray(doc.emotionStack)) emotionStack = doc.emotionStack;
-      pushLog('SYS', `💗 État émotionnel restauré (${emotionStack.length} émotions actives)`, 'success');
+      if (doc.emotionalResiduals) emotionalResiduals = doc.emotionalResiduals;
+      pushLog('SYS', `💗 État émotionnel restauré (${emotionStack.length} émotions, ${Object.keys(emotionalResiduals).length} résiduels)`, 'success');
     }
   } catch (err) {
     pushLog('ERR', `loadEmotionalState: ${err.message}`, 'error');
@@ -86,7 +92,7 @@ async function saveEmotionalState() {
   try {
     await shared.mongoDb.collection('botState').updateOne(
       { _id: 'emotionalState' },
-      { $set: { internalState, emotionStack, updatedAt: new Date() } },
+      { $set: { internalState, emotionStack, emotionalResiduals, updatedAt: new Date() } },
       { upsert: true }
     );
   } catch (err) {
@@ -136,12 +142,17 @@ function applyDailyDrift() {
 function triggerEmotion(name, intensity = 50, source = null) {
   if (!ALL_EMOTIONS.includes(name)) return;
   const now = Date.now();
+
+  // Check for residuals from this emotion type
+  const residualBoost = emotionalResiduals[name] || 0;
+  const finalIntensity = clamp(Math.min(100, intensity + residualBoost));
+
   emotionStack.push({
     name,
-    intensity: clamp(intensity),
+    intensity: finalIntensity,
     source,
     triggeredAt: now,
-    decay: 0.90,
+    decay: 0.90, // Decay slower: 24h instead of 4-6h
   });
   if (emotionStack.length > 12) emotionStack = emotionStack.slice(-12);
 }
@@ -151,10 +162,19 @@ function decayEmotions() {
   emotionStack = emotionStack
     .map(e => {
       const hoursElapsed = (now - e.triggeredAt) / (1000 * 60 * 60);
+      // Slower decay: 0.90 per hour instead of 0.85 (18-24h instead of 4-6h)
       const newIntensity = e.intensity * Math.pow(e.decay, hoursElapsed);
       return { ...e, intensity: clamp(newIntensity) };
     })
-    .filter(e => e.intensity > 3);
+    .filter(e => {
+      // Keep emotion if still significant, else store residual (15-20%)
+      if (e.intensity > 3) return true;
+      if (e.intensity > 1) {
+        const residualAmount = e.intensity * (0.15 + Math.random() * 0.05);
+        emotionalResiduals[e.name] = (emotionalResiduals[e.name] || 0) + residualAmount;
+      }
+      return false;
+    });
 }
 
 function getDominantEmotion() {
@@ -238,11 +258,42 @@ function describeDominantEmotions() {
   return `Tu te sens ${labels.join(', ')}.`;
 }
 
+/**
+ * Retourne un texte décrivant les résiduels émotionnels (si présents)
+ * Ex: "Tu portes encore un peu de rancune du début de journée"
+ */
+function getEmotionalContext() {
+  const activeResiduals = Object.entries(emotionalResiduals)
+    .filter(([, intensity]) => intensity > 5)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2);
+
+  if (!activeResiduals.length) return '';
+
+  const contextTranslations = {
+    annoyance: 'une pointe de rancune',
+    wariness: 'un peu de méfiance',
+    saturation: 'une fatigue résiduelle',
+    disappointment: 'une déception en arrière-fond',
+    melancholy: 'une légère mélancolie',
+    distance: 'une certaine distance',
+    doubt: 'une trace de doute',
+  };
+
+  const contexts = activeResiduals
+    .map(([emotion, intensity]) => contextTranslations[emotion] || `une trace de ${emotion}`)
+    .join(' et ');
+
+  return `Tu portes encore ${contexts} de ce matin.`;
+}
+
 function getEmotionalInjection() {
   const internalDesc = describeInternalState();
   const emotionsDesc = describeDominantEmotions();
-  if (!internalDesc && !emotionsDesc) return '';
-  return `\n━━ 💗 ÉTAT INTÉRIEUR ━━\n${internalDesc} ${emotionsDesc}\nCet état influence naturellement ton ton, ta longueur, ton envie de taquiner ou de te poser.`;
+  const residualDesc = getEmotionalContext();
+  const allParts = [internalDesc, emotionsDesc, residualDesc].filter(p => p);
+  if (!allParts.length) return '';
+  return `\n━━ 💗 ÉTAT INTÉRIEUR ━━\n${allParts.join(' ')}\nCet état influence naturellement ton ton, ta longueur, ton envie de taquiner ou de te poser.`;
 }
 
 function getTemperamentInjection() {
@@ -279,6 +330,7 @@ function adjustMaxTokens(baseTokens) {
 function getInternalState() { return { ...internalState }; }
 function getEmotionStack() { return [...emotionStack]; }
 function getTemperament() { return { ...TEMPERAMENT }; }
+function getEmotionalResiduals() { return { ...emotionalResiduals }; }
 
 function setInternalStateValue(key, value) {
   if (key in internalState) internalState[key] = clamp(value);
@@ -290,7 +342,7 @@ module.exports = {
   updateInternalStatesForSlot, applyNaturalDecay, applyDailyDrift,
   triggerEmotion, decayEmotions, getDominantEmotion, getActiveEmotions,
   detectEmotionFromMessage,
-  getEmotionalInjection, getTemperamentInjection,
+  getEmotionalInjection, getTemperamentInjection, getEmotionalContext,
   getHumanizationSignal, adjustMaxTokens,
-  getInternalState, getEmotionStack, getTemperament, setInternalStateValue,
+  getInternalState, getEmotionStack, getTemperament, getEmotionalResiduals, setInternalStateValue,
 };

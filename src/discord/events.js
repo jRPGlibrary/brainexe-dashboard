@@ -17,7 +17,7 @@ const { getChannelIntentBlock } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
 const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
-  updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens,
+  updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
 } = require('../bot/emotions');
 const { ensureMemberBond, applyInteractionToBond, describeBond } = require('../db/memberBonds');
 const { getRandomReaction } = require('../bot/reactions');
@@ -27,6 +27,8 @@ const { LIGHT_TAG_CLAUSE } = require('../features/greetings');
 const { scheduleDiscordToFile } = require('./sync');
 const { sendWelcomeMessage } = require('../features/welcome');
 const { YOUTUBE_KEYWORDS } = require('../bot/keywords');
+const { shouldRespond, recordMessageTopic } = require('../features/decisionLogic');
+const { formatNarrativeInjection } = require('../db/narrativeMemory');
 
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
@@ -73,17 +75,36 @@ async function handleMentionReply(message, userQuery) {
     updateInternalStatesForSlot(slot);
     applyNaturalDecay();
     detectEmotionFromMessage(userQuery, { userId: message.author.id });
+
+    // v2.2.2 : Check if Brainee should respond (autonomy logic)
+    // For mentions, we check but still respect the urgent flag from caller
+    const vibe = getDailyVibe();
+    const internalState = getInternalState();
+    const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, userQuery, false);
+
+    if (!decision.should && internalState.mentalLoad > 85) {
+      // Only skip if VERY overloaded
+      try {
+        await message.react('😴').catch(() => {});
+      } catch (_) {}
+      pushLog('SYS', `🙅 Skip @mention (${decision.reason}): trop fatiguée`);
+      return;
+    }
+
+    // Record topic for fatigue tracking
+    await recordMessageTopic(userQuery);
+
     const bond = await ensureMemberBond(message.author.id, message.author.username);
     const bondBlock = describeBond(bond, message.author.username);
     const emotionBlock = getEmotionalInjection();
     const temperamentBlock = getTemperamentInjection();
+    const narrativeBlock = await formatNarrativeInjection();
     const channelMemory = await getChannelMemory(message.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntry = await getChannelDirectory(message.channelId);
     const channelTopic = shared.botConfig.conversations.channels.find(c => c.channelId === message.channelId)?.topic || message.channel.name;
     const intentBlock = getChannelIntentBlock(message.channel.name, channelTopic, dirEntry?.officialDescription || '');
 
-    const vibe = getDailyVibe();
     const taggedMembers = [...message.mentions.users.values()].filter(u => u.id !== shared.discord.user.id).map(u => '@' + u.username);
     const taggedBlock = taggedMembers.length > 0 ? `Membres tagués : ${taggedMembers.join(', ')}. Tu peux les évoquer naturellement SANS les re-tagger — ils ont déjà été notifiés.` : '';
 
@@ -97,7 +118,7 @@ async function handleMentionReply(message, userQuery) {
       } catch (_) {}
     }
 
-    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
+    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${narrativeBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {

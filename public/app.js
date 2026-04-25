@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════
-   BRAINEXE DASHBOARD v2.2.1 — Full Dashboard Refresh
+   BRAINEXE DASHBOARD v2.2.2 — Full Dashboard Refresh
    Toute modification → appliquée instantanément
    ═══════════════════════════════════════════════════ */
 
@@ -1100,7 +1100,7 @@ function renderSettings() {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">ℹ️ BrainEXE v2.2.1</div>
+            <div class="card-title">ℹ️ BrainEXE v2.2.2</div>
             <div class="card-subtitle">Full Dashboard Refresh</div>
           </div>
         </div>
