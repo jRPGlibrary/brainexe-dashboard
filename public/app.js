@@ -194,8 +194,23 @@ function refreshTopbar() {
   document.getElementById('funding-label').textContent = `${donated.toFixed(1)}€ / ${total.toFixed(1)}€`;
 }
 
+// ───────── MOBILE SIDEBAR ─────────
+function openSidebar() {
+  document.getElementById('sidebar')?.classList.add('open');
+  document.getElementById('sidebar-overlay')?.classList.add('active');
+  const t = document.getElementById('menu-toggle');
+  if (t) t.setAttribute('aria-expanded', 'true');
+}
+function closeSidebar() {
+  document.getElementById('sidebar')?.classList.remove('open');
+  document.getElementById('sidebar-overlay')?.classList.remove('active');
+  const t = document.getElementById('menu-toggle');
+  if (t) t.setAttribute('aria-expanded', 'false');
+}
+
 // ───────── NAVIGATION ─────────
 function navigate(section) {
+  closeSidebar();
   state.currentSection = section;
   document.querySelectorAll('.nav-item').forEach(b => {
     b.classList.toggle('active', b.dataset.section === section);
@@ -1691,6 +1706,21 @@ async function boot() {
   });
   document.getElementById('modal-bg').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeModal();
+  });
+
+  // Mobile menu
+  document.getElementById('menu-toggle')?.addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar?.classList.contains('open')) closeSidebar();
+    else openSidebar();
+  });
+  document.getElementById('sidebar-overlay')?.addEventListener('click', closeSidebar);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeSidebar();
+      closeModal();
+    }
   });
 
   connectWS();

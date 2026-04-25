@@ -1,0 +1,378 @@
+/* ════════════════════════════════════════════════════
+   BrainEXE Dashboard — Responsive Mobile v1.0
+   Chargé après app.css · surcharge ciblée uniquement
+   Breakpoints : 900px (tablette) · 768px (mobile) · 520px (petit mobile)
+   ════════════════════════════════════════════════════ */
+
+/* ─── TOPBAR LEFT (desktop + mobile) ─── */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* ─── HAMBURGER : masqué sur desktop ─── */
+.menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  color: var(--text-2);
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.menu-toggle:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* ─── OVERLAY SIDEBAR : masqué sur desktop ─── */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 49;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease;
+}
+.sidebar-overlay.active {
+  display: block;
+}
+
+/* ════ TABLETTE (≤ 900px) ═══════════════════════════ */
+@media (max-width: 900px) {
+  .topbar-subtitle {
+    display: none;
+  }
+  .topbar-right {
+    gap: 8px;
+  }
+  #funding-pill {
+    display: none;
+  }
+}
+
+/* ════ MOBILE (≤ 768px) ═════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── Shell ── */
+  .app {
+    grid-template-columns: 1fr;
+    height: 100dvh;
+  }
+
+  /* ── Sidebar : tiroir latéral gauche ── */
+  .sidebar {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: -270px;
+    width: 260px;
+    z-index: 50;
+    box-shadow: var(--shadow-lg);
+    transition: left 0.26s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow-y: auto;
+  }
+  .sidebar.open {
+    left: 0;
+  }
+
+  /* ── Hamburger visible ── */
+  .menu-toggle {
+    display: flex;
+  }
+
+  /* ── Main ── */
+  .main {
+    height: 100dvh;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    padding: 10px 14px;
+    min-height: 54px;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+  .topbar-title {
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar-right {
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    flex-shrink: 0;
+    max-width: calc(100vw - 210px);
+  }
+  .topbar-right::-webkit-scrollbar {
+    display: none;
+  }
+  #member-pill {
+    display: none;
+  }
+
+  /* ── Content ── */
+  .content {
+    padding: 14px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    padding: 14px;
+    border-radius: 10px;
+  }
+  .card-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  /* ── Tables : scroll horizontal via :has() ── */
+  .card:has(table.table) {
+    overflow-x: auto;
+  }
+  .card:has(table.table) .table {
+    min-width: 440px;
+  }
+  .card:has(#members-list) {
+    overflow-x: auto;
+  }
+  #members-list .table {
+    min-width: 440px;
+  }
+
+  /* ── Stats ── */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .stat {
+    padding: 12px;
+  }
+  .stat-value {
+    font-size: 22px;
+  }
+
+  /* ── Grilles 2/3 colonnes → 1 colonne ── */
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .grid-auto {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  /* ── Filter bar → empilée ── */
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .filter-bar .input,
+  .filter-bar .select,
+  .filter-bar .input.search {
+    width: 100%;
+    min-width: 0;
+    flex: none;
+  }
+
+  /* ── Modal → bottom sheet ── */
+  .modal-bg {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 88dvh;
+    border-radius: 18px 18px 0 0;
+    padding: 20px 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
+    animation: mobileSheetIn 0.26s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  @keyframes mobileSheetIn {
+    from { transform: translateY(100%); opacity: 0.7; }
+    to   { transform: translateY(0);    opacity: 1;   }
+  }
+  .modal-header {
+    margin-bottom: 14px;
+  }
+  .modal-actions {
+    flex-direction: row;
+    gap: 8px;
+    padding-bottom: 0;
+  }
+  .modal-actions .btn {
+    flex: 1;
+    padding: 11px 14px;
+  }
+
+  /* ── Toasts : pleine largeur ── */
+  #toasts {
+    inset: 12px 12px auto 12px;
+    align-items: stretch;
+  }
+  .toast {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+
+  /* ── Logs ── */
+  .log-stream {
+    font-size: 11px;
+    padding: 8px;
+  }
+  .log-entry {
+    gap: 6px;
+    padding: 3px 4px;
+  }
+  .log-time {
+    display: none;
+  }
+
+  /* ── Schedule ── */
+  .schedule-cell {
+    height: 24px;
+  }
+
+  /* ── Bond grid → 1 colonne ── */
+  .bond-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Audit ── */
+  .audit-entry {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    padding: 10px 8px;
+  }
+  .audit-time {
+    font-size: 11px;
+  }
+
+  /* ── Health : 2 colonnes ── */
+  .health-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* ── Channel actions toujours visibles au tactile ── */
+  .channel-actions {
+    opacity: 1;
+  }
+
+  /* ── Embed & plain preview ── */
+  .embed-preview,
+  .plain-preview {
+    max-width: 100%;
+  }
+
+  /* ── Page header ── */
+  .page-header h2 {
+    font-size: 18px;
+  }
+
+  /* ── Boutons : cibles tactiles minimum 44 dp ── */
+  .btn,
+  .nav-item {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .btn {
+    min-height: 40px;
+  }
+  .btn-sm {
+    min-height: 34px;
+  }
+
+  /* ── Discord preview ── */
+  .discord-preview {
+    font-size: 12px;
+  }
+}
+
+/* ════ PETIT MOBILE (≤ 520px) ═══════════════════════ */
+@media (max-width: 520px) {
+  .content {
+    padding: 12px;
+  }
+  .topbar-title {
+    font-size: 14px;
+  }
+  .topbar-right {
+    max-width: calc(100vw - 190px);
+  }
+  .pill {
+    font-size: 11px;
+    padding: 3px 8px;
+    gap: 4px;
+  }
+  #slot-pill {
+    display: none;
+  }
+
+  /* Stats : 2 colonnes même sur petit écran */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .stat-value {
+    font-size: 20px;
+  }
+  .stat {
+    padding: 10px 12px;
+  }
+
+  /* Health → 1 colonne */
+  .health-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Slider en colonne sur très petit écran */
+  .slider-wrap {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .slider-value {
+    min-width: unset;
+    text-align: left;
+  }
+
+  /* Bond metrics */
+  .bond-metric-value {
+    font-size: 14px;
+  }
+
+  /* Chip-group wrapping */
+  .chip-group {
+    width: 100%;
+  }
+  .chip {
+    flex: 1;
+    text-align: center;
+    padding: 7px 8px;
+    font-size: 12px;
+  }
+
+  /* Card border radius plus serré */
+  .card {
+    border-radius: 8px;
+  }
+
+  /* Nav dans le drawer */
+  .nav-item {
+    padding: 10px 10px;
+    font-size: 14px;
+  }
+}
