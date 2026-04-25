@@ -594,6 +594,25 @@ a:hover { text-decoration: underline; }
 }
 .table tbody tr:hover { background: var(--surface-hover); }
 .table tr:last-child td { border-bottom: none; }
+.member-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.avatar-mini {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.affinity-bar {
+  height: 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.text-center {
+  text-align: center;
+}
 
 /* ─── LIVE PREVIEW (sidebar Discord) ─── */
 .discord-preview {

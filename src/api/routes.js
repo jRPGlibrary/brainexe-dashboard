@@ -126,7 +126,23 @@ function registerRoutes(app) {
   app.post('/api/members/:id/kick', async (req, res) => { const { reason } = req.body; try { const guild = await shared.discord.guilds.fetch(GUILD_ID); const member = await guild.members.fetch(req.params.id); if (!member) return res.status(404).json({ ok: false, error: 'Membre introuvable' }); const username = member.user?.username; await member.kick(reason || 'Dashboard'); auditLog('member.kick', { id: req.params.id, username, reason: reason || '' }); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
   app.post('/api/members/:id/ban', async (req, res) => { const { reason, deleteMessageDays } = req.body; try { const guild = await shared.discord.guilds.fetch(GUILD_ID); await guild.bans.create(req.params.id, { reason: reason || 'Dashboard', deleteMessageSeconds: Math.min((deleteMessageDays || 0) * 86400, 604800) }); auditLog('member.ban', { id: req.params.id, reason: reason || '' }); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
   app.patch('/api/members/:id/roles', async (req, res) => { const { addRoles, removeRoles } = req.body; try { const guild = await shared.discord.guilds.fetch(GUILD_ID); await guild.roles.fetch(); const member = await guild.members.fetch(req.params.id); if (addRoles?.length) await member.roles.add(addRoles, 'Dashboard'); if (removeRoles?.length) await member.roles.remove(removeRoles, 'Dashboard'); res.json({ ok: true, roles: member.roles.cache.filter(r => r.name !== '@everyone').map(r => ({ id: r.id, name: r.name, color: '#' + r.color.toString(16).padStart(6, '0') })) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
-  app.get('/api/members', async (req, res) => { try { const state = shared.guildCache || await readGuildState(); res.json({ ok: true, members: state.members || [] }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+  app.get('/api/members', async (req, res) => {
+    try {
+      const state = shared.guildCache || await readGuildState();
+      const members = state.members || [];
+      if (!shared.mongoDb) return res.json({ ok: true, members });
+      const bondsMap = new Map();
+      const bonds = await shared.mongoDb.collection('memberBonds').find({}).toArray();
+      bonds.forEach(b => bondsMap.set(b.userId, b));
+      const membersWithBonds = members.map(m => ({
+        ...m,
+        bond: bondsMap.get(m.id) || null,
+      }));
+      res.json({ ok: true, members: membersWithBonds });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
 
   // ═════════════════════════════════════════════════════════
   // ADMIN PANEL — Live control (v2.2.1)
