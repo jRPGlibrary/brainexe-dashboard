@@ -1,4 +1,4 @@
-# 🧠 BrainEXE Dashboard `v2.2.1`
+# 🧠 BrainEXE Dashboard `v2.2.2`
 
 > **Brainee** — Bot Discord pour le serveur BrainEXE. Gaming, neurodivergence, communauté.
 
@@ -48,7 +48,7 @@ http://localhost:3000
 
 ---
 
-## 🎨 Dashboard — v2.2.1
+## 🎨 Dashboard — v2.2.2
 
 Dashboard moderne avec **3 thèmes** (light / dark / sombre) et navigation par sections :
 
@@ -93,6 +93,25 @@ Stats live affichées directement dans la barre latérale Discord, comme les bot
 ---
 
 ## 📝 Changelog
+
+### `v2.2.2` — 🧠 5 Autonomy Features — Narrative Memory, Persistent Emotions, Learned Preferences, Topic Fatigue, Decision Logic
+
+**🆕 Major Features**
+- **📖 Narrative Memory** : Track story arcs and important server events (30-day history) — daily cron analyzes 50 recent messages via Claude, extracts 3-4 key narrative arcs injected into all prompts
+- **💗 Persistent Emotions** : Emotions now decay slower (18-24h instead of 4-6h) with emotional residuals (15-20%) that persist after fading — boosts future similar emotions
+- **👥 Learned Preferences** : Auto-detect member interests (`tech_lover`, `anime_fan`, `debate_lover`, `gaming_lover`, `music_lover`) accumulating over interactions — adapts conversation subjects
+- **📊 Topic Fatigue** : Prevents redundant topic discussions (5+ mentions per week across 8 categories: gaming, anime, tech, debate, music, crypto, politics, sports)
+- **🤔 Decision Logic** : Brainee can refuse to respond based on `mentalLoad > 80 + lazy/introvert vibe` or topic redundancy — true autonomy instead of always reacting
+
+**🔧 Technical Details**
+- New Collections: `narrativeMemory`, `topicFatigue`
+- New Files: `src/db/narrativeMemory.js`, `src/db/topicFatigue.js`, `src/features/decisionLogic.js`
+- Modified Files: `emotions.js` (slower decay + residuals), `members.js` (preference detection), `crons.js` (daily narrative cron @ 02:00), `events.js`, `conversations.js`
+- All features include graceful MongoDB failure handling and proper error logging
+
+**✅ Backward Compatible** — No breaking changes, all existing functionality preserved
+
+---
 
 ### `v2.2.1` — 🛠️ Dashboard — refonte complète des sections et corrections
 
@@ -241,8 +260,10 @@ brainexe-dashboard/
 │   │   └── keywords.js          # Détection mots-clés
 │   ├── db/
 │   │   ├── index.js             # Connexion MongoDB
-│   │   ├── members.js           # Profils membres
+│   │   ├── members.js           # Profils membres (+ détection préférences)
 │   │   ├── memberBonds.js       # Liens affectifs
+│   │   ├── narrativeMemory.js   # 🆕 Arcs narratifs serveur (v2.2.2)
+│   │   ├── topicFatigue.js      # 🆕 Tracker fatigue sujets (v2.2.2)
 │   │   ├── channelMem.js        # Mémoire par salon
 │   │   ├── channelDir.js        # Directory des salons
 │   │   ├── dmHistory.js         # Historique DM
@@ -254,11 +275,12 @@ brainexe-dashboard/
 │       ├── anecdotes.js         # Anecdote quotidienne
 │       ├── actus.js             # News gaming
 │       ├── conversations.js     # Conversations ambiantes
+│       ├── decisionLogic.js     # 🆕 Logique autonomie Brainee (v2.2.2)
 │       ├── greetings.js         # Morning/goodnight
 │       ├── drift.js             # Détection drift
 │       ├── tiktok.js            # TikTok Live watcher
 │       ├── welcome.js           # Message de bienvenue
-│       ├── sidebar.js           # 🆕 Sidebar Discord (v2.1.0)
+│       ├── sidebar.js           # Sidebar Discord (v2.1.0)
 │       ├── context.js           # Contexte conversationnel
 │       ├── convStats.js         # Stats quotidiennes conversations
 │       └── delayedReply.js      # Réponses différées
