@@ -227,7 +227,7 @@ function startConvCron() {
     }
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v2.2.2 — vibe + planning flottant + relances + émotions + bonds + narrative memory`, 'success');
+  pushLog('SYS', `✅ Crons v2.2.3 — vibe + planning flottant + relances + émotions + bonds + narrative memory`, 'success');
 }
 
 function slot_is_active(h) {

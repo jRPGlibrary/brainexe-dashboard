@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 📖 NARRATIVE MEMORY v2.2.2
+ * 📖 NARRATIVE MEMORY v2.2.3
  * ================================================
  * Arcs narratifs : historique des "faits marquants"
  * qui façonnent l'évolution à long terme de Brainee.

@@ -1,6 +1,6 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version**: 2.2.2  
+**Version**: 2.2.3  
 **Dernière mise à jour**: Avril 2026  
 **Créé pour**: Comprendre TOUT ce que fait ce bot et ce dashboard
 
