@@ -7,6 +7,8 @@ const {
   getDailyVibe, resetDailyVibe, getDailyFloatingSchedule,
   shouldSkipConvCron, rollImpulse, popAllPendingRelances,
 } = require('./bot/adaptiveSchedule');
+const { GUILD_ID } = require('./config');
+const { getRandomReaction } = require('./bot/reactions');
 const { postRandomConversation, replyToConversations } = require('./features/conversations');
 const { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup, postRelanceMention } = require('./features/greetings');
 const { runDriftCheck } = require('./features/drift');
@@ -24,6 +26,7 @@ const fs = require('fs');
 let convCron = null, replyCron = null, floatingEventsCron = null;
 let moodResetCron = null, driftCron = null, relanceCron = null;
 let emotionHourlyCron = null, emotionDailyCron = null, narrativeCron = null;
+let reactionScanCron = null;
 
 // Flags "déjà tiré aujourd'hui" pour les events flottants (reset à minuit)
 const firedToday = { morning: '', lunch: '', goodnight: '', nightWakeup: '', relance: '' };
@@ -33,7 +36,7 @@ function parisDateISO() {
 }
 
 function startConvCron() {
-  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron, narrativeCron]
+  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron, narrativeCron, reactionScanCron]
     .forEach(c => { if (c) { try { c.stop(); } catch {} } });
 
   // Initialise la vibe et le planning flottant dès le boot
@@ -55,14 +58,57 @@ function startConvCron() {
     if (Math.random() < prob) { pushLog('SYS', `💬 Conv [${slot.label}] (${count}/${max}, ${Math.round(prob * 100)}%)`); postRandomConversation(); }
   }, { timezone: 'Europe/Paris' });
 
-  // Reply — vibe-aware
-  replyCron = cron.schedule('0 */2 * * *', () => {
+  // Reply — vibe-aware, toutes les 45 min pour une présence plus régulière
+  replyCron = cron.schedule('*/45 * * * *', () => {
     const cfg = shared.botConfig.conversations;
     if (!cfg.enabled || !cfg.canReply) return;
     if (getCurrentSlot().maxConv === 0) return;
+    if (!slot_is_active(getParisHour())) return;
     const vibe = getDailyVibe();
-    const baseProba = 0.4 * vibe.responsiveness;
+    // Probabilité ajustée (45 min = ~2x plus de ticks qu'avant, on garde fréquence globale similaire mais un peu plus active)
+    const baseProba = 0.25 * vibe.responsiveness;
     if (Math.random() < baseProba) replyToConversations();
+  }, { timezone: 'Europe/Paris' });
+
+  // Scan réactif — lit les conversations récentes et réagit avec des emojis (presence passive)
+  reactionScanCron = cron.schedule('*/20 * * * *', async () => {
+    const cfg = shared.botConfig.conversations;
+    if (!cfg.enabled) return;
+    const slot = getCurrentSlot();
+    if (slot.maxConv === 0 || !slot_is_active(getParisHour())) return;
+    const vibe = getDailyVibe();
+    // Moins actif si vibe introvert/lazy, plus si chatty/excited
+    if (Math.random() > vibe.chattiness * 0.45) return;
+    try {
+      const active = cfg.channels.filter(c => c.enabled);
+      if (!active.length) return;
+      const ch = active[Math.floor(Math.random() * active.length)];
+      const guild = await shared.discord.guilds.fetch(GUILD_ID);
+      await guild.channels.fetch();
+      const channel = guild.channels.cache.get(ch.channelId);
+      if (!channel) return;
+      const msgs = await channel.messages.fetch({ limit: 30 });
+      const botId = shared.discord.user?.id;
+      const now = Date.now();
+      const WINDOW = 25 * 60 * 1000; // messages des 25 dernières minutes
+      const candidates = [...msgs.values()].filter(m =>
+        !m.author.bot &&
+        (now - m.createdTimestamp) < WINDOW &&
+        m.content?.length > 15 &&
+        !m.reactions?.cache?.some(r => r.me)
+      );
+      if (!candidates.length) return;
+      // Réagit à 1 message (parfois 2 si vibe excited/chatty)
+      const maxReact = (vibe.name === 'excited' || vibe.name === 'chatty') && Math.random() < 0.35 ? 2 : 1;
+      const toReact = candidates.slice(0, maxReact);
+      for (const msg of toReact) {
+        await msg.react(getRandomReaction(msg.content)).catch(() => {});
+      }
+      if (toReact.length) {
+        pushLog('SYS', `👁️ Scan réactif : ${toReact.length} réaction(s) → #${ch.channelName}`);
+        shared.lastAnyBotPostTime = Date.now();
+      }
+    } catch (_) {}
   }, { timezone: 'Europe/Paris' });
 
   // Events flottants : morning/lunch/goodnight/nightWakeup déclenchés autour d'une heure aléatoire du jour
@@ -227,7 +273,7 @@ function startConvCron() {
     }
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v2.2.4 — vibe + planning flottant + relances + émotions + bonds + narrative memory`, 'success');
+  pushLog('SYS', `✅ Crons v2.2.5 — reply 45min + scan réactif 20min + relances + émotions + bonds + narrative memory`, 'success');
 }
 
 function slot_is_active(h) {

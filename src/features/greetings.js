@@ -9,10 +9,22 @@ const { getDailyVibe, shouldTagPerson } = require('../bot/adaptiveSchedule');
 const { simulateTyping, resolveMentionsInText } = require('../bot/messaging');
 const { updateConvStats, getQuietestChannel } = require('./convStats');
 const { sanitizeForJson } = require('../utils');
+const { formatContext } = require('./context');
 
 // Instructions injectées quand on ne veut pas de tag
 const NO_TAG_CLAUSE = `IMPORTANT : Ne tagge personne dans ce message — pas de @pseudo. Reste ambiant, personne n'a besoin d'être notifié.`;
 const LIGHT_TAG_CLAUSE = `IMPORTANT : Évite les tags sauf vraiment nécessaire. Ne tagge personne si pas strictement indispensable.`;
+
+const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const DAY_CONTEXTS = {
+  0: 'dimanche — pas de contrainte, journée à soi',
+  6: 'samedi — liberté totale, pas de boulot',
+  1: 'lundi — début de semaine, on se lance',
+  2: 'mardi',
+  3: 'mercredi — milieu de semaine',
+  4: 'jeudi',
+  5: 'vendredi — fin de semaine, vivement ce soir',
+};
 
 async function postMorningGreeting() {
   const cfg = shared.botConfig.conversations;
@@ -25,15 +37,24 @@ async function postMorningGreeting() {
     const day = getParisDay();
     const mood = refreshDailyMood();
     const vibe = getDailyVibe();
-    const dayCtx = day === 0 ? 'dimanche, journée chill' : day === 6 ? 'samedi, pas de boulot' : 'jour de semaine';
+    const dayCtx = DAY_CONTEXTS[day] || DAY_NAMES[day];
+
+    // Charge les 30 derniers messages pour contexte
+    let recentCtx = '';
+    try {
+      const msgs = await channel.messages.fetch({ limit: 30 });
+      const ctx = formatContext(msgs, null, 30);
+      if (ctx.length > 30) recentCtx = `\nDerniers échanges (pour capter l'ambiance) :\n${ctx}`;
+    } catch (_) {}
+
     const content = await callClaude(
-      `\nHumeur : ${mood}. Vibe du jour : ${vibe.name} (${vibe.desc}). Tu viens de te lever.\n${NO_TAG_CLAUSE}`,
-      `C'est ${dayCtx}. Check morning — qui est là, qui bosse, qui geek. Somnolent. Max 2 phrases. Pas de @ à quelqu'un.`,
-      120,
+      `\nHumeur : ${mood}. Vibe du jour : ${vibe.name} (${vibe.desc}). Tu viens de te lever, c'est ${dayCtx}.${recentCtx}\n${NO_TAG_CLAUSE}`,
+      `Message de bonjour matinal naturel et varié. Ne parle pas forcément de café. Demande ce que les gens ont de prévu aujourd'hui ou cette journée. Reste dans l'élan de la conversation récente si c'est pertinent. 2 phrases max. Jamais de @ à quelqu'un. Varie la façon de dire bonjour (pas toujours "bonjour", parfois "yo", "salut", "hey", "ça commence" ...).`,
+      140,
       BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
-    await simulateTyping(channel, 800);
+    await simulateTyping(channel, 800 + Math.random() * 1200);
     await channel.send(contentResolved);
     shared.lastAnyBotPostTime = Date.now();
     await updateConvStats('1481028189680570421');
@@ -123,15 +144,20 @@ async function postRelanceMention({ userId, username, channelId, messageId, quer
     if (!channel) return;
 
     const vibe = getDailyVibe();
-    const tagAllowed = true; // relance explicite = tag autorisé (rôle propre)
-    const tagInstruction = tagAllowed
-      ? `Tu commences par taguer <@${userId}> pour qu'il/elle voit la relance.`
-      : LIGHT_TAG_CLAUSE;
+    const tagInstruction = `Tu commences par taguer <@${userId}> pour qu'il/elle voit la relance.`;
+
+    // Charge les 30 derniers messages pour ne pas perdre le fil de la conversation
+    let recentCtx = '';
+    try {
+      const msgs = await channel.messages.fetch({ limit: 30 });
+      const ctx = formatContext(msgs, null, 30);
+      if (ctx.length > 20) recentCtx = `\n\nContexte récent du salon (30 derniers messages) :\n${ctx}`;
+    } catch (_) {}
 
     const content = await callClaude(
-      `\nVibe : ${vibe.name}. Tu avais zappé un message hier d'une personne qui voulait ton avis.\n${tagInstruction}`,
-      `Hier ${username} t'avait écrit : "${query}"\nTu relances maintenant, avec une mini-excuse naturelle ("désolée j'ai zappé hier", "j'ai mis du temps mais..."). Puis tu réponds/réagis à son message. Max 3 phrases.`,
-      200,
+      `\nVibe : ${vibe.name}. Tu avais zappé un message hier d'une personne qui voulait ton avis.\n${tagInstruction}${recentCtx}`,
+      `Hier ${username} t'avait écrit : "${query}"\nTu relances maintenant, avec une mini-excuse naturelle ("désolée j'ai zappé hier", "j'ai mis du temps mais..."). Puis tu réponds/réagis à son message en tenant compte de ce qui s'est dit depuis. Max 3 phrases.`,
+      220,
       BOT_PERSONA
     );
     let finalContent = content;
