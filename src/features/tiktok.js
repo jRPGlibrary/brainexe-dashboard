@@ -130,15 +130,41 @@ async function sendLiveEndEmbed(title) {
   } catch (err) { pushLog('ERR', `Live end échoué : ${err.message}`, 'error'); }
 }
 
+function resetLiveState() {
+  liveActive = false;
+  shared.tiktokLiveActive = false;
+  liveStartTime = null;
+  tiktokConnection = null;
+}
+
 function connectToTikTokLive() {
   const cfg = shared.botConfig.tiktokLive;
-  if (!cfg.enabled || liveActive) return;
+  if (!cfg.enabled) return;
+
+  // Garde-fou : si le live est marqué actif depuis plus de 12h, l'état est probablement coincé
+  if (liveActive && liveStartTime && Date.now() - liveStartTime > 12 * 60 * 60 * 1000) {
+    pushLog('ERR', '📺 TikTok : live actif depuis +12h — réinitialisation forcée', 'error');
+    resetLiveState();
+  }
+
+  if (liveActive) return;
+
   let WebcastPushConnection;
   try { WebcastPushConnection = require('tiktok-live-connector').WebcastPushConnection; }
   catch { pushLog('ERR', 'tiktok-live-connector non installé', 'error'); return; }
+
   const conn = new WebcastPushConnection(`@${cfg.username}`);
   let title = `${cfg.username} est en live`;
-  conn.connect()
+
+  // Timeout de 15s : si TikTok ne répond pas, on abandonne proprement
+  const connectWithTimeout = Promise.race([
+    conn.connect(),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout connexion TikTok (15s)')), 15_000)
+    ),
+  ]);
+
+  connectWithTimeout
     .then(s => {
       tiktokConnection = conn;
       liveActive = true;
@@ -149,35 +175,36 @@ function connectToTikTokLive() {
       tiktokOfflineNotified = false;
       pushLog('SYS', `📺 Live : "${title}"`, 'success');
       sendLiveStartEmbed(title, s.roomInfo?.userCount || 0, s.roomInfo);
+
+      // Écouteurs attachés uniquement après connexion réussie
+      conn.on('roomUser', d => { if ((d.viewerCount || 0) > liveStats.peakViewers) liveStats.peakViewers = d.viewerCount; });
+      conn.on('like', d => { if (d.totalLikeCount) liveStats.totalLikes = d.totalLikeCount; });
+      conn.on('gift', d => {
+        if (d.giftType === 1 && !d.repeatEnd) return;
+        if ((d.diamondCount || 0) > 0 || d.giftName) {
+          liveStats.totalGifts += (d.repeatCount || 1);
+          const g = d.giftName || 'Gift';
+          liveStats.giftDetails[g] = (liveStats.giftDetails[g] || 0) + (d.repeatCount || 1);
+        }
+      });
+
+      const onEnd = () => {
+        if (!liveActive) return;
+        sendLiveEndEmbed(title);
+        resetLiveState();
+      };
+      conn.on('streamEnd', onEnd);
+      conn.on('disconnected', onEnd);
     })
-    .catch(e => {
+    .catch(err => {
+      // Nettoyage : supprimer tous les écouteurs de la connexion ratée pour éviter les fuites mémoire
+      try { conn.removeAllListeners(); } catch (_) {}
+      try { conn.disconnect?.(); } catch (_) {}
       if (!tiktokOfflineNotified) {
         tiktokOfflineNotified = true;
-        pushLog('SYS', `📺 TikTok hors ligne — tentative en arrière-plan`, 'info');
+        pushLog('SYS', `📺 TikTok hors ligne (${err.message}) — watcher actif en arrière-plan`, 'info');
       }
-      // Statut offline volontairement non publié dans le salon — le watcher tourne en fond,
-      // on ne spamme Discord QUE quand un vrai live démarre.
     });
-  conn.on('roomUser', d => { if ((d.viewerCount || 0) > liveStats.peakViewers) liveStats.peakViewers = d.viewerCount; });
-  conn.on('like', d => { if (d.totalLikeCount) liveStats.totalLikes = d.totalLikeCount; });
-  conn.on('gift', d => {
-    if (d.giftType === 1 && !d.repeatEnd) return;
-    if ((d.diamondCount || 0) > 0 || d.giftName) {
-      liveStats.totalGifts += (d.repeatCount || 1);
-      const g = d.giftName || 'Gift';
-      liveStats.giftDetails[g] = (liveStats.giftDetails[g] || 0) + (d.repeatCount || 1);
-    }
-  });
-  const onEnd = () => {
-    if (!liveActive) return;
-    sendLiveEndEmbed(title);
-    liveActive = false;
-    shared.tiktokLiveActive = false;
-    liveStartTime = null;
-    tiktokConnection = null;
-  };
-  conn.on('streamEnd', onEnd);
-  conn.on('disconnected', onEnd);
 }
 
 function startTikTokLiveWatcher() {
