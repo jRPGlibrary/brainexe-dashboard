@@ -197,22 +197,45 @@ function registerMessageHandlers() {
     const urgent = isUrgentQuery(userQuery);
     const decision = decideMentionResponse(slot, urgent);
 
-    // Décision : skip total (agency)
+    // Émojis de signal selon la vibe (montre que Brainee a vu mais est dans un état particulier)
+    const VIBE_SIGNAL_EMOJI = {
+      grumpy: '😒', lazy: '😴', introvert: '👀', focus: '🔕',
+      melancholic: '😔', withdrawn: '💤',
+    };
+
+    // Décision : skip total → on ne skip jamais une mention directe, on répond avec délai
+    // On réagit avec un emoji pour signaler qu'on a vu le message
     if (decision.action === 'skip') {
-      pushLog('SYS', `🙅 @mention ignorée volontairement (vibe ${getDailyVibe().name}) → ${message.author.username}`);
+      const vibe = getDailyVibe();
+      const signalEmoji = VIBE_SIGNAL_EMOJI[vibe.name] || '⏳';
+      await message.react(signalEmoji).catch(() => {});
+      const vibeDelay = 3 * 60 * 1000 + Math.random() * 12 * 60 * 1000; // 3-15 min
+      pushLog('SYS', `⏳ @mention retardée ${signalEmoji} (vibe ${vibe.name}) → ${message.author.username} (${Math.round(vibeDelay / 60000)} min)`);
+      setTimeout(() => handleMentionReply(message, userQuery), vibeDelay);
       return;
     }
 
-    // Décision : reporter au lendemain (non-urgent + vibe lazy, ou sleep)
+    // Décision : reporter au lendemain — seulement si le bot dort vraiment
     if (decision.action === 'defer_tomorrow') {
-      queueRelance({
-        userId: message.author.id,
-        username: message.author.username,
-        channelId: message.channelId,
-        messageId: message.id,
-        query: userQuery,
-      });
-      pushLog('SYS', `📬 @mention différée à demain → ${message.author.username} (non-urgent, vibe ${getDailyVibe().name})`);
+      if (slot?.status === 'sleep') {
+        await message.react('💤').catch(() => {});
+        queueRelance({
+          userId: message.author.id,
+          username: message.author.username,
+          channelId: message.channelId,
+          messageId: message.id,
+          query: userQuery,
+        });
+        pushLog('SYS', `📬 @mention différée à demain → ${message.author.username} (slot sommeil)`);
+        return;
+      }
+      // Hors sommeil : signal + délai long plutôt que vrai report
+      const vibe = getDailyVibe();
+      const signalEmoji = VIBE_SIGNAL_EMOJI[vibe.name] || '⏳';
+      await message.react(signalEmoji).catch(() => {});
+      const deferDelay = 10 * 60 * 1000 + Math.random() * 20 * 60 * 1000; // 10-30 min
+      pushLog('SYS', `⏳ @mention retardée ${signalEmoji} (vibe ${vibe.name}) → ${message.author.username} (${Math.round(deferDelay / 60000)} min)`);
+      setTimeout(() => handleMentionReply(message, userQuery), deferDelay);
       return;
     }
 

@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.2.4
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.2.5
  * ================================================
  * Architecture refactorisée — entry point minimal
  * Toute la logique est dans src/
@@ -93,7 +93,7 @@ discord.once('ready', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(' 🧠 BRAINEXE — Brainee v2.2.4 (fix doublons salons + tags normalisés)');
+  console.log(' 🧠 BRAINEXE — Brainee v2.2.5 (présence active, morning varié, signalement émotionnel)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   const vibe = getDailyVibe();
   console.log(` ✅ Bot : ${discord.user.tag}`);
@@ -138,7 +138,7 @@ discord.once('ready', async () => {
     pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
   ), 30000);
 
-  await syncDiscordToFile('Démarrage v2.2.4');
+  await syncDiscordToFile('Démarrage v2.2.5');
 });
 
 server.listen(PORT, '0.0.0.0', () => console.log(`🌐 Port ${PORT}`));
