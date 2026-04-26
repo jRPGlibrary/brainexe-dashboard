@@ -3,7 +3,7 @@ const { EmbedBuilder, ChannelType } = discord_js;
 const shared = require('../shared');
 const { pushLog } = require('../logger');
 const { GUILD_ID } = require('../config');
-const { getSupportChannelId, setSupportChannelId } = require('../config/channelManager');
+const { getSupportChannelId, setSupportChannelId, getSupportEmbedMessageId, setSupportEmbedMessageId } = require('../config/channelManager');
 const { normalizeName } = require('../bot/messaging');
 
 const CHANNEL_NAME = '❤️-soutien-brainee';
@@ -68,12 +68,17 @@ async function postSupportEmbed(channel) {
       return;
     }
 
-    const messages = await channel.messages.fetch({ limit: 5 });
-    const hasEmbed = messages.some(m => m.embeds?.length > 0);
-
-    if (hasEmbed) {
-      pushLog('SYS', 'Embed soutien déjà présent', 'info');
-      return;
+    const storedMessageId = getSupportEmbedMessageId();
+    if (storedMessageId) {
+      try {
+        const existingMessage = await channel.messages.fetch(storedMessageId);
+        if (existingMessage && existingMessage.embeds?.length > 0) {
+          pushLog('SYS', 'Embed soutien déjà présent', 'info');
+          return;
+        }
+      } catch (_) {
+        setSupportEmbedMessageId(null);
+      }
     }
 
     const embed = new EmbedBuilder()
@@ -105,7 +110,8 @@ async function postSupportEmbed(channel) {
       .setFooter({ text: 'Brainee • Soutien du projet' })
       .setTimestamp();
 
-    await channel.send({ embeds: [embed] });
+    const message = await channel.send({ embeds: [embed] });
+    setSupportEmbedMessageId(message.id);
     pushLog('SYS', 'Embed soutien posté ✓', 'success');
   } catch (e) {
     pushLog('ERR', `Post support embed error: ${e.message}`, 'error');
