@@ -26,7 +26,7 @@ const {
   updateConvStats, getQuietestChannel, hasUnansweredLastPost, isDeepTopicChannel,
 } = require('./convStats');
 const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
-const { formatNarrativeInjection } = require('../db/narrativeMemory');
+const { getNarrativeContext } = require('../db/narrativeMemory');
 
 async function postRandomConversation() {
   const cfg = shared.botConfig.conversations;
@@ -68,7 +68,7 @@ async function postRandomConversation() {
     const modeBlock = getModeInjectionForChannel(mode, channel.name, ch.topic);
     const emotionBlock = getEmotionalInjection();
     const temperamentBlock = getTemperamentInjection();
-    const narrativeBlock = await formatNarrativeInjection();
+    const narrativeBlock = await getNarrativeContext();
     let contextBlock = '';
     try {
       const msgs = await channel.messages.fetch({ limit: 100 });
