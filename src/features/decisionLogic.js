@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🤔 DECISION LOGIC v2.2.3
+ * 🤔 DECISION LOGIC v2.2.4
  * ================================================
  * Logique d'autonomie pour les réponses et interactions
  * Décide si Brainee doit répondre ou rester silencieuse

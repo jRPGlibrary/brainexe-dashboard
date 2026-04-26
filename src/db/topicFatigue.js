@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 📊 TOPIC FATIGUE TRACKER v2.2.3
+ * 📊 TOPIC FATIGUE TRACKER v2.2.4
  * ================================================
  * Suivi des sujets pour éviter la redondance.
  * Si un sujet est abordé 5+ fois par semaine,
