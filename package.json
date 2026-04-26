@@ -1,6 +1,6 @@
 {
   "name": "brainexe-dashboard",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "description": "BrainEXE — Dashboard Neurodivergent Creator Hub",
   "main": "server.js",
   "scripts": {
@@ -12,6 +12,7 @@
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.4.1",
     "mongodb": "^6.5.0",
     "node-cron": "^3.0.3",
     "tiktok-live-connector": "^2.1.1-beta1",
