@@ -136,7 +136,7 @@ async function replyToConversations() {
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
 
-    // v2.2.3 : Check if Brainee should respond (autonomy logic)
+    // v2.2.4 : Check if Brainee should respond (autonomy logic)
     const vibe = getDailyVibe();
     const internalState = getInternalState();
     const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, msgContent, false);

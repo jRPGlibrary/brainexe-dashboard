@@ -10,7 +10,7 @@ function loadChannelConfig() {
       return JSON.parse(data);
     }
   } catch (_) {}
-  return { supportChannelId: null, createdAt: null };
+  return { supportChannelId: null, supportEmbedMessageId: null, createdAt: null };
 }
 
 function saveChannelConfig(config) {
@@ -33,4 +33,15 @@ function getSupportChannelId() {
   return config.supportChannelId;
 }
 
-module.exports = { loadChannelConfig, saveChannelConfig, setSupportChannelId, getSupportChannelId };
+function setSupportEmbedMessageId(id) {
+  const config = loadChannelConfig();
+  config.supportEmbedMessageId = id;
+  saveChannelConfig(config);
+}
+
+function getSupportEmbedMessageId() {
+  const config = loadChannelConfig();
+  return config.supportEmbedMessageId;
+}
+
+module.exports = { loadChannelConfig, saveChannelConfig, setSupportChannelId, getSupportChannelId, setSupportEmbedMessageId, getSupportEmbedMessageId };
