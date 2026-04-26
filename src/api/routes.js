@@ -171,7 +171,7 @@ function registerRoutes(app) {
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 
-  function refreshSidebar() { updateSidebarChannels().catch(() => {}); }
+  function refreshSidebar() { updateSidebarChannels().catch(err => pushLog('ERR', `Sidebar refresh: ${err.message}`, 'error')); }
 
   // Mood (humeur du jour)
   app.post('/api/admin/mood', (req, res) => {
@@ -273,7 +273,7 @@ function registerRoutes(app) {
         remaining: Math.max(0, totalCosts - (updated.totalDonated || 0)),
       };
       broadcast('fundingUpdate', response);
-      updateBotStatus(response.totalDonated, totalCosts).catch(() => {});
+      updateBotStatus(response.totalDonated, totalCosts).catch(err => pushLog('ERR', `updateBotStatus: ${err.message}`, 'error'));
       auditLog('funding.donation', { amount });
       res.json(response);
     } catch (e) {

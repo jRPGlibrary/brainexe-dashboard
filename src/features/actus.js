@@ -111,7 +111,7 @@ function postBiMonthlyActus(force) {
   if (!force) {
     shared.botConfig.actus.lastPostedSlots = [...posted, slotKey].slice(-20);
     saveConfig();
-    setBotState({ actusLastPostedSlots: shared.botConfig.actus.lastPostedSlots }).catch(() => {});
+    setBotState({ actusLastPostedSlots: shared.botConfig.actus.lastPostedSlots }).catch(err => pushLog('ERR', `setBotState actus: ${err.message}`, 'error'));
   }
   const windowMs = 12 * 60 * 60 * 1000;
   pushLog('SYS', `📅 Actus bi-mensuelles — ${active.length} salons sur 12h`);
