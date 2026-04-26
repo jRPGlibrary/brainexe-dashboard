@@ -28,7 +28,7 @@ const { scheduleDiscordToFile } = require('./sync');
 const { sendWelcomeMessage } = require('../features/welcome');
 const { YOUTUBE_KEYWORDS } = require('../bot/keywords');
 const { shouldRespond, recordMessageTopic } = require('../features/decisionLogic');
-const { formatNarrativeInjection } = require('../db/narrativeMemory');
+const { getNarrativeContext } = require('../db/narrativeMemory');
 
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
@@ -98,7 +98,7 @@ async function handleMentionReply(message, userQuery) {
     const bondBlock = describeBond(bond, message.author.username);
     const emotionBlock = getEmotionalInjection();
     const temperamentBlock = getTemperamentInjection();
-    const narrativeBlock = await formatNarrativeInjection();
+    const narrativeBlock = await getNarrativeContext();
     const channelMemory = await getChannelMemory(message.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntry = await getChannelDirectory(message.channelId);
