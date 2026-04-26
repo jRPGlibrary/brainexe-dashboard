@@ -73,13 +73,27 @@ async function postSupportEmbed(channel) {
       try {
         const existingMessage = await channel.messages.fetch(storedMessageId);
         if (existingMessage && existingMessage.embeds?.length > 0) {
-          pushLog('SYS', 'Embed soutien déjà présent', 'info');
+          pushLog('SYS', 'Embed soutien déjà présent (ID)', 'info');
           return;
         }
       } catch (_) {
         setSupportEmbedMessageId(null);
       }
     }
+
+    // Fallback : scan le salon pour retrouver l'embed (ex: après un déploiement qui écrase channels.json)
+    try {
+      const messages = await channel.messages.fetch({ limit: 50 });
+      const botId = shared.discord?.user?.id;
+      const existing = [...messages.values()].find(m =>
+        m.author.id === botId && m.embeds?.length > 0 && m.embeds[0].title?.includes('Soutenir Brainee')
+      );
+      if (existing) {
+        setSupportEmbedMessageId(existing.id);
+        pushLog('SYS', 'Embed soutien retrouvé dans le salon ✓', 'info');
+        return;
+      }
+    } catch (_) {}
 
     const embed = new EmbedBuilder()
       .setColor(0xff6b9d)
