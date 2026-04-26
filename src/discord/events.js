@@ -197,22 +197,31 @@ function registerMessageHandlers() {
     const urgent = isUrgentQuery(userQuery);
     const decision = decideMentionResponse(slot, urgent);
 
-    // Décision : skip total (agency)
+    // Décision : skip total → on ne skip jamais une mention directe, on répond avec délai
     if (decision.action === 'skip') {
-      pushLog('SYS', `🙅 @mention ignorée volontairement (vibe ${getDailyVibe().name}) → ${message.author.username}`);
+      const vibeDelay = 3 * 60 * 1000 + Math.random() * 12 * 60 * 1000; // 3-15 min
+      pushLog('SYS', `⏳ @mention retardée (vibe ${getDailyVibe().name}) → ${message.author.username} (${Math.round(vibeDelay / 60000)} min)`);
+      setTimeout(() => handleMentionReply(message, userQuery), vibeDelay);
       return;
     }
 
-    // Décision : reporter au lendemain (non-urgent + vibe lazy, ou sleep)
+    // Décision : reporter au lendemain — seulement si le bot dort vraiment
     if (decision.action === 'defer_tomorrow') {
-      queueRelance({
-        userId: message.author.id,
-        username: message.author.username,
-        channelId: message.channelId,
-        messageId: message.id,
-        query: userQuery,
-      });
-      pushLog('SYS', `📬 @mention différée à demain → ${message.author.username} (non-urgent, vibe ${getDailyVibe().name})`);
+      if (slot?.status === 'sleep') {
+        queueRelance({
+          userId: message.author.id,
+          username: message.author.username,
+          channelId: message.channelId,
+          messageId: message.id,
+          query: userQuery,
+        });
+        pushLog('SYS', `📬 @mention différée à demain → ${message.author.username} (slot sommeil)`);
+        return;
+      }
+      // Hors sommeil : délai long plutôt que vrai report
+      const deferDelay = 10 * 60 * 1000 + Math.random() * 20 * 60 * 1000; // 10-30 min
+      pushLog('SYS', `⏳ @mention retardée (vibe ${getDailyVibe().name}) → ${message.author.username} (${Math.round(deferDelay / 60000)} min)`);
+      setTimeout(() => handleMentionReply(message, userQuery), deferDelay);
       return;
     }
 

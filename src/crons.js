@@ -145,7 +145,7 @@ function startConvCron() {
     if (slot.maxConv === 0) return;
 
     const pending = popAllPendingRelances();
-    if (pending.length === 0) { firedToday.relance = today; return; }
+    if (pending.length === 0) { return; } // ne pas bloquer les futures relances du jour
 
     firedToday.relance = today;
     pushLog('SYS', `📬 Relance de ${pending.length} mention(s) du jour d'avant`);
