@@ -1,6 +1,6 @@
-# 🧠 BrainEXE Dashboard `v2.2.2`
+# 🧠 BrainEXE Dashboard `v2.2.3`
 
-> **Brainee** — Bot Discord pour le serveur BrainEXE. Gaming, neurodivergence, communauté.
+> **Brainee** — Bot Discord IA pour le serveur BrainEXE. Gaming, neurodivergence, communauté.
 
 ---
 
@@ -10,11 +10,11 @@
 |---|---|
 | Node.js + Discord.js v14 | Bot Discord |
 | Express + WebSocket | Dashboard temps réel |
-| Anthropic API (Claude) | Génération contenu IA |
+| Anthropic API (Claude) | Génération de contenu IA |
 | YouTube Data API v3 | Recherche vidéos sur @mention |
 | GNews API | Actualités gaming réelles |
 | MongoDB Atlas | Persistance (profils, mémoire, bonds, états) |
-| node-cron | Planification |
+| node-cron | Planification des tâches |
 | Railway | Hébergement |
 
 ---
@@ -29,53 +29,50 @@
 | `YOUTUBE_API_KEY` | ✅ | Clé API YouTube Data v3 |
 | `GNEWS_API_KEY` | ✅ | Clé API GNews |
 | `MONGODB_URI` | ✅ | URI MongoDB Atlas |
-| `PORT` | ⭕ | Port dashboard (défaut: 3000) |
+| `PORT` | ⭕ | Port dashboard (défaut : 3000) |
 
 ---
 
 ## 🚀 Démarrage
 
 ```bash
-# Installation
 npm install
-
-# Démarrage
 npm start
-
-# Dashboard accessible sur
-http://localhost:3000
+# Dashboard → http://localhost:3000
 ```
 
 ---
 
-## 🎨 Dashboard — v2.2.2
+## 🎨 Dashboard
 
-Dashboard moderne avec **3 thèmes** (light / dark / sombre) et navigation par sections :
+Interface moderne avec **3 thèmes** (light / dark / sombre) et navigation par sections :
 
-- **📊 Vue d'ensemble** — Stats globales, slot actuel, humeur, logs récents, actions rapides
-- **🎛️ Admin live** — Contrôle manuel du slot, de l'humeur, du TikTok et de l'état du bot
-- **❤️ Santé système** — Statut Discord / Mongo / Claude en temps réel (ping, latence, mémoire, uptime)
-- **📜 Logs** — Stream temps réel avec barre de filtre (source + niveau)
-- **💬 Salons** — Arborescence catégories/salons, création/édition/suppression (avec confirmation)
-- **🎭 Rôles** — Liste triée, création avec couleur, suppression (avec confirmation)
-- **👥 Membres** — Liste avec recherche et 4 modes de tri (nom, rôles, arrivée, récence)
-- **⚡ Automatisations** — Contrôles (anecdotes, actus, conversations, greetings, TikTok, drift)
-- **📝 Posts manuels** — Envoi de messages texte ou embed avec aperçu temps réel
-- **💗 Émotions** — État émotionnel live du bot (humeur, énergie, états internes)
-- **💞 Relations** — Liens affectifs membres (attachement, confiance, historique de l'évolution)
-- **🗓️ Planning** — Grille 24h × 3 types de jours (semaine / samedi / dimanche), slot courant surligné
-- **💾 Backups** — Liste, téléchargement, suppression et restauration de config depuis un snapshot
-- **📖 Historique** — Journal d'audit de toutes les actions du dashboard (500 entrées max)
-- **⚙️ Paramètres** — Sync, auto-rôle, welcome, thème
-- **💰 Soutien** — Données de financement et historique mensuel
+| Section | Description |
+|---|---|
+| 📊 Vue d'ensemble | Stats globales, slot actuel, humeur, logs récents, actions rapides |
+| 🎛️ Admin live | Contrôle manuel du slot, de l'humeur, du TikTok et de l'état du bot |
+| ❤️ Santé système | Statut Discord / Mongo / Claude en temps réel (ping, latence, mémoire, uptime) |
+| 📜 Logs | Stream temps réel avec barre de filtre (source + niveau) |
+| 💬 Salons | Arborescence catégories/salons, création / édition / suppression |
+| 🎭 Rôles | Liste triée, création avec couleur, suppression avec confirmation |
+| 👥 Membres | Liste avec recherche et 4 modes de tri (nom, rôles, arrivée, récence) |
+| ⚡ Automatisations | Contrôles anecdotes, actus, conversations, greetings, TikTok, drift |
+| 📝 Posts manuels | Envoi de messages texte ou embed avec aperçu temps réel |
+| 💗 Émotions | État émotionnel live du bot (humeur, énergie, états internes) |
+| 💞 Relations | Liens affectifs membres (attachement, confiance, évolution) |
+| 🗓️ Planning | Grille 24h × 3 types de jours, slot courant surligné |
+| 💾 Backups | Liste, téléchargement, suppression et restauration de config |
+| 📖 Historique | Journal d'audit de toutes les actions dashboard (500 entrées max) |
+| ⚙️ Paramètres | Sync, auto-rôle, welcome, thème |
+| 💰 Soutien | Données de financement et historique mensuel |
 
-Architecture : `public/index.html` (structure) + `public/app.css` (thèmes) + `public/app.js` (logique) — pas de framework, juste du HTML/CSS/JS moderne.
+Architecture : `public/index.html` + `public/app.css` + `public/app.js` — sans framework.
 
 ---
 
-## 📊 Sidebar Discord — Nouveau en v2.1.0
+## 📡 Sidebar Discord
 
-Stats live affichées directement dans la barre latérale Discord, comme les bots statbot/MEE6 :
+Stats live affichées dans la barre latérale Discord (mise à jour toutes les 10 min) :
 
 ```
 📊 SYSTÈME BRAINEXE
@@ -86,146 +83,7 @@ Stats live affichées directement dans la barre latérale Discord, comme les bot
   🔊 📱┃TikTok : Offline
 ```
 
-- **5 salons vocaux verrouillés** (ViewChannel ✅ / Connect ❌) dans une catégorie dédiée
-- **Update automatique** toutes les 10 minutes (rate limit Discord)
-- **Données live** : `memberCount`, slot actuel, mood du jour, énergie interne, statut TikTok
-
----
-
-## 📝 Changelog
-
-### `v2.2.2` — 🧠 5 Autonomy Features — Narrative Memory, Persistent Emotions, Learned Preferences, Topic Fatigue, Decision Logic
-
-**🆕 Major Features**
-- **📖 Narrative Memory** : Track story arcs and important server events (30-day history) — daily cron analyzes 50 recent messages via Claude, extracts 3-4 key narrative arcs injected into all prompts
-- **💗 Persistent Emotions** : Emotions now decay slower (18-24h instead of 4-6h) with emotional residuals (15-20%) that persist after fading — boosts future similar emotions
-- **👥 Learned Preferences** : Auto-detect member interests (`tech_lover`, `anime_fan`, `debate_lover`, `gaming_lover`, `music_lover`) accumulating over interactions — adapts conversation subjects
-- **📊 Topic Fatigue** : Prevents redundant topic discussions (5+ mentions per week across 8 categories: gaming, anime, tech, debate, music, crypto, politics, sports)
-- **🤔 Decision Logic** : Brainee can refuse to respond based on `mentalLoad > 80 + lazy/introvert vibe` or topic redundancy — true autonomy instead of always reacting
-
-**🔧 Technical Details**
-- New Collections: `narrativeMemory`, `topicFatigue`
-- New Files: `src/db/narrativeMemory.js`, `src/db/topicFatigue.js`, `src/features/decisionLogic.js`
-- Modified Files: `emotions.js` (slower decay + residuals), `members.js` (preference detection), `crons.js` (daily narrative cron @ 02:00), `events.js`, `conversations.js`
-- All features include graceful MongoDB failure handling and proper error logging
-
-**✅ Backward Compatible** — No breaking changes, all existing functionality preserved
-
----
-
-### `v2.2.1` — 🛠️ Dashboard — refonte complète des sections et corrections
-
-**🔧 Corrections**
-- **Synchronisation de version** : correction du décalage involontaire vers `2.3.0` dans tous les fichiers (`package.json`, `server.js`, `README.md`, `BIBLE_BRAINEXE.md`, `src/api/routes.js`)
-- **"Invalid Date" dans les logs** : le backend stockait `time` en chaîne pré-formatée, le frontend ne pouvait pas reconstruire la date — corrigé en stockant l'epoch (`ts`) et l'ISO (`time`)
-- **Logs live absents** : le backend diffusait `'log'` mais le frontend écoutait `'logUpdate'` — alignés
-- **Couleurs des logs cassées** : le backend envoyait `dir`, le frontend utilisait `l.type` (undefined) — ajout de `type: dir` dans chaque entrée
-
-**🆕 Nouvelles sections dashboard**
-- **❤️ Santé système** — Indicateurs Discord (ping, statut), MongoDB (connecté/déconnecté), Claude (appels, erreurs, latence), mémoire et uptime
-- **💗 Émotions** — Lecture en direct du cœur émotionnel du bot (humeur, énergie, états, tempérament)
-- **💞 Relations** — Liens affectifs par membre (attachement, confiance, trajectoire)
-- **🗓️ Planning** — Grille visuelle 24h × semaine/samedi/dimanche, slot actuel mis en évidence
-- **📖 Historique** — Journal d'audit horodaté de toutes les actions dashboard (ring buffer 500 entrées)
-
-**🔧 Améliorations dashboard**
-- **Pill WebSocket 3 états** : `Connecté` / `Reconnexion…` / `Déconnecté` avec chrono depuis la dernière connexion
-- **Confirmation modale** pour les actions destructives (suppression salon/rôle) — remplace les `confirm()` natifs
-- **Barre de filtre des logs** : filtrage par source (SYS, ERR, D2F…) et par niveau (info, success, error, warn)
-- **Membres** : champ de recherche + 4 modes de tri (nom, rôles, date d'arrivée, activité récente)
-- **Posts manuels** : aperçu de l'embed en temps réel pendant la saisie
-- **Backups** : bouton de téléchargement direct, suppression avec confirmation, restauration de config depuis un snapshot
-
-**🔧 Nouveaux fichiers**
-- `src/audit.js` — ring buffer 500 entrées, broadcast `auditUpdate` via WebSocket
-- `src/ai/claude.js` — instrumentation santé : `totalCalls`, `totalErrors`, `consecutiveErrors`, `lastLatencyMs`
-
-**🔌 Nouveaux endpoints API**
-- `GET /api/health` — statut Discord / Mongo / Claude
-- `GET /api/schedule` — grille hebdomadaire des slots
-- `GET /api/audit` — journal d'audit (paramètre `?limit`)
-- `GET /api/backups/:name/download` — téléchargement sécurisé d'un backup
-- `DELETE /api/backups/:name` — suppression sécurisée d'un backup
-- `POST /api/backups/:name/restore-config` — restauration partielle de la config depuis un snapshot
-- `GET /api/project/funding/history` — historique agrégé des dons par mois
-
----
-
-### `v2.2.0` — 🔴 Audit & polish (embeds TikTok, fils auto-invités, no-insist)
-
-**🐛 Corrections**
-- **TikTok offline** : le statut "HORS LIGNE" au démarrage est désormais **uniquement loggé** et n'est plus publié dans le salon `🔴・alertes-live` (spam supprimé)
-- Statut `online` redondant retiré au profit du seul `sendLiveStartEmbed`
-
-**🆕 Features**
-- **Embeds TikTok enrichis** :
-  - `sendLiveStartEmbed` : lien direct sur le titre, thumbnail + image de couverture du live (depuis `roomInfo.cover`), avatar TikTok (depuis `roomInfo.owner`), bouton texte "▶ Rejoindre le live", ligne `Viewers` claire et mise en forme avec \`code\`
-  - `sendLiveEndEmbed` : Top gifts en liste, rappel du rôle notification, lien vers la chaîne
-- **Fils Discord auto-intro** : quand Brainee ouvre un fil (dérive, conv ambiante, reply), elle poste un **premier message dans le fil** avec un titre en gras + invitation chaleureuse. Les participants récents sont tagués dans le fil de dérive (jusqu'à 5) pour les inviter à migrer
-- **No-insist** : si Brainee a posté dans un salon et que personne n'a répondu depuis (moins de 4h), elle ne repose plus dessus — elle part sur un autre sujet
-- **Biais topics profonds** : les salons thématiques (JRPG, RPG, retro, indie, next-gen, hidden-gems, lore, pixel-art, code-talk, ia-tools, tips-focus, cerveau-en-feu, etc.) sont boostés dans le choix du salon le plus silencieux + un bloc d'instructions "angle fouillé" est injecté dans le prompt pour éviter les questions génériques
-
-**🔧 Améliorations**
-- `package.json` : plages `^` permettant les MAJ patch/minor automatiques (sécurité)
-- Version bumpée partout (2.1.0 → 2.2.0)
-
-**⚠️ Dépendances majeures disponibles (non upgradées — breaking changes)**
-- `discord.js` 14.16 → 14.26 (safe)
-- `express` 4 → 5 (breaking)
-- `mongodb` 6 → 7 (breaking)
-- `node-cron` 3 → 4 (breaking)
-- `chokidar` 3 → 5 (breaking)
-- `dotenv` 16 → 17 (breaking)
-
-À planifier ultérieurement avec tests dédiés.
-
----
-
-### `v2.1.0` — 🎨 Refonte dashboard + Sidebar Discord
-
-**🆕 Features**
-- **Sidebar Discord** : 5 salons vocaux stats auto-update (membres, état, humeur, activité, TikTok)
-- **Refonte complète du dashboard** : design moderne, 3 thèmes (light/dark/sombre), navigation par sections
-- **Theme persistant** : le thème choisi est sauvegardé en `localStorage`
-- **Toast notifications** : feedback visuel pour chaque action
-
-**🔧 Améliorations**
-- Flag `shared.tiktokLiveActive` pour tracker l'état du live
-- Architecture dashboard en 3 fichiers (`index.html` / `app.css` / `app.js`) au lieu d'un monolithe
-- Version bumpée partout (emotions, humanize, persona, adaptiveSchedule, memberBonds, crons, events, routes)
-
-**🐛 Corrections**
-- Correction initiale du bug `channel.send is not a function` → salons vocaux au lieu d'embed
-- Respect des rate limits Discord (2 renames max par 10min par canal)
-
----
-
-### `v2.0.0` → `v2.0.9` — 💗 Âme de Brainee
-
-**🧠 v2.0.9 — Émotions + Bonds + Humanisation**
-- **Émotions** : 4 couches (tempérament, états internes, émotions vives, liens membres)
-- **Member bonds** : attachement, confiance, confort social, trajectoire émotionnelle par membre
-- **Humanize filter** : accent drops, slang, relax (basés sur énergie, charge mentale, lien)
-- Injection émotionnelle dans le system prompt → influence ton, longueur, initiative
-
-**⚡ v2.0.8 — Humanize core**
-- Filtre de micro-transformations contextuel (pas aléatoire)
-- Règles strictes : pas de première phrase, pas de ponctuation structurante, max 2 filtres/message
-
-**🎭 v2.0.7 — Adaptive scheduling**
-- Vibes journalières (chatty / introvert / impulsive / lazy...)
-- Horaires flottants (morning ±25min, lunch, goodnight)
-- Détection d'urgence pour réponses rapides ou relances
-
-**💬 v2.0.x — Conversations + features de base**
-- Anecdotes quotidiennes
-- Actus gaming bi-mensuelles (GNews)
-- Greetings (morning/lunch/goodnight/nightwakeup)
-- Drift check (détection de conversations mortes)
-- TikTok Live watcher + annonces automatiques
-- Reaction roles, Auto-role
-- Welcome messages customs
-- Backups serveur
+5 salons vocaux verrouillés (ViewChannel ✅ / Connect ❌) dans une catégorie dédiée.
 
 ---
 
@@ -233,17 +91,17 @@ Stats live affichées directement dans la barre latérale Discord, comme les bot
 
 ```
 brainexe-dashboard/
-├── server.js                    # Entry point minimal
+├── server.js                    # Entry point
 ├── src/
 │   ├── config.js                # Variables d'environnement
-│   ├── shared.js                # État partagé
-│   ├── logger.js                # Logs + broadcast WS
-│   ├── audit.js                 # 🆕 Ring buffer audit 500 entrées (v2.2.1)
+│   ├── shared.js                # État partagé global
+│   ├── logger.js                # Logs + broadcast WebSocket
+│   ├── audit.js                 # Ring buffer audit 500 entrées
 │   ├── crons.js                 # Orchestration cron jobs
 │   ├── botConfig.js             # Config bot persistée
 │   ├── utils.js                 # Helpers
 │   ├── ai/
-│   │   ├── claude.js            # Client Anthropic
+│   │   ├── claude.js            # Client Anthropic (instrumentation santé)
 │   │   └── youtube.js           # Recherche YouTube
 │   ├── api/
 │   │   └── routes.js            # Tous les endpoints HTTP
@@ -252,35 +110,39 @@ brainexe-dashboard/
 │   │   ├── emotions.js          # Core émotionnel 4 couches
 │   │   ├── humanize.js          # Filtre humanisation
 │   │   ├── mood.js              # Humeur du jour
-│   │   ├── scheduling.js        # Slots journaliers (par jour)
+│   │   ├── scheduling.js        # Slots journaliers
 │   │   ├── adaptiveSchedule.js  # Vibes + horaires flottants
 │   │   ├── channelIntel.js      # Intelligence par salon
-│   │   ├── messaging.js         # Envoi humanisé (typing, mentions)
+│   │   ├── messaging.js         # Envoi humanisé (typing, mentions normalisées)
 │   │   ├── reactions.js         # Réactions emojis
 │   │   └── keywords.js          # Détection mots-clés
+│   ├── config/
+│   │   ├── channelManager.js    # Persistance des IDs de salons importants
+│   │   └── channels.json        # IDs persistés (salon soutien, etc.)
 │   ├── db/
 │   │   ├── index.js             # Connexion MongoDB
-│   │   ├── members.js           # Profils membres (+ détection préférences)
+│   │   ├── members.js           # Profils membres + détection préférences
 │   │   ├── memberBonds.js       # Liens affectifs
-│   │   ├── narrativeMemory.js   # 🆕 Arcs narratifs serveur (v2.2.2)
-│   │   ├── topicFatigue.js      # 🆕 Tracker fatigue sujets (v2.2.2)
+│   │   ├── narrativeMemory.js   # Arcs narratifs serveur (30j)
+│   │   ├── topicFatigue.js      # Tracker fatigue sujets
 │   │   ├── channelMem.js        # Mémoire par salon
 │   │   ├── channelDir.js        # Directory des salons
 │   │   ├── dmHistory.js         # Historique DM
 │   │   └── botState.js          # État persistant bot
 │   ├── discord/
 │   │   ├── events.js            # Gestion events Discord
-│   │   └── sync.js              # Sync Discord ↔ fichier
+│   │   └── sync.js              # Sync Discord ↔ fichier template
 │   └── features/
 │       ├── anecdotes.js         # Anecdote quotidienne
-│       ├── actus.js             # News gaming
+│       ├── actus.js             # News gaming bi-mensuelles
 │       ├── conversations.js     # Conversations ambiantes
-│       ├── decisionLogic.js     # 🆕 Logique autonomie Brainee (v2.2.2)
-│       ├── greetings.js         # Morning/goodnight
-│       ├── drift.js             # Détection drift
+│       ├── decisionLogic.js     # Logique d'autonomie (refus, fatigue)
+│       ├── greetings.js         # Morning / goodnight / nightwakeup
+│       ├── drift.js             # Détection conversations mortes
 │       ├── tiktok.js            # TikTok Live watcher
 │       ├── welcome.js           # Message de bienvenue
-│       ├── sidebar.js           # Sidebar Discord (v2.1.0)
+│       ├── sidebar.js           # Sidebar Discord stats
+│       ├── supportChannel.js    # Salon soutien Brainee (anti-doublon)
 │       ├── context.js           # Contexte conversationnel
 │       ├── convStats.js         # Stats quotidiennes conversations
 │       └── delayedReply.js      # Réponses différées
@@ -297,18 +159,18 @@ brainexe-dashboard/
 
 ## 🔌 API
 
-Le dashboard et le bot exposent une API HTTP complète sur `http://localhost:3000/api/*` :
+Tous les endpoints sont accessibles sur `http://localhost:3000/api/*` :
 
 | Endpoint | Méthode | Description |
 |---|---|---|
 | `/api/state` | GET | État complet du serveur (roles, channels, structure) |
 | `/api/logs` | GET | Historique des logs |
-| `/api/config` | GET/POST | Configuration du bot |
+| `/api/config` | GET / POST | Configuration du bot |
 | `/api/slot` | GET | Slot actuel + humeur |
 | `/api/sync/discord-to-file` | POST | Force sync Discord → fichier |
 | `/api/sync/file-to-discord` | POST | Force sync fichier → Discord |
 | `/api/channels` | POST | Créer un salon |
-| `/api/channels/:id` | PATCH/DELETE | Modifier/supprimer un salon |
+| `/api/channels/:id` | PATCH / DELETE | Modifier / supprimer un salon |
 | `/api/categories` | POST | Créer une catégorie |
 | `/api/roles` | POST | Créer un rôle |
 | `/api/roles/:id` | DELETE | Supprimer un rôle |
@@ -326,36 +188,119 @@ Le dashboard et le bot exposent une API HTTP complète sur `http://localhost:300
 | `/api/backups/:name` | DELETE | Supprimer un backup |
 | `/api/backups/:name/restore-config` | POST | Restaurer la config depuis un backup |
 | `/api/emotions/state\|bonds` | GET | État émotionnel du bot |
-| `/api/health` | GET | Santé Discord / Mongo / Claude (ping, mémoire, uptime) |
-| `/api/schedule` | GET | Grille hebdomadaire des slots (semaine / samedi / dimanche) |
-| `/api/audit` | GET | Journal d'audit des actions dashboard (`?limit`) |
+| `/api/health` | GET | Santé Discord / Mongo / Claude |
+| `/api/schedule` | GET | Grille hebdomadaire des slots |
+| `/api/audit` | GET | Journal d'audit (`?limit`) |
 | `/api/project/funding/history` | GET | Historique agrégé des dons par mois |
 
 ---
 
 ## 📡 WebSocket
 
-Le dashboard écoute en temps réel via WebSocket (`ws://localhost:3000`) :
+Le dashboard écoute en temps réel via `ws://localhost:3000` :
 
-| Event | Payload | Description |
-|---|---|---|
-| `state` | Guild complete | État serveur complet |
-| `logs` | Array | Historique des logs |
-| `stats` | `{d2f, f2d, startTime}` | Stats de sync |
-| `configUpdate` | `{section, data}` | Mise à jour config |
-| `tiktokLive` | `{status, title, viewers}` | Events TikTok |
-| `logUpdate` | Log entry | Nouveau log temps réel |
-| `auditUpdate` | Audit entry | Nouvelle action auditée |
+| Event | Description |
+|---|---|
+| `state` | État serveur complet |
+| `logs` | Historique des logs |
+| `stats` | Stats de sync `{d2f, f2d, startTime}` |
+| `configUpdate` | Mise à jour config `{section, data}` |
+| `tiktokLive` | Events TikTok `{status, title, viewers}` |
+| `logUpdate` | Nouveau log temps réel |
+| `auditUpdate` | Nouvelle action auditée |
 
 ---
 
-## 🤝 Contribution
+## 📝 Changelog
 
-Le projet est développé en TDD pragmatique avec Claude Code. Pour contribuer :
+### `v2.2.3` — 🔧 Fix doublons salons + tags normalisés
 
-1. Créer une branche feature : `git checkout -b claude/ma-feature`
-2. Commit atomiques avec messages descriptifs
-3. Push + ouvrir une PR
+**Problèmes résolus**
+- **Salon soutien recréé à chaque déploiement** : La recherche par nom exact (`c.name === CHANNEL_NAME`) échouait à cause des emojis normalisés différemment par Discord au chargement du cache. L'ID est maintenant persisté dans `src/config/channels.json` et prioritaire à chaque démarrage.
+- **Tags `@pseudo` non fonctionnels** avec emojis ou points dans les pseudos (ex: `john.doe`, `❤️pseudo`).
+- **Tags `#salon` non fonctionnels** quand le nom du salon contient un emoji.
+- **Doublons de catégories/salons** lors de la sync `sync.js` si les noms contiennent des emojis.
+
+**Changements**
+- `src/config/channelManager.js` — Nouveau module : persistance des IDs de salons importants
+- `src/config/channels.json` — Stockage de l'ID du salon soutien
+- `src/features/supportChannel.js` — Recherche par ID en priorité, fallback normalisation
+- `src/bot/messaging.js` — `normalizeName()` préserve désormais les points ; `resolveMentionsInText()` robustifié pour membres et salons
+- `src/discord/sync.js` — Utilise `normalizeName()` pour toutes les recherches de catégories/salons
+- `src/api/routes.js` — Normalisation sur la recherche de catégorie par nom
+
+---
+
+### `v2.2.2` — 🧠 5 Autonomy Features
+
+**Nouveautés**
+- **📖 Narrative Memory** : Arcs narratifs serveur sur 30 jours — cron quotidien analyse 50 messages via Claude, injecte 3-4 arcs dans tous les prompts
+- **💗 Persistent Emotions** : Décroissance ralentie (18-24h), résidus émotionnels (15-20%) qui persistent après estompement
+- **👥 Learned Preferences** : Détection auto des intérêts membres (`tech_lover`, `anime_fan`, `gaming_lover`…) — adapte les sujets de conversation
+- **📊 Topic Fatigue** : Évite les sujets redondants (5+ mentions/semaine sur 8 catégories : gaming, anime, tech, débat, musique, crypto, politique, sport)
+- **🤔 Decision Logic** : Brainee peut refuser de répondre (`mentalLoad > 80` + vibe introvert/lazy, ou redondance de sujet)
+
+**Technique**
+- Nouvelles collections MongoDB : `narrativeMemory`, `topicFatigue`
+- Nouveaux fichiers : `src/db/narrativeMemory.js`, `src/db/topicFatigue.js`, `src/features/decisionLogic.js`
+- Modifications : `emotions.js`, `members.js`, `crons.js` (cron narratif @ 02:00), `events.js`, `conversations.js`
+
+---
+
+### `v2.2.1` — 🛠️ Dashboard — refonte sections + corrections
+
+**Corrections**
+- Synchronisation de version (décalage accidentel vers 2.3.0)
+- "Invalid Date" dans les logs : epoch `ts` + ISO `time` désormais stockés
+- Logs live absents : alignement `'log'` → `'logUpdate'` entre backend et frontend
+- Couleurs des logs cassées : ajout de `type: dir` dans chaque entrée
+
+**Nouvelles sections dashboard**
+- ❤️ Santé système — indicateurs Discord, MongoDB, Claude, mémoire, uptime
+- 💗 Émotions — cœur émotionnel live
+- 💞 Relations — liens affectifs par membre
+- 🗓️ Planning — grille visuelle 24h
+- 📖 Historique — journal d'audit (ring buffer 500 entrées)
+
+**Améliorations**
+- Pill WebSocket 3 états avec chrono
+- Confirmation modale sur les actions destructives
+- Barre de filtre des logs (source + niveau)
+- Membres : recherche + 4 modes de tri
+- Posts manuels : aperçu embed en temps réel
+- Backups : téléchargement direct, suppression, restauration
+
+---
+
+### `v2.2.0` — 🎥 Embeds TikTok riches + fils auto-invités + no-insist
+
+**Corrections**
+- TikTok offline au démarrage : uniquement loggé, plus publié (spam supprimé)
+
+**Nouveautés**
+- Embeds TikTok enrichis (thumbnail, avatar, bouton live, viewers)
+- Fils Discord auto-intro avec invitation chaleureuse et tag des participants
+- No-insist : pas de relance si Brainee a déjà posté sans réponse depuis < 4h
+- Biais topics profonds sur les salons thématiques
+
+---
+
+### `v2.1.0` — 🎨 Refonte dashboard + Sidebar Discord
+
+- Sidebar Discord : 5 salons vocaux stats (membres, état, humeur, activité, TikTok)
+- Dashboard moderne 3 thèmes, navigation par sections
+- Thème persisté en `localStorage`, toast notifications
+- Architecture en 3 fichiers (`index.html` / `app.css` / `app.js`)
+
+---
+
+### `v2.0.0` → `v2.0.9` — 💗 Âme de Brainee
+
+- **Émotions** : 4 couches (tempérament, états internes, émotions vives, liens membres)
+- **Member bonds** : attachement, confiance, confort social, trajectoire par membre
+- **Humanize filter** : accent drops, slang, relax selon énergie/charge/lien
+- **Adaptive scheduling** : vibes journalières, horaires flottants, détection urgence
+- **Features de base** : anecdotes, actus gaming, greetings, drift check, TikTok Live, reaction roles, welcome, backups
 
 ---
 

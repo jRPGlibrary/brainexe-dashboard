@@ -7,6 +7,7 @@ const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
 const { GUILD_ID } = require('../config');
 const { saveConfig } = require('../botConfig');
+const { normalizeName } = require('../bot/messaging');
 const { readGuildState, syncDiscordToFile, syncFileToDiscord } = require('../discord/sync');
 const { startAnecdoteCron, postDailyAnecdote } = require('../features/anecdotes');
 const { startActusCron, postBiMonthlyActus } = require('../features/actus');
@@ -55,7 +56,7 @@ function registerRoutes(app) {
 
   // Channels & roles management
   app.post('/api/categories', async (req, res) => { const { name } = req.body; if (!name) return res.status(400).json({ ok: false, error: 'name requis' }); try { const guild = await shared.discord.guilds.fetch(GUILD_ID); const cat = await guild.channels.create({ name, type: ChannelType.GuildCategory, reason: 'Dashboard' }); res.json({ ok: true, id: cat.id }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
-  app.post('/api/channels', async (req, res) => { const { name, type, categoryName, topic } = req.body; try { const guild = await shared.discord.guilds.fetch(GUILD_ID); await guild.channels.fetch(); const cat = guild.channels.cache.find(c => c.name === categoryName && c.type === ChannelType.GuildCategory); const chType = type === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText; const opts = { name, type: chType, reason: 'Dashboard' }; if (cat) opts.parent = cat.id; if (topic) opts.topic = topic; const ch = await guild.channels.create(opts); res.json({ ok: true, id: ch.id }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+  app.post('/api/channels', async (req, res) => { const { name, type, categoryName, topic } = req.body; try { const guild = await shared.discord.guilds.fetch(GUILD_ID); await guild.channels.fetch(); const normCatName = categoryName ? normalizeName(categoryName) : ''; const cat = normCatName ? guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && normalizeName(c.name) === normCatName) : null; const chType = type === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText; const opts = { name, type: chType, reason: 'Dashboard' }; if (cat) opts.parent = cat.id; if (topic) opts.topic = topic; const ch = await guild.channels.create(opts); res.json({ ok: true, id: ch.id }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
   app.delete('/api/channels/:id', async (req, res) => { try { const guild = await shared.discord.guilds.fetch(GUILD_ID); await guild.channels.fetch(); const ch = guild.channels.cache.get(req.params.id); if (!ch) return res.status(404).json({ ok: false, error: 'Salon introuvable' }); const name = ch.name; await ch.delete('Dashboard'); auditLog('channel.delete', { id: req.params.id, name }); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
   app.patch('/api/channels/:id', async (req, res) => { const { name, topic } = req.body; try { const guild = await shared.discord.guilds.fetch(GUILD_ID); await guild.channels.fetch(); const ch = guild.channels.cache.get(req.params.id); if (!ch) return res.status(404).json({ ok: false, error: 'Salon introuvable' }); const opts = {}; if (name) opts.name = name; if (topic !== undefined) opts.topic = topic; await ch.edit(opts, 'Dashboard'); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
   app.post('/api/roles', async (req, res) => { const { name, color, hoist } = req.body; try { const guild = await shared.discord.guilds.fetch(GUILD_ID); const role = await guild.roles.create({ name, color: parseInt((color || '#7c5cbf').replace('#', ''), 16), hoist: !!hoist, permissions: [], reason: 'Dashboard' }); res.json({ ok: true, id: role.id }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
@@ -92,7 +93,7 @@ function registerRoutes(app) {
   // Channel directory
   app.get('/api/channel-directory', async (req, res) => { if (!shared.mongoDb) return res.json([]); try { const docs = await shared.mongoDb.collection('channelDirectory').find({}).toArray(); res.json(docs); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-  // Emotional state (v2.2.2)
+  // Emotional state (v2.2.3)
   app.get('/api/emotions/state', (req, res) => {
     res.json({ ok: true, internalState: getInternalState(), temperament: getTemperament(), emotionStack: getEmotionStack() });
   });
@@ -145,7 +146,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // ADMIN PANEL — Live control (v2.2.2)
+  // ADMIN PANEL — Live control (v2.2.3)
   // ═════════════════════════════════════════════════════════
 
   // État complet pour le dashboard
@@ -281,7 +282,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // HEALTH — statut Discord / Mongo / Claude (v2.2.2)
+  // HEALTH — statut Discord / Mongo / Claude (v2.2.3)
   // ═════════════════════════════════════════════════════════
   app.get('/api/health', async (req, res) => {
     try {
@@ -324,7 +325,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // SCHEDULE — grille hebdomadaire des slots (v2.2.2)
+  // SCHEDULE — grille hebdomadaire des slots (v2.2.3)
   // ═════════════════════════════════════════════════════════
   app.get('/api/schedule', (req, res) => {
     try {
@@ -344,7 +345,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // AUDIT LOG — historique des actions dashboard (v2.2.2)
+  // AUDIT LOG — historique des actions dashboard (v2.2.3)
   // ═════════════════════════════════════════════════════════
   app.get('/api/audit', (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
@@ -352,7 +353,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // BACKUPS — download / delete / restore (v2.2.2)
+  // BACKUPS — download / delete / restore (v2.2.3)
   // ═════════════════════════════════════════════════════════
   function safeBackupName(name) {
     if (typeof name !== 'string') return null;
@@ -410,7 +411,7 @@ function registerRoutes(app) {
   });
 
   // ═════════════════════════════════════════════════════════
-  // FUNDING — historique agrégé par mois (v2.2.2)
+  // FUNDING — historique agrégé par mois (v2.2.3)
   // ═════════════════════════════════════════════════════════
   app.get('/api/project/funding/history', async (req, res) => {
     if (!shared.mongoDb) return res.json({ ok: true, history: [] });

@@ -7,6 +7,7 @@ const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
 const { GUILD_ID, TEMPLATE_FILE } = require('../config');
 const { sleep } = require('../utils');
+const { normalizeName } = require('../bot/messaging');
 
 async function readGuildState() {
   const guild = await shared.discord.guilds.fetch(GUILD_ID);
@@ -97,11 +98,19 @@ async function syncFileToDiscord() {
       else if (existing.color !== color || existing.hoist !== rd.hoist) { await existing.edit({ color, hoist: rd.hoist, reason: 'Dashboard sync' }); changes++; await sleep(300); }
     }
     for (const block of template.structure || []) {
-      let cat = guild.channels.cache.find(c => c.name === block.category && c.type === ChannelType.GuildCategory);
+      const normCatName = normalizeName(block.category);
+      let cat = guild.channels.cache.find(c =>
+        c.type === ChannelType.GuildCategory &&
+        normalizeName(c.name) === normCatName
+      );
       if (!cat) { cat = await guild.channels.create({ name: block.category, type: ChannelType.GuildCategory, reason: 'Dashboard sync' }); changes++; await sleep(400); }
       for (const ch of block.channels || []) {
         const chType = ch.type === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
-        const existing = guild.channels.cache.find(c => c.name === ch.name && c.parentId === cat.id);
+        const normChName = normalizeName(ch.name);
+        const existing = guild.channels.cache.find(c =>
+          c.parentId === cat.id &&
+          normalizeName(c.name) === normChName
+        );
         if (!existing) { const opts = { name: ch.name, type: chType, parent: cat.id, reason: 'Dashboard sync' }; if (ch.topic) opts.topic = ch.topic; await guild.channels.create(opts); changes++; await sleep(350); }
         else if (ch.topic && existing.topic !== ch.topic) { await existing.setTopic(ch.topic, 'Dashboard sync'); changes++; await sleep(300); }
       }

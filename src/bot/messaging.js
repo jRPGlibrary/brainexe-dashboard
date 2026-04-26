@@ -15,11 +15,11 @@ function normalizeName(s) {
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F9FF}\u{2600}-\u{27BF}]/gu, '')
-      .replace(/[^\p{L}\p{N}_\-.]/gu, '')
+      .replace(/[^\p{L}\p{N}_.\-]/gu, '')
       .replace(/^[-._]+|[-._]+$/g, '')
       .trim();
   } catch (_) {
-    return s.toLowerCase().replace(/[^a-z0-9_\-.]/g, '');
+    return s.toLowerCase().replace(/[^a-z0-9_.\-]/g, '');
   }
 }
 
@@ -36,19 +36,33 @@ function resolveMentionsInText(text, guild) {
     if (!normInput || normInput.length < 2) return match;
 
     const members = guild.members.cache;
-    let member = members.find(m =>
-      normalizeName(m.user?.username) === normInput ||
-      normalizeName(m.displayName) === normInput ||
-      normalizeName(m.user?.globalName) === normInput ||
-      normalizeName(m.nickname) === normInput
-    );
+
+    let member = members.find(m => {
+      const username = normalizeName(m.user?.username);
+      const displayName = normalizeName(m.displayName);
+      const globalName = normalizeName(m.user?.globalName);
+      const nickname = normalizeName(m.nickname);
+
+      return (username && username === normInput) ||
+             (displayName && displayName === normInput) ||
+             (globalName && globalName === normInput) ||
+             (nickname && nickname === normInput);
+    });
 
     if (!member) {
       member = members.find(m => {
-        const uName = normalizeName(m.user?.username);
-        const dName = normalizeName(m.displayName);
-        return (uName && normInput.startsWith(uName) && uName.length >= 3) ||
-               (dName && normInput.startsWith(dName) && dName.length >= 3);
+        const username = normalizeName(m.user?.username);
+        const displayName = normalizeName(m.displayName);
+        const globalName = normalizeName(m.user?.globalName);
+        const nickname = normalizeName(m.nickname);
+
+        const exact = [username, displayName, globalName, nickname].filter(Boolean);
+        if (exact.length === 0) return false;
+
+        return exact.some(name =>
+          (name.includes(normInput) || normInput.includes(name)) &&
+          Math.min(name.length, normInput.length) >= 3
+        );
       });
     }
 
@@ -60,13 +74,14 @@ function resolveMentionsInText(text, guild) {
     const normInput = normalizeName(rawName);
     if (!normInput) return match;
 
-    const channels = guild.channels.cache;
-    let channel = channels.find(c => c.name && normalizeName(c.name) === normInput);
+    const channels = guild.channels.cache.filter(c => c.name);
+    let channel = channels.find(c => normalizeName(c.name) === normInput);
 
     if (!channel) {
       channel = channels.find(c => {
         const n = normalizeName(c.name);
-        return n && (n.includes(normInput) || normInput.includes(n)) && Math.min(n.length, normInput.length) >= 3;
+        if (!n || n.length < 2) return false;
+        return (n.length >= 3 && normInput.length >= 3 && (n.includes(normInput) || normInput.includes(n)));
       });
     }
 

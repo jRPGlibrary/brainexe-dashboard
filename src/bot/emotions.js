@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEE EMOTIONS CORE v2.2.2
+ * 🧠 BRAINEE EMOTIONS CORE v2.2.3
  * ================================================
  * Architecture 4 couches :
  *   1. Tempérament (stable)       — ce qui ne change presque jamais

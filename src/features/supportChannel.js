@@ -3,6 +3,8 @@ const { EmbedBuilder, ChannelType } = discord_js;
 const shared = require('../shared');
 const { pushLog } = require('../logger');
 const { GUILD_ID } = require('../config');
+const { getSupportChannelId, setSupportChannelId } = require('../config/channelManager');
+const { normalizeName } = require('../bot/messaging');
 
 const CHANNEL_NAME = '❤️-soutien-brainee';
 const CHANNEL_DESCRIPTION = 'Aide Brainee à grandir 💙 · Découvre pourquoi le bot a besoin de soutien et comment contribuer';
@@ -14,7 +16,31 @@ async function ensureSupportChannel() {
     if (!guild) return;
 
     await guild.channels.fetch();
-    let channel = guild.channels.cache.find(c => c.name === CHANNEL_NAME && c.type === ChannelType.GuildText);
+
+    let channel = null;
+    const storedId = getSupportChannelId();
+
+    if (storedId) {
+      channel = guild.channels.cache.get(storedId);
+      if (channel && channel.type === ChannelType.GuildText) {
+        pushLog('SYS', `Salon de soutien récupéré par ID ✓`, 'info');
+      } else {
+        channel = null;
+      }
+    }
+
+    if (!channel) {
+      const normChannel = normalizeName(CHANNEL_NAME);
+      channel = guild.channels.cache.find(c =>
+        c.type === ChannelType.GuildText &&
+        normalizeName(c.name) === normChannel
+      );
+
+      if (channel) {
+        setSupportChannelId(channel.id);
+        pushLog('SYS', `Salon de soutien trouvé par nom normalisé ✓`, 'info');
+      }
+    }
 
     if (!channel) {
       channel = await guild.channels.create({
@@ -23,9 +49,10 @@ async function ensureSupportChannel() {
         topic: CHANNEL_DESCRIPTION,
         reason: 'Auto-création du salon de soutien Brainee',
       });
-      pushLog('SYS', `Salon "${CHANNEL_NAME}" créé ✓`, 'success');
+      setSupportChannelId(channel.id);
+      pushLog('SYS', `Salon de soutien créé ✓`, 'success');
     } else {
-      pushLog('SYS', `Salon "${CHANNEL_NAME}" trouvé`, 'info');
+      pushLog('SYS', `Salon de soutien prêt ✓`, 'info');
     }
 
     await postSupportEmbed(channel);
