@@ -138,7 +138,7 @@ async function updateSidebarChannels() {
       const ch = await guild.channels.fetch(id).catch(() => null);
       if (!ch) { sidebarChannelIds[key] = null; continue; }
       if (ch.name !== lines[key]) {
-        await ch.setName(lines[key]).catch(() => {});
+        await ch.setName(lines[key]).catch(err => pushLog('ERR', `Sidebar setName #${key}: ${err.message}`, 'error'));
       }
     }
   } catch (err) {
@@ -156,7 +156,7 @@ function startSidebarCron() {
     );
   });
 
-  updateSidebarChannels().catch(() => {});
+  updateSidebarChannels().catch(err => pushLog('ERR', `Sidebar init: ${err.message}`, 'error'));
 
   pushLog('SYS', '⏱️ Cron sidebar démarré (10min)', 'success');
 }

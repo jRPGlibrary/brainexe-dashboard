@@ -49,7 +49,7 @@ async function updateConvStats(channelId) {
     convDailyCount: shared.botConfig.conversations.dailyCount,
     convLastPostDate: todayStr,
     convLastPostByChannel: shared.botConfig.conversations.lastPostByChannel,
-  }).catch(() => {});
+  }).catch(err => pushLog('ERR', `setBotState convStats: ${err.message}`, 'error'));
 }
 
 // Salons "topic profonds" où Brainee doit être plus entreprenante (hors QG/général/off-topic).

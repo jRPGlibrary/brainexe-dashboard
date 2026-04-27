@@ -50,7 +50,7 @@ function startConvCron() {
     const slot = getCurrentSlot();
     if (slot.maxConv === 0) return;
     if (shouldSkipConvCron()) { pushLog('SYS', `😶 Skip conv (vibe ${getDailyVibe().name})`); return; }
-    resetDailyCountIfNeeded().catch(() => {});
+    resetDailyCountIfNeeded().catch(err => pushLog('ERR', `Reset quota journalier: ${err.message}`, 'error'));
     const count = getConvDailyCount();
     const max = getConvMaxPerDay();
     if (count >= max) return;
@@ -207,7 +207,7 @@ function startConvCron() {
       updateInternalStatesForSlot(slot);
       applyNaturalDecay();
       decayEmotions();
-      saveEmotionalState().catch(() => {});
+      saveEmotionalState().catch(err => pushLog('ERR', `Sauvegarde état émotionnel: ${err.message}`, 'error'));
       pushLog('SYS', `💗 Évolution émotionnelle horaire [${slot.label}]`);
     } catch (err) { pushLog('ERR', `emotionHourlyCron: ${err.message}`, 'error'); }
   }, { timezone: 'Europe/Paris' });
@@ -236,7 +236,7 @@ function startConvCron() {
         try {
           const msgs = await ch.messages.fetch({ limit: 50 });
           allMessages.push(...msgs.values());
-        } catch (_) {}
+        } catch (err) { pushLog('SYS', `Narrative: impossible de lire #${ch.name} — ${err.message}`); }
       }
 
       if (allMessages.length < 10) return;

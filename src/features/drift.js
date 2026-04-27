@@ -186,7 +186,7 @@ async function runDriftCheck() {
 
         const lastEnriched = memory?.lastEnrichedAt ? new Date(memory.lastEnrichedAt).getTime() : 0;
         if (Date.now() - lastEnriched > 6 * 60 * 60 * 1000) {
-          enrichChannelMemory(ch.channelId, ch.channelName, ch.topic, context).catch(() => {});
+          enrichChannelMemory(ch.channelId, ch.channelName, ch.topic, context).catch(err => pushLog('ERR', `enrichChannelMemory #${ch.channelName}: ${err.message}`, 'error'));
         }
 
         const drift = await detectThematicDrift(ch.channelId, ch.channelName, ch.topic, context, memory);
