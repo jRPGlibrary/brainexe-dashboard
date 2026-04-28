@@ -58,20 +58,27 @@ function sanitizeDiscordContent(str) {
 }
 
 function extractJson(text) {
+  if (!text || typeof text !== 'string') return '';
+
   // Remove markdown code block markers
   let cleaned = text.replace(/```(?:json)?\s*/g, '').trim();
 
-  // Try to find valid JSON object or array
-  const jsonMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-  if (jsonMatch) {
-    cleaned = jsonMatch[1];
-  }
+  // Find first opening brace or bracket
+  const firstBrace = Math.min(
+    cleaned.indexOf('{') >= 0 ? cleaned.indexOf('{') : Infinity,
+    cleaned.indexOf('[') >= 0 ? cleaned.indexOf('[') : Infinity
+  );
 
-  // Remove any trailing text after the JSON closes
+  if (firstBrace === Infinity) return ''; // No JSON found
+
+  // Start from first brace/bracket
+  cleaned = cleaned.substring(firstBrace);
+
+  // Track braces/brackets depth to find the end of JSON
   let depth = 0;
   let inString = false;
   let escapeNext = false;
-  let lastJsonIndex = 0;
+  let endIndex = 0;
 
   for (let i = 0; i < cleaned.length; i++) {
     const char = cleaned[i];
@@ -81,7 +88,7 @@ function extractJson(text) {
       continue;
     }
 
-    if (char === '\\') {
+    if (char === '\\' && inString) {
       escapeNext = true;
       continue;
     }
@@ -97,17 +104,18 @@ function extractJson(text) {
       } else if (char === '}' || char === ']') {
         depth--;
         if (depth === 0) {
-          lastJsonIndex = i + 1;
+          endIndex = i + 1;
+          break;
         }
       }
     }
   }
 
-  if (lastJsonIndex > 0) {
-    cleaned = cleaned.substring(0, lastJsonIndex);
+  if (endIndex > 0) {
+    return cleaned.substring(0, endIndex).trim();
   }
 
-  return cleaned.trim();
+  return '';
 }
 
 module.exports = { sleep, sanitizeString, sanitizeForJson, sanitizeDiscordContent, extractJson };

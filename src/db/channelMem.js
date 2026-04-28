@@ -40,9 +40,13 @@ async function enrichChannelMemory(channelId, channelName, channelTopic, recentC
     let parsed;
     try {
       const clean = extractJson(analysis);
+      if (!clean) {
+        pushLog('ERR', `enrichChannelMemory extraction échouée pour ${channelName} - pas de JSON trouvé. Réponse: ${analysis.substring(0, 200)}...`, 'error');
+        return;
+      }
       parsed = JSON.parse(clean);
-    } catch {
-      pushLog('ERR', `enrichChannelMemory JSON parse échoué pour ${channelName}`, 'error');
+    } catch (err) {
+      pushLog('ERR', `enrichChannelMemory JSON parse échoué pour ${channelName}: ${err.message} | Tentative parse: ${clean?.substring(0, 150)}...`, 'error');
       return;
     }
 
