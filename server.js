@@ -101,7 +101,7 @@ wss.on('connection', async (ws) => {
 console.log('🔍 DISCORD_TOKEN:', !!TOKEN, '| MONGODB_URI:', !!process.env.MONGODB_URI);
 if (!TOKEN) { console.error('❌ DISCORD_TOKEN manquant'); process.exit(1); }
 
-discord.once('ready', async () => {
+discord.once('clientReady', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
