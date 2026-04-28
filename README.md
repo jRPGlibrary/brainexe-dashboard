@@ -7,11 +7,11 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-2.3.3-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.3.5-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-87_passing-22c55e?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-133_passing-22c55e?style=flat-square)
 
 </div>
 
@@ -61,7 +61,7 @@ npm start
 | Persistance | **MongoDB Atlas** |
 | Web | Express 4 · WebSocket · vanilla JS modulaire (21 fichiers) |
 | Sécurité | express-rate-limit (4 niveaux) · audit ring buffer 500 |
-| Tests / CI | **Jest 30** (87 tests) · **GitHub Actions** |
+| Tests / CI | **Jest 30** (133 tests · 7 suites) · **GitHub Actions** |
 | Hosting | Railway |
 
 ---
@@ -93,19 +93,22 @@ brainexe-dashboard/
 │   │   ├── rateLimits.js           4 niveaux (claude/discord/backup/general)
 │   │   └── routes/                 index · discord · bot · members
 │   │                               admin · data · backups
-│   ├── bot/        persona · emotions · mood · scheduling · adaptiveSchedule
-│   │                channelIntel · messaging · humanize · reactions · keywords
+│   ├── bot/        persona · emotions · emotionCombos · mood · scheduling
+│   │                adaptiveSchedule · channelIntel · messaging · humanize
+│   │                reactions · keywords · hyperFocus · vulnerability
 │   ├── config/     channelManager · channels.json
-│   ├── db/         index · members · memberBonds · narrativeMemory · topicFatigue
+│   ├── db/         index · members · memberBonds · memberStories · narrativeMemory
+│   │                tasteProfile · topicFatigue · vipSystem
 │   │                channelMem · channelDir · dmHistory · botState
 │   ├── discord/    events · sync
 │   ├── features/   anecdotes · actus · conversations · decisionLogic · greetings
 │   │                drift · tiktok · welcome · sidebar · supportChannel
+│   │                proactiveOutreach · hyperFocusRevisit · extendedPermissions
 │   │                context · convStats · delayedReply
 │   ├── project/    funding                ← coûts, dons, statut Discord
 │   ├── audit · botConfig · config · crons · logger · shared · utils
 ├── public/         index.html · app.css · mobile.css · js/ (21 modules)
-├── tests/          5 suites Jest, 87 tests
+├── tests/          7 suites Jest, 133 tests
 ├── .github/workflows/tests.yml     CI sur chaque push
 └── discord-template.json
 ```
@@ -162,14 +165,28 @@ npm test
 | `audit.test.js` | Ring buffer, troncature, ordre |
 | `emotions.test.js` | Décroissance, résidus, stack émotions |
 | `funding.test.js` | Calcul coûts, dons, statut Discord |
+| `humanize-v234.test.js` | Mémoire narrative, VIP, taste profile (v2.3.4) |
+| `humanize-v235.test.js` | Outreach, hyperFocus, combos, vulnerability (v2.3.5) |
 | `mood.test.js` | Sélection humeur, refresh, reroll |
 | `scheduling.test.js` | Slots semaine/we, forced slot, fuseau Paris |
 
-→ **87 tests verts** rejoués par GitHub Actions sur chaque push & PR.
+→ **133 tests verts** rejoués par GitHub Actions sur chaque push & PR.
 
 ---
 
 ## 📝 Changelog (extrait)
+
+### `v2.3.5` — ⚡ Initiative & émotions complexes
+- **Proactive outreach** : pensées spontanées, observations, callbacks VIP, défis créatifs
+- **HyperFocus triggers** : Brainee détecte une obsession et revient dessus 2-14 h plus tard
+- **Emotion combos** : états combinés (`fatiguée+loyale`, `nostalgique+énergique`, etc.)
+- **Vulnerability windows** : Brainee s'autorise à montrer fatigue ou surcharge → boost de bond si soutien
+- **Extended permissions** : pins intelligents + mini-sondages avec quotas stricts
+
+### `v2.3.4` — 💗 Humanisation Brainee
+- **Mémoire narrative par membre** (`memberStories`) : Brainee se souvient des sujets, blagues, et moments importants pour chaque personne
+- **VIP system** (4 tiers basés sur le bond) : Superfan, Fidèle, Actif, Standard
+- **Taste profile** (`tasteProfile`) : goûts, genres, vibes et évitements détectés automatiquement
 
 ### `v2.3.3` — 🤖 CI GitHub Actions
 Workflow `tests.yml` : `npm ci` + `npm test` sur Node 18 à chaque push / PR.

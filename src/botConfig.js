@@ -1,5 +1,6 @@
 const fs = require('fs');
 const { CONFIG_FILE } = require('./config');
+const { pushLog } = require('./logger');
 
 const DEFAULT_CONFIG = {
   anecdote: {
@@ -100,14 +101,14 @@ function loadConfig() {
         tiktokLive: { ...DEFAULT_CONFIG.tiktokLive, ...(raw.tiktokLive || {}) },
       };
     }
-  } catch (e) { console.error('Config load error:', e.message); }
+  } catch (e) { pushLog('ERR', `loadConfig : ${e.message}`, 'error'); }
   return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 }
 
 function saveConfig() {
   const shared = require('./shared');
   try { fs.writeFileSync(CONFIG_FILE, JSON.stringify(shared.botConfig, null, 2), 'utf8'); }
-  catch (e) { console.error('Config save error:', e.message); }
+  catch (e) { pushLog('ERR', `saveConfig : ${e.message}`, 'error'); }
 }
 
 module.exports = { DEFAULT_CONFIG, loadConfig, saveConfig };

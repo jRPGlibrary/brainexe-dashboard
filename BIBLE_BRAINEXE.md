@@ -1,6 +1,6 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version** : `2.3.3`
+**Version** : `2.3.5`
 **Dernière mise à jour** : Avril 2026
 **Pour qui ?** : Comprendre TOUT ce que fait Brainee, son dashboard, et comment le code est organisé.
 
@@ -131,7 +131,7 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
 | `src/features/*` | Anecdotes, actus, conversations, drift, TikTok, sidebar, soutien… |
 | `src/project/funding.js` | Coûts, dons, statut Discord |
 | `public/js/*` | Frontend modulaire (21 fichiers) |
-| `tests/*` | 87 tests Jest |
+| `tests/*` | 133 tests Jest (7 suites) |
 | `.github/workflows/tests.yml` | CI |
 
 → On rentre dans le détail au [chapitre 12](#12-les-fichiers-et-leur-rôle).
@@ -346,6 +346,60 @@ Embed personnalisé à l'arrivée + auto-rôle configurable depuis le dashboard.
 
 File d'attente de réponses programmées au lendemain (vibe `defer_tomorrow`). `postRelanceMention` charge les 30 derniers messages avant de répondre — Brainee ne perd plus le fil.
 
+### 5.18 📖 Mémoire narrative par membre (v2.3.4)
+**Fichiers :** `db/memberStories.js`
+
+Brainee se souvient des sujets importants, blagues internes et moments marquants pour chaque personne. Ces souvenirs sont injectés dans ses prompts quand elle parle à ce membre — elle ne repart plus de zéro à chaque conversation.
+
+### 5.19 💎 VIP System (v2.3.4)
+**Fichiers :** `db/vipSystem.js`
+
+Quatre tiers basés sur le score de bond :
+- **Superfan** : bond très élevé, Brainee lui réserve une attention particulière
+- **Fidèle** : présent depuis longtemps, bon niveau de confiance
+- **Actif** : régulier mais lien moins fort
+- **Standard** : membre normal
+
+Le tier influence la fréquence des callbacks proactifs et la profondeur des réponses.
+
+### 5.20 🎯 Taste profile (v2.3.4)
+**Fichiers :** `db/tasteProfile.js`
+
+Goûts, genres préférés, vibes et sujets à éviter détectés automatiquement au fil des conversations. Brainee s'en sert pour personnaliser ses anecdotes, suggestions et sujets de conversation.
+
+### 5.21 ⚡ Proactive Outreach (v2.3.5)
+**Fichiers :** `features/proactiveOutreach.js`
+
+Initiative spontanée de Brainee sans qu'on lui demande quoi que ce soit. Quatre types :
+- **Pensée random** : observation ou question soudaine inspirée de son état interne
+- **Observation** : elle remarque qu'un salon est très calme ou très animé
+- **Callback VIP** : elle repense à quelque chose qu'un Superfan lui a dit
+- **Défi créatif** : elle propose un mini-défi thématique au salon
+
+### 5.22 🔁 HyperFocus (v2.3.5)
+**Fichiers :** `bot/hyperFocus.js` · `features/hyperFocusRevisit.js`
+
+Brainee détecte quand elle (ou un salon) est en mode hyperfocus sur un sujet. Elle programme un retour différé (2-14 h plus tard) pour relancer la discussion au moment opportun — même si le salon est passé à autre chose.
+
+### 5.23 🎭 Emotion Combos (v2.3.5)
+**Fichiers :** `bot/emotionCombos.js`
+
+États combinés qui créent des comportements nuancés :
+- `fatiguée+loyale` → répond quand même aux VIP, mais brièvement
+- `nostalgique+énergique` → prend l'initiative sur des sujets rétro
+- `grumpy+curieuse` → pose des questions un peu cash
+- etc.
+
+### 5.24 🤍 Vulnerability Windows (v2.3.5)
+**Fichiers :** `bot/vulnerability.js`
+
+Fenêtres où Brainee s'autorise à montrer sa fatigue ou sa surcharge. Si un membre répond avec du soutien → boost significatif du bond. Quotas stricts pour éviter l'effet dramatique répétitif.
+
+### 5.25 📌 Extended Permissions (v2.3.5)
+**Fichiers :** `features/extendedPermissions.js`
+
+Pins intelligents (Brainee peut épingler des messages notables) et mini-sondages Discord. Tout est soumis à des quotas journaliers stricts pour ne pas spam.
+
 ---
 
 ## 6. Comment ça marche techniquement
@@ -511,8 +565,14 @@ Modifiables en direct depuis le dashboard (`POST /api/admin/state`) :
 
 Sans ça, n'importe qui connaissant le port pouvait déclencher des appels Claude payants en boucle.
 
-### Logs explicites (v2.2.6)
-Tous les `.catch(() => {})` critiques (persistance émotions, sidebar, funding, mémoire canal) → `pushLog('ERR', message, 'error')`. Plus aucun échec silencieux.
+### Logs explicites (v2.2.6 — étendu v2.3.5)
+Tous les `.catch(() => {})` critiques → `pushLog('ERR', message, 'error')`. Depuis v2.3.5, les logs de démarrage (`server.listen`, `discord.login`, `clientReady`) passent aussi par `pushLog` — visibles dans le dashboard. Plus aucun message silencieux.
+
+### Robustesse JSON (v2.3.5)
+`extractJson()` dans `src/utils.js` nettoie les blocs markdown avant tout `JSON.parse`. `enrichChannelMemory` utilise `extractJson` + try/catch avec message d'erreur explicite incluant les 150 premiers caractères de la réponse. Plus de crash silencieux sur les réponses Claude mal formées.
+
+### Trust proxy (v2.3.5)
+`app.set('trust proxy', 1)` ajouté dans `server.js` pour que `express-rate-limit` lise correctement l'IP réelle derrière un reverse proxy (Railway, etc.) — évite le blocage de toutes les requêtes sur le même bucket.
 
 ### TikTok robustness (v2.2.9)
 - **timeout 15s** sur `connect()` via `Promise.race`
@@ -724,10 +784,12 @@ public/
 | `audit.test.js` | 123 | ring buffer, troncature, ordre |
 | `emotions.test.js` | 229 | décroissance, résidus, stack |
 | `funding.test.js` | 69 | calcul coûts, dons, statut Discord |
+| `humanize-v234.test.js` | 183 | mémoire narrative, VIP system, taste profile |
+| `humanize-v235.test.js` | 178 | outreach, hyperFocus, combos, vulnerability |
 | `mood.test.js` | 102 | sélection, refresh, reroll |
 | `scheduling.test.js` | 188 | slots semaine/we, forced slot, fuseau Paris |
 
-→ **87 tests** au total, exécutables via :
+→ **133 tests** au total, exécutables via :
 
 ```bash
 npm test
@@ -790,6 +852,7 @@ brainexe-dashboard/
 │   ├── bot/
 │   │   ├── persona.js              🎭 System prompts (l'âme de Brainee)
 │   │   ├── emotions.js             💗 Système émotionnel 4 couches + persistance
+│   │   ├── emotionCombos.js        🎭 Combos d'états (fatiguée+loyale, nostalgique+énergique…)
 │   │   ├── mood.js                 😊 Humeur du jour
 │   │   ├── scheduling.js           🗓️ Slots fixes (weekday / saturday / sunday)
 │   │   ├── adaptiveSchedule.js     🌗 Vibes journalières + horaires flottants
@@ -797,7 +860,9 @@ brainexe-dashboard/
 │   │   ├── messaging.js            ✉️ Envoi humanisé + normalizeName + resolveMentions
 │   │   ├── humanize.js             🎨 Slang, drops d'accents, abréviations
 │   │   ├── reactions.js            ✨ Choix d'emoji contextuel
-│   │   └── keywords.js             🔍 Détection mots-clés
+│   │   ├── keywords.js             🔍 Détection mots-clés
+│   │   ├── hyperFocus.js           🎯 Détection + suivi des obsessions temporaires
+│   │   └── vulnerability.js        🤍 Fenêtres de vulnérabilité (fatigue, surcharge)
 │   │
 │   ├── config/
 │   │   ├── channelManager.js       🗂️ Persistance des IDs de salons importants
@@ -807,8 +872,11 @@ brainexe-dashboard/
 │   │   ├── index.js                🔌 Connexion MongoDB
 │   │   ├── members.js              👤 Profils + détection préférences (tech_lover, …)
 │   │   ├── memberBonds.js          💞 Liens affectifs par membre
+│   │   ├── memberStories.js        📖 Mémoire narrative par membre (sujets, blagues, moments)
 │   │   ├── narrativeMemory.js      📚 Arcs narratifs serveur (30j)
+│   │   ├── tasteProfile.js         🎯 Goûts, genres, vibes et évitements détectés
 │   │   ├── topicFatigue.js         📉 Tracker fatigue (8 catégories)
+│   │   ├── vipSystem.js            💎 Tiers VIP (Superfan / Fidèle / Actif / Standard)
 │   │   ├── channelMem.js           🧠 Mémoire par salon (résumé tournant)
 │   │   ├── channelDir.js           📑 Directory des salons
 │   │   ├── dmHistory.js            ✉️ Historique DM
@@ -829,6 +897,9 @@ brainexe-dashboard/
 │   │   ├── welcome.js              👋 Embed de bienvenue + auto-rôle
 │   │   ├── sidebar.js              📊 Stats dans 5 salons vocaux
 │   │   ├── supportChannel.js       💰 Salon soutien anti-doublon (scan + ID)
+│   │   ├── proactiveOutreach.js    ⚡ Pensées spontanées, observations, callbacks VIP, défis
+│   │   ├── hyperFocusRevisit.js    🔁 Retours différés (2-14h) sur les obsessions détectées
+│   │   ├── extendedPermissions.js  📌 Pins intelligents + mini-sondages (quotas stricts)
 │   │   ├── context.js              🧵 Contexte conversationnel
 │   │   ├── convStats.js            📈 Stats quotidiennes des conversations
 │   │   └── delayedReply.js         ⏳ File d'attente de réponses différées
@@ -842,10 +913,12 @@ brainexe-dashboard/
 │   ├── mobile.css                  📱 Responsive + tiroir
 │   └── js/                         🧱 Frontend en 21 modules (cf §9)
 │
-├── tests/                          ✅ 5 suites Jest, 87 tests
+├── tests/                          ✅ 7 suites Jest, 133 tests
 │   ├── audit.test.js
 │   ├── emotions.test.js
 │   ├── funding.test.js
+│   ├── humanize-v234.test.js
+│   ├── humanize-v235.test.js
 │   ├── mood.test.js
 │   └── scheduling.test.js
 │
@@ -915,16 +988,14 @@ Sortie attendue :
 
 ```
 🔍 DISCORD_TOKEN: true | MONGODB_URI: true
-🌐 Port 3000
-✅ Login OK
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 🧠 BRAINEXE — Brainee v2.3.3
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- ✅ Bot : Brainee#1234
- ⏰ Slot : 🎮 Gaming | 🎭 Humeur : Chill | 🎨 Vibe : chatty
- 🌐 Dashboard : http://localhost:3000
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[HH:MM:SS] [SYS] 🌐 Serveur démarré sur le port 3000
+[HH:MM:SS] [SYS] ✅ Login Discord OK
+[HH:MM:SS] [SYS] 🧠 BRAINEXE v2.3.5 — Bot : Brainee#1234
+[HH:MM:SS] [SYS] ⏰ Slot : 🎮 Gaming | 🎭 Humeur : Chill | 🎨 Vibe : chatty
+[HH:MM:SS] [SYS] 🌐 Dashboard : http://localhost:3000
 ```
+
+> Depuis v2.3.5 les messages de démarrage passent par `pushLog` — ils apparaissent aussi dans l'onglet 📜 Logs du dashboard.
 
 ### Tests
 
@@ -932,7 +1003,7 @@ Sortie attendue :
 npm test
 ```
 
-→ 87 tests verts.
+→ 133 tests verts.
 
 ### Hosting Railway
 
@@ -1023,7 +1094,7 @@ Oui techniquement, mais ils partageraient `botConfig` et MongoDB — à adapter.
 
 ## ✨ Fin
 
-Tu as la **BIBLE COMPLÈTE** du projet à la version **2.3.3**.
+Tu as la **BIBLE COMPLÈTE** du projet à la version **2.3.5**.
 Tu sais :
 - ce que Brainee fait, et pourquoi elle le fait comme ça
 - comment les pièces s'assemblent (Discord, Claude, Mongo, dashboard)
