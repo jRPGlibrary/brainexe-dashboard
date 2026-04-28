@@ -38,9 +38,10 @@ const { scheduleDelayedReplyAfterEmoji } = require('../features/delayedReply');
 const { LIGHT_TAG_CLAUSE } = require('../features/greetings');
 const { scheduleDiscordToFile } = require('./sync');
 const { sendWelcomeMessage } = require('../features/welcome');
-const { YOUTUBE_KEYWORDS } = require('../bot/keywords');
+const { YOUTUBE_KEYWORDS, GAMING_KEYWORDS } = require('../bot/keywords');
 const { shouldRespond, recordMessageTopic } = require('../features/decisionLogic');
 const { getNarrativeContext } = require('../db/narrativeMemory');
+const { extractGameName, searchSteam } = require('../ai/steam');
 
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
@@ -168,7 +169,22 @@ async function handleMentionReply(message, userQuery) {
     const reply = await callClaude(dynamicPrompt, `${message.author.username} dit : "${userQuery}"\nMax 3 phrases.`, adjustMaxTokens(250), BOT_PERSONA_CONVERSATION);
     const replyResolved = resolveMentionsInText(reply, message.guild);
     if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
-    await sendHuman(message.channel, replyResolved + youtubeBlock, message, { bond });
+
+    let steamBlock = '';
+    if (GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
+      try {
+        const gameName = await extractGameName(userQuery, reply);
+        if (gameName && !contextLines.toLowerCase().includes(gameName.toLowerCase())) {
+          const steamResult = await searchSteam(gameName);
+          if (steamResult) {
+            steamBlock = `\n🎮 [${steamResult.title} sur Steam](${steamResult.url})`;
+            pushLog('SYS', `🎮 Steam link ajouté : ${steamResult.title}`, 'success');
+          }
+        }
+      } catch (_) {}
+    }
+
+    await sendHuman(message.channel, replyResolved + youtubeBlock + steamBlock, message, { bond });
     await updateMemberProfile(message.author.id, message.author.username, userQuery);
     await applyInteractionToBond(message.author.id, message.author.username, userQuery);
 
@@ -252,7 +268,22 @@ function registerMessageHandlers() {
       const userPrompt = `${message.author.username} : "${userContent}"`;
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
       const reply = await callClaude(dynamicPrompt, userPrompt, adjustMaxTokens(350), BOT_PERSONA_DM);
-      if (Math.random() < 0.15 && reply.length > 80) { await sendHuman(message.channel, reply, null, { bond }); }
+
+      let dmSteamBlock = '';
+      if (GAMING_KEYWORDS.some(kw => `${userContent} ${reply}`.toLowerCase().includes(kw))) {
+        try {
+          const gameName = await extractGameName(userContent, reply);
+          if (gameName && !(historyBlock || '').toLowerCase().includes(gameName.toLowerCase())) {
+            const steamResult = await searchSteam(gameName);
+            if (steamResult) {
+              dmSteamBlock = `\n🎮 [${steamResult.title} sur Steam](${steamResult.url})`;
+              pushLog('SYS', `🎮 Steam link DM : ${steamResult.title}`, 'success');
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (Math.random() < 0.15 && reply.length > 80) { await sendHuman(message.channel, reply + dmSteamBlock, null, { bond }); }
       else {
         const { humanize } = require('../bot/humanize');
         const { getHumanizationSignal } = require('../bot/emotions');
@@ -263,7 +294,7 @@ function registerMessageHandlers() {
           mood,
           slotStatus: slot.status,
         });
-        await message.reply(humanized);
+        await message.reply(humanized + dmSteamBlock);
       }
       await appendDmMessage(message.author.id, message.author.username, 'user', userContent);
       await appendDmMessage(message.author.id, message.author.username, 'assistant', reply);
