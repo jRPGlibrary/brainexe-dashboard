@@ -19,6 +19,7 @@ const {
 } = require('./bot/emotions');
 const { runDailyBondEvolution } = require('./db/memberBonds');
 const { addNarrativeArc } = require('./db/narrativeMemory');
+const { runStoriesDecay } = require('./db/memberStories');
 const { readGuildState } = require('./discord/sync');
 const { callClaude } = require('./ai/claude');
 const fs = require('fs');
@@ -217,8 +218,9 @@ function startConvCron() {
     try {
       applyDailyDrift();
       await runDailyBondEvolution();
+      await runStoriesDecay();
       await saveEmotionalState();
-      pushLog('SYS', `💞 Évolution journalière bonds + états internes`, 'success');
+      pushLog('SYS', `💞 Évolution journalière bonds + stories + états internes`, 'success');
     } catch (err) { pushLog('ERR', `emotionDailyCron: ${err.message}`, 'error'); }
   }, { timezone: 'Europe/Paris' });
 

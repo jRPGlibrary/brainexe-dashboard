@@ -4,6 +4,7 @@ const { GUILD_ID } = require('../../config');
 const { readGuildState } = require('../../discord/sync');
 const { auditLog } = require('../../audit');
 const { discordActionLimiter } = require('../rateLimits');
+const { getVipTier } = require('../../db/vipSystem');
 
 const router = Router();
 
@@ -15,8 +16,27 @@ router.get('/members', async (req, res) => {
     const bondsMap = new Map();
     const bonds = await shared.mongoDb.collection('memberBonds').find({}).toArray();
     bonds.forEach(b => bondsMap.set(b.userId, b));
-    const membersWithBonds = members.map(m => ({ ...m, bond: bondsMap.get(m.id) || null }));
+    const membersWithBonds = members.map(m => {
+      const bond = bondsMap.get(m.id) || null;
+      const vipTier = bond ? getVipTier(bond) : null;
+      return { ...m, bond, vipTier };
+    });
     res.json({ ok: true, members: membersWithBonds });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+router.get('/members/:id/profile-full', async (req, res) => {
+  if (!shared.mongoDb) return res.json({ ok: false, error: 'MongoDB non connecté' });
+  try {
+    const userId = req.params.id;
+    const [bond, profile, stories, taste] = await Promise.all([
+      shared.mongoDb.collection('memberBonds').findOne({ userId }),
+      shared.mongoDb.collection('memberProfiles').findOne({ userId }),
+      shared.mongoDb.collection('memberStories').findOne({ userId }),
+      shared.mongoDb.collection('tasteProfiles').findOne({ userId }),
+    ]);
+    const vipTier = bond ? getVipTier(bond) : null;
+    res.json({ ok: true, bond, profile, stories, taste, vipTier });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
