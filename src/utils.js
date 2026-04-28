@@ -57,4 +57,57 @@ function sanitizeDiscordContent(str) {
   return sanitizeString(str);
 }
 
-module.exports = { sleep, sanitizeString, sanitizeForJson, sanitizeDiscordContent };
+function extractJson(text) {
+  // Remove markdown code block markers
+  let cleaned = text.replace(/```(?:json)?\s*/g, '').trim();
+
+  // Try to find valid JSON object or array
+  const jsonMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (jsonMatch) {
+    cleaned = jsonMatch[1];
+  }
+
+  // Remove any trailing text after the JSON closes
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+  let lastJsonIndex = 0;
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i];
+
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{' || char === '[') {
+        depth++;
+      } else if (char === '}' || char === ']') {
+        depth--;
+        if (depth === 0) {
+          lastJsonIndex = i + 1;
+        }
+      }
+    }
+  }
+
+  if (lastJsonIndex > 0) {
+    cleaned = cleaned.substring(0, lastJsonIndex);
+  }
+
+  return cleaned.trim();
+}
+
+module.exports = { sleep, sanitizeString, sanitizeForJson, sanitizeDiscordContent, extractJson };
