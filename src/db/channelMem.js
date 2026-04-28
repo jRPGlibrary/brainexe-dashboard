@@ -1,7 +1,7 @@
 const shared = require('../shared');
 const { pushLog } = require('../logger');
 const { callClaude } = require('../ai/claude');
-const { sanitizeForJson } = require('../utils');
+const { sanitizeForJson, extractJson } = require('../utils');
 
 async function getChannelMemory(channelId) {
   if (!shared.mongoDb) return null;
@@ -39,7 +39,7 @@ async function enrichChannelMemory(channelId, channelName, channelTopic, recentC
 
     let parsed;
     try {
-      const clean = analysis.replace(/```json|```/g, '').trim();
+      const clean = extractJson(analysis);
       parsed = JSON.parse(clean);
     } catch {
       pushLog('ERR', `enrichChannelMemory JSON parse échoué pour ${channelName}`, 'error');
