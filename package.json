@@ -1,6 +1,6 @@
 {
   "name": "brainexe-dashboard",
-  "version": "2.3.3",
+  "version": "2.3.5",
   "description": "BrainEXE — Dashboard Neurodivergent Creator Hub",
   "main": "server.js",
   "scripts": {

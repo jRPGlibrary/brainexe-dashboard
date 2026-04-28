@@ -20,6 +20,18 @@ const {
   updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
 } = require('../bot/emotions');
 const { ensureMemberBond, applyInteractionToBond, describeBond } = require('../db/memberBonds');
+const {
+  detectStoriesFromMessage, getMemberStories, addMemberStory, formatStoriesBlock,
+} = require('../db/memberStories');
+const { getVipTier, getVipBlockForPrompt } = require('../db/vipSystem');
+const {
+  getTasteProfile, updateTasteFromMessage, formatTasteBlock,
+} = require('../db/tasteProfile');
+const { detectHyperFocusTopic, registerObsession } = require('../bot/hyperFocus');
+const { getEmotionCombosBlock } = require('../bot/emotionCombos');
+const {
+  getActiveWindow, detectSupport, recordSupportFromMember, getVulnerabilityBlock,
+} = require('../bot/vulnerability');
 const { getRandomReaction } = require('../bot/reactions');
 const { formatContext } = require('../features/context');
 const { scheduleDelayedReplyAfterEmoji } = require('../features/delayedReply');
@@ -99,6 +111,29 @@ async function handleMentionReply(message, userQuery) {
     const emotionBlock = getEmotionalInjection();
     const temperamentBlock = getTemperamentInjection();
     const narrativeBlock = await getNarrativeContext();
+
+    // 📚 Mémoire narrative par membre (v2.3.4)
+    const memberStories = await getMemberStories(message.author.id);
+    const memberStoriesBlock = formatStoriesBlock(memberStories, message.author.username);
+
+    // 💎 VIP tier (v2.3.4)
+    const vipTier = getVipTier(bond);
+    const vipBlock = getVipBlockForPrompt(vipTier, bond, message.author.username);
+
+    // 🎯 Taste profile (v2.3.4)
+    const tasteProfile = await getTasteProfile(message.author.id);
+    const tasteBlock = formatTasteBlock(tasteProfile, message.author.username);
+
+    // 🎭 Combos émotionnels (v2.3.5)
+    const combosBlock = getEmotionCombosBlock(mood);
+
+    // 🤍 Fenêtre de fragilité (v2.3.5) — si support détecté, on l'enregistre
+    const vulnWindow = await getActiveWindow();
+    const vulnBlock = getVulnerabilityBlock(vulnWindow);
+    if (vulnWindow && detectSupport(userQuery)) {
+      try { await recordSupportFromMember(message.author.id, message.author.username, userQuery); }
+      catch (vErr) { pushLog('ERR', `record support: ${vErr.message}`, 'error'); }
+    }
     const channelMemory = await getChannelMemory(message.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntry = await getChannelDirectory(message.channelId);
@@ -118,7 +153,7 @@ async function handleMentionReply(message, userQuery) {
       } catch (_) {}
     }
 
-    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${narrativeBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
+    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -136,6 +171,34 @@ async function handleMentionReply(message, userQuery) {
     await sendHuman(message.channel, replyResolved + youtubeBlock, message, { bond });
     await updateMemberProfile(message.author.id, message.author.username, userQuery);
     await applyInteractionToBond(message.author.id, message.author.username, userQuery);
+
+    // 📚 Détection narrative — on enregistre les stories pertinentes (max 1 par message)
+    try {
+      const detected = detectStoriesFromMessage(userQuery);
+      const best = detected.sort((a, b) => b.confidence - a.confidence)[0];
+      if (best && best.confidence >= 0.5) {
+        await addMemberStory(message.author.id, message.author.username, best);
+      }
+    } catch (storyErr) { pushLog('ERR', `Story detect: ${storyErr.message}`, 'error'); }
+
+    // 🎯 Mise à jour goûts depuis le message
+    try { await updateTasteFromMessage(message.author.id, message.author.username, userQuery); }
+    catch (tasteErr) { pushLog('ERR', `Taste update: ${tasteErr.message}`, 'error'); }
+
+    // 🎯 Hyper-focus : si un sujet "obsessionnel" est mentionné, on enregistre une revisit
+    try {
+      const topic = detectHyperFocusTopic(userQuery);
+      if (topic && Math.random() < 0.55) {
+        await registerObsession({
+          topic,
+          sourceUserId: message.author.id,
+          sourceUsername: message.author.username,
+          sourceChannelId: message.channelId,
+          sourceMessageContent: userQuery,
+        });
+      }
+    } catch (hfErr) { pushLog('ERR', `HyperFocus register: ${hfErr.message}`, 'error'); }
+
     pushLog('SYS', `💬 @mention → ${message.author.username} (mood: ${mood})`, 'success');
   } catch (err) { pushLog('ERR', `handleMentionReply échoué : ${err.message}`, 'error'); }
 }
@@ -162,7 +225,30 @@ function registerMessageHandlers() {
       const bondBlock = describeBond(bond, message.author.username);
       const emotionBlock = getEmotionalInjection();
       const temperamentBlock = getTemperamentInjection();
-      const dynamicPrompt = `${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
+
+      // 📚 Stories du membre (DM = contexte privilégié, on les utilise toujours)
+      const memberStories = await getMemberStories(message.author.id);
+      const memberStoriesBlock = formatStoriesBlock(memberStories, message.author.username);
+
+      // 💎 VIP tier
+      const vipTier = getVipTier(bond);
+      const vipBlock = getVipBlockForPrompt(vipTier, bond, message.author.username);
+
+      // 🎯 Taste profile
+      const tasteProfile = await getTasteProfile(message.author.id);
+      const tasteBlock = formatTasteBlock(tasteProfile, message.author.username);
+
+      // 🎭 Combos émotionnels
+      const combosBlock = getEmotionCombosBlock(mood);
+
+      // 🤍 Vulnerability window (DM = canal privilégié pour le soutien)
+      const vulnWindow = await getActiveWindow();
+      const vulnBlock = getVulnerabilityBlock(vulnWindow);
+      if (vulnWindow && detectSupport(userContent)) {
+        try { await recordSupportFromMember(message.author.id, message.author.username, userContent); } catch (_) {}
+      }
+
+      const dynamicPrompt = `${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
       const userPrompt = `${message.author.username} : "${userContent}"`;
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
       const reply = await callClaude(dynamicPrompt, userPrompt, adjustMaxTokens(350), BOT_PERSONA_DM);
@@ -183,6 +269,20 @@ function registerMessageHandlers() {
       await appendDmMessage(message.author.id, message.author.username, 'assistant', reply);
       await updateMemberProfile(message.author.id, message.author.username, userContent);
       await applyInteractionToBond(message.author.id, message.author.username, userContent);
+
+      // 📚 Détection narrative en DM aussi
+      try {
+        const detected = detectStoriesFromMessage(userContent);
+        const best = detected.sort((a, b) => b.confidence - a.confidence)[0];
+        if (best && best.confidence >= 0.5) {
+          await addMemberStory(message.author.id, message.author.username, best);
+        }
+      } catch (_) {}
+
+      // 🎯 Update goûts depuis le DM
+      try { await updateTasteFromMessage(message.author.id, message.author.username, userContent); }
+      catch (_) {}
+
       pushLog('SYS', `📨 DM répondu à ${message.author.username} (mood: ${mood})`, 'success');
     } catch (err) { pushLog('ERR', `DM handler échoué pour ${message.author.username} : ${err.message}`, 'error'); }
   });
