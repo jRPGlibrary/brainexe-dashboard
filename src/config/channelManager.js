@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { pushLog } = require('../logger');
 
 const CONFIG_FILE = path.join(__dirname, 'channels.json');
 
@@ -17,7 +18,7 @@ function saveChannelConfig(config) {
   try {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
   } catch (e) {
-    console.error('Erreur sauvegarde config channels:', e.message);
+    pushLog('ERR', `saveChannelConfig : ${e.message}`, 'error');
   }
 }
 

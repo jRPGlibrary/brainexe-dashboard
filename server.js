@@ -105,14 +105,10 @@ if (!TOKEN) { console.error('❌ DISCORD_TOKEN manquant'); process.exit(1); }
 discord.once('clientReady', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
-  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(' 🧠 BRAINEXE — Brainee v2.3.5 (outreach + hyperFocus + combos + vulnerability + pins/polls)');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   const vibe = getDailyVibe();
-  console.log(` ✅ Bot : ${discord.user.tag}`);
-  console.log(` ⏰ Slot : ${slot.label} | 🎭 Humeur : ${getDailyMood()} | 🎨 Vibe : ${vibe.name}`);
-  console.log(` 🌐 Dashboard : http://localhost:${PORT}`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  pushLog('SYS', `🧠 BRAINEXE v2.3.5 — Bot : ${discord.user.tag}`);
+  pushLog('SYS', `⏰ Slot : ${slot.label} | 🎭 Humeur : ${getDailyMood()} | 🎨 Vibe : ${vibe.name}`);
+  pushLog('SYS', `🌐 Dashboard : http://localhost:${PORT}`);
 
   registerDiscordEvents();
   registerMessageHandlers();
@@ -151,9 +147,9 @@ discord.once('clientReady', async () => {
     pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
   ), 30000);
 
-  await syncDiscordToFile('Démarrage v2.2.5');
+  await syncDiscordToFile('Démarrage v2.3.5');
 });
 
-server.listen(PORT, '0.0.0.0', () => console.log(`🌐 Port ${PORT}`));
-discord.login(TOKEN).then(() => console.log('✅ Login OK')).catch(e => { console.error('❌ Login échoué:', e.message); process.exit(1); });
+server.listen(PORT, '0.0.0.0', () => pushLog('SYS', `🌐 Serveur démarré sur le port ${PORT}`));
+discord.login(TOKEN).then(() => pushLog('SYS', '✅ Login Discord OK')).catch(e => { pushLog('ERR', `❌ Login Discord échoué : ${e.message}`, 'error'); process.exit(1); });
 process.on('SIGINT', () => { discord.destroy(); process.exit(0); });

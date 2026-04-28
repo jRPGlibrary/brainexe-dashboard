@@ -4,6 +4,7 @@ const { saveConfig } = require('../../botConfig');
 const { readGuildState } = require('../../discord/sync');
 const { startAnecdoteCron } = require('../../features/anecdotes');
 const { startActusCron } = require('../../features/actus');
+const { startConvCron } = require('../../crons');
 const { auditLog } = require('../../audit');
 const { generalLimiter } = require('../rateLimits');
 
@@ -29,7 +30,6 @@ function registerRoutes(app) {
       if (!shared.botConfig[section]) return res.status(400).json({ ok: false, error: 'Section inconnue' });
       shared.botConfig[section] = { ...shared.botConfig[section], ...data };
       saveConfig();
-      const { startConvCron } = require('../../crons');
       if (section === 'anecdote') startAnecdoteCron();
       if (section === 'actus') startActusCron();
       if (section === 'conversations') startConvCron();

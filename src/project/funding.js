@@ -1,4 +1,5 @@
 const shared = require('../shared');
+const { pushLog } = require('../logger');
 
 // Obtenir le mois courant au format YYYY-MM
 function getCurrentMonth() {
@@ -13,7 +14,7 @@ async function updateBotStatus(totalDonated, totalCosts) {
     const status = `💰 ${totalDonated.toFixed(1)}€/${totalCosts.toFixed(1)}€`;
     await shared.discord.user.setActivity(status, { type: 'WATCHING' });
   } catch (e) {
-    console.error('updateBotStatus error:', e.message);
+    pushLog('ERR', `updateBotStatus : ${e.message}`, 'error');
   }
 }
 
