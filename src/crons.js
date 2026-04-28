@@ -20,6 +20,11 @@ const {
 const { runDailyBondEvolution } = require('./db/memberBonds');
 const { addNarrativeArc } = require('./db/narrativeMemory');
 const { runStoriesDecay } = require('./db/memberStories');
+const { rollOutreach, fireOutreach } = require('./features/proactiveOutreach');
+const { processDueObsessions } = require('./features/hyperFocusRevisit');
+const { runHyperFocusDecay } = require('./bot/hyperFocus');
+const { tickVulnerabilityCheck } = require('./bot/vulnerability');
+const { scanForPinCandidates } = require('./features/extendedPermissions');
 const { readGuildState } = require('./discord/sync');
 const { callClaude } = require('./ai/claude');
 const fs = require('fs');
@@ -27,7 +32,8 @@ const fs = require('fs');
 let convCron = null, replyCron = null, floatingEventsCron = null;
 let moodResetCron = null, driftCron = null, relanceCron = null;
 let emotionHourlyCron = null, emotionDailyCron = null, narrativeCron = null;
-let reactionScanCron = null;
+let reactionScanCron = null, outreachCron = null, hyperFocusCron = null;
+let vulnerabilityCron = null, pinScanCron = null;
 
 // Flags "déjà tiré aujourd'hui" pour les events flottants (reset à minuit)
 const firedToday = { morning: '', lunch: '', goodnight: '', nightWakeup: '', relance: '' };
@@ -37,7 +43,7 @@ function parisDateISO() {
 }
 
 function startConvCron() {
-  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron, narrativeCron, reactionScanCron]
+  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron, narrativeCron, reactionScanCron, outreachCron, hyperFocusCron, vulnerabilityCron, pinScanCron]
     .forEach(c => { if (c) { try { c.stop(); } catch {} } });
 
   // Initialise la vibe et le planning flottant dès le boot
@@ -219,8 +225,9 @@ function startConvCron() {
       applyDailyDrift();
       await runDailyBondEvolution();
       await runStoriesDecay();
+      await runHyperFocusDecay();
       await saveEmotionalState();
-      pushLog('SYS', `💞 Évolution journalière bonds + stories + états internes`, 'success');
+      pushLog('SYS', `💞 Évolution journalière bonds + stories + hyper-focus + états internes`, 'success');
     } catch (err) { pushLog('ERR', `emotionDailyCron: ${err.message}`, 'error'); }
   }, { timezone: 'Europe/Paris' });
 
@@ -275,7 +282,32 @@ function startConvCron() {
     }
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v2.2.5 — reply 45min + scan réactif 20min + relances + émotions + bonds + narrative memory`, 'success');
+  // Proactive outreach — toutes les 35 min, déclenchement probabiliste
+  outreachCron = cron.schedule('*/35 * * * *', () => {
+    if (!slot_is_active(getParisHour())) return;
+    if (!rollOutreach()) return;
+    pushLog('SYS', `⚡ Tick outreach déclenché`);
+    fireOutreach().catch(err => pushLog('ERR', `outreach: ${err.message}`, 'error'));
+  }, { timezone: 'Europe/Paris' });
+
+  // Hyper-focus revisit — toutes les 25 min, traite UNE obsession arrivée à terme
+  hyperFocusCron = cron.schedule('*/25 * * * *', () => {
+    if (!slot_is_active(getParisHour())) return;
+    processDueObsessions().catch(err => pushLog('ERR', `hyperFocusRevisit: ${err.message}`, 'error'));
+  }, { timezone: 'Europe/Paris' });
+
+  // Vulnerability — tick toutes les heures, ouvre rarement (~6%/tick si conditions remplies)
+  vulnerabilityCron = cron.schedule('15 * * * *', () => {
+    tickVulnerabilityCheck().catch(err => pushLog('ERR', `vulnerability: ${err.message}`, 'error'));
+  }, { timezone: 'Europe/Paris' });
+
+  // Pin scan — toutes les 2h, repère un message vraiment marquant à épingler
+  pinScanCron = cron.schedule('15 */2 * * *', () => {
+    if (!slot_is_active(getParisHour())) return;
+    scanForPinCandidates().catch(err => pushLog('ERR', `pinScan: ${err.message}`, 'error'));
+  }, { timezone: 'Europe/Paris' });
+
+  pushLog('SYS', `✅ Crons v2.3.5 — reply 45min + scan 20min + relances + émotions + bonds + narrative + outreach 35min + hyperFocus 25min + vuln 1h + pin 90min`, 'success');
 }
 
 function slot_is_active(h) {

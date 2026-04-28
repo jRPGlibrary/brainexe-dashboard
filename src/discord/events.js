@@ -27,6 +27,11 @@ const { getVipTier, getVipBlockForPrompt } = require('../db/vipSystem');
 const {
   getTasteProfile, updateTasteFromMessage, formatTasteBlock,
 } = require('../db/tasteProfile');
+const { detectHyperFocusTopic, registerObsession } = require('../bot/hyperFocus');
+const { getEmotionCombosBlock } = require('../bot/emotionCombos');
+const {
+  getActiveWindow, detectSupport, recordSupportFromMember, getVulnerabilityBlock,
+} = require('../bot/vulnerability');
 const { getRandomReaction } = require('../bot/reactions');
 const { formatContext } = require('../features/context');
 const { scheduleDelayedReplyAfterEmoji } = require('../features/delayedReply');
@@ -118,6 +123,17 @@ async function handleMentionReply(message, userQuery) {
     // 🎯 Taste profile (v2.3.4)
     const tasteProfile = await getTasteProfile(message.author.id);
     const tasteBlock = formatTasteBlock(tasteProfile, message.author.username);
+
+    // 🎭 Combos émotionnels (v2.3.5)
+    const combosBlock = getEmotionCombosBlock(mood);
+
+    // 🤍 Fenêtre de fragilité (v2.3.5) — si support détecté, on l'enregistre
+    const vulnWindow = await getActiveWindow();
+    const vulnBlock = getVulnerabilityBlock(vulnWindow);
+    if (vulnWindow && detectSupport(userQuery)) {
+      try { await recordSupportFromMember(message.author.id, message.author.username, userQuery); }
+      catch (vErr) { pushLog('ERR', `record support: ${vErr.message}`, 'error'); }
+    }
     const channelMemory = await getChannelMemory(message.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntry = await getChannelDirectory(message.channelId);
@@ -137,7 +153,7 @@ async function handleMentionReply(message, userQuery) {
       } catch (_) {}
     }
 
-    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
+    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -168,6 +184,20 @@ async function handleMentionReply(message, userQuery) {
     // 🎯 Mise à jour goûts depuis le message
     try { await updateTasteFromMessage(message.author.id, message.author.username, userQuery); }
     catch (tasteErr) { pushLog('ERR', `Taste update: ${tasteErr.message}`, 'error'); }
+
+    // 🎯 Hyper-focus : si un sujet "obsessionnel" est mentionné, on enregistre une revisit
+    try {
+      const topic = detectHyperFocusTopic(userQuery);
+      if (topic && Math.random() < 0.55) {
+        await registerObsession({
+          topic,
+          sourceUserId: message.author.id,
+          sourceUsername: message.author.username,
+          sourceChannelId: message.channelId,
+          sourceMessageContent: userQuery,
+        });
+      }
+    } catch (hfErr) { pushLog('ERR', `HyperFocus register: ${hfErr.message}`, 'error'); }
 
     pushLog('SYS', `💬 @mention → ${message.author.username} (mood: ${mood})`, 'success');
   } catch (err) { pushLog('ERR', `handleMentionReply échoué : ${err.message}`, 'error'); }
@@ -208,7 +238,17 @@ function registerMessageHandlers() {
       const tasteProfile = await getTasteProfile(message.author.id);
       const tasteBlock = formatTasteBlock(tasteProfile, message.author.username);
 
-      const dynamicPrompt = `${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
+      // 🎭 Combos émotionnels
+      const combosBlock = getEmotionCombosBlock(mood);
+
+      // 🤍 Vulnerability window (DM = canal privilégié pour le soutien)
+      const vulnWindow = await getActiveWindow();
+      const vulnBlock = getVulnerabilityBlock(vulnWindow);
+      if (vulnWindow && detectSupport(userContent)) {
+        try { await recordSupportFromMember(message.author.id, message.author.username, userContent); } catch (_) {}
+      }
+
+      const dynamicPrompt = `${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
       const userPrompt = `${message.author.username} : "${userContent}"`;
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
       const reply = await callClaude(dynamicPrompt, userPrompt, adjustMaxTokens(350), BOT_PERSONA_DM);

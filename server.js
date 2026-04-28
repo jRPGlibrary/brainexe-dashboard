@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.3.4
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.3.5
  * ================================================
  * Architecture refactorisée — entry point minimal
  * Toute la logique est dans src/
@@ -9,6 +9,13 @@
  *   📚 Mémoire narrative par membre (memberStories)
  *   💎 VIP system (4 tiers basés sur le bond)
  *   🎯 Taste profile (goûts/genres/vibes/avoidances détectés)
+ *
+ * v2.3.5 — Initiative & émotions complexes :
+ *   ⚡ Proactive outreach (pensées spontanées, observations, callbacks VIP, défis)
+ *   🎯 Hyper-focus triggers (obsessions + retours différés 2-14h plus tard)
+ *   🎭 Combos d'états (fatiguée+loyale, nostalgique+énergique, etc)
+ *   🤍 Vulnerability windows (Brainee s'autorise à montrer fatigue, boost bond si soutien)
+ *   📌 Pins intelligents + mini-sondages (extended permissions, quotas stricts)
  * ================================================
  */
 
@@ -98,7 +105,7 @@ discord.once('ready', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(' 🧠 BRAINEXE — Brainee v2.3.4 (mémoire narrative + VIP system + taste profile)');
+  console.log(' 🧠 BRAINEXE — Brainee v2.3.5 (outreach + hyperFocus + combos + vulnerability + pins/polls)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   const vibe = getDailyVibe();
   console.log(` ✅ Bot : ${discord.user.tag}`);
