@@ -23,6 +23,14 @@ const AUDIT_LABELS = {
 };
 
 async function renderAudit() {
+  if (typeof renderAuditV2 === 'function') {
+    renderAuditV2();
+  } else {
+    renderAuditLegacy();
+  }
+}
+
+async function renderAuditLegacy() {
   const sec = document.getElementById('section-audit');
   sec.innerHTML = '<div class="empty">Chargement…</div>';
   try {
