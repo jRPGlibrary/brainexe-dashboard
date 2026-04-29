@@ -27,6 +27,8 @@ const {
 } = require('./convStats');
 const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
 const { getNarrativeContext } = require('../db/narrativeMemory');
+const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
+const { logMessageForBridge } = require('./dmServerBridge');
 
 async function postRandomConversation() {
   const cfg = shared.botConfig.conversations;
@@ -66,14 +68,24 @@ async function postRandomConversation() {
     const dirEntryC = await getChannelDirectory(ch.channelId);
     const intentBlockC = getChannelIntentBlock(channel.name, ch.topic, dirEntryC?.officialDescription || '');
     const modeBlock = getModeInjectionForChannel(mode, channel.name, ch.topic);
-    const emotionBlock = getEmotionalInjection();
-    const temperamentBlock = getTemperamentInjection();
-    const narrativeBlock = await getNarrativeContext();
+    // Utiliser le cache pour émotions/narratives (change rarement pendant la journée)
+    let emotionBlock, temperamentBlock, narrativeBlock;
+    const cached = getCachedBlocks();
+    if (cached) {
+      emotionBlock = cached.emotionalBlock;
+      temperamentBlock = cached.temperamentBlock;
+      narrativeBlock = cached.narrativeBlock;
+    } else {
+      emotionBlock = getEmotionalInjection();
+      temperamentBlock = getTemperamentInjection();
+      narrativeBlock = await getNarrativeContext();
+      setCacheBlocks(emotionBlock, temperamentBlock, narrativeBlock);
+    }
     let contextBlock = '';
     try {
-      const msgs = await channel.messages.fetch({ limit: 100 });
-      const ctx = formatContext(msgs, null, 80);
-      if (ctx.length > 20) contextBlock = `\nContexte récent (évite de répéter) :\n${ctx}`;
+      const msgs = await channel.messages.fetch({ limit: 40 });
+      const ctx = formatContext(msgs, null, 40);
+      if (ctx.length > 20) contextBlock = `\nContexte récent:\n${ctx}`;
     } catch (_) {}
     const deepInject = isDeep
       ? `\nCONTEXTE SALON : c'est un salon de thématique profonde (${channel.name}). Lance un angle vraiment fouillé, qui donne envie de creuser. Pas de question générique. Tu peux être plus précise, citer un détail, un souvenir, un mécanisme, une référence. Laisse l'entrée ouverte mais pas vague. Si personne ne rebondit, c'est ok — tu n'insistes pas.`
@@ -89,22 +101,8 @@ async function postRandomConversation() {
     const sentMsg = await channel.send(contentResolved);
     shared.lastAnyBotPostTime = Date.now();
     await updateConvStats(ch.channelId);
-    if (shouldCreateThread(content, channel.name, false)) {
-      try {
-        const tName = await callClaude('Nom de fil Discord court (max 60 car, pas de guillemets, emoji adapté).', `Nom pour : "${sanitizeForJson(content)}"`, 60);
-        const cleanName = tName.replace(/"/g, '').trim().slice(0, 100);
-        const thread = await sentMsg.startThread({ name: cleanName, autoArchiveDuration: 1440, reason: 'Fil conv Brainee' });
-        // Premier message dans le fil : titre + invitation (pas de tag, c'est un lance-conv ambiant)
-        const threadIntro = await callClaude(
-          `\nTu viens d'ouvrir un fil Discord "${cleanName}" pour creuser un sujet que tu viens de lancer.`,
-          `Écris l'ouverture du fil : 1 ligne de titre en gras "**[titre]**", puis 1-2 phrases d'invitation à venir discuter ici. Style Brainee, direct, oral. Pas de @.`,
-          140,
-          BOT_PERSONA
-        );
-        await thread.send(resolveMentionsInText(threadIntro, guild));
-        pushLog('SYS', `🧵 Fil conv créé + intro postée`, 'success');
-      } catch (_) {}
-    }
+    // Threads désactivés par défaut (personne ne les utilise)
+    // Peuvent être activés sur demande explicite seulement
     pushLog('SYS', `💬 Conv [${mode.name}] ${ch.channelName} [${slot.label}] (${getConvDailyCount()}/${getConvMaxPerDay()})`, 'success');
     broadcast('conversation', { channel: ch.channelName, time: new Date().toLocaleTimeString('fr-FR'), mode: mode.name, slot: slot.label, dayCount: getConvDailyCount() });
   } catch (err) { pushLog('ERR', `Lance-conv échouée : ${err.message}`, 'error'); }

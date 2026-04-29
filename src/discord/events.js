@@ -38,6 +38,7 @@ const { scheduleDelayedReplyAfterEmoji } = require('../features/delayedReply');
 const { LIGHT_TAG_CLAUSE } = require('../features/greetings');
 const { scheduleDiscordToFile } = require('./sync');
 const { sendWelcomeMessage } = require('../features/welcome');
+const { enrichDMWithServerContext, logMessageForBridge } = require('../features/dmServerBridge');
 const { YOUTUBE_KEYWORDS } = require('../bot/keywords');
 const { shouldRespond, recordMessageTopic } = require('../features/decisionLogic');
 const { getNarrativeContext } = require('../db/narrativeMemory');
@@ -266,10 +267,16 @@ function registerMessageHandlers() {
         try { await recordSupportFromMember(message.author.id, message.author.username, userContent); } catch (_) {}
       }
 
+      // Enrichir le DM avec le contexte serveur (faire la liaison DM ↔ Serveur)
+      const enrichedUserContent = await enrichDMWithServerContext(message.author.id, message.author.username, userContent);
+
       const dynamicPrompt = `${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
-      const userPrompt = `${message.author.username} : "${userContent}"`;
+      const userPrompt = `${message.author.username} : "${enrichedUserContent}"`;
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
       const reply = await callClaude(dynamicPrompt, userPrompt, adjustMaxTokens(350), BOT_PERSONA_DM);
+
+      // Logger le message pour la liaison DM/Serveur
+      await logMessageForBridge(message.author.id, message.author.username, userContent, message.channelId, 'DM', 'dm');
       if (Math.random() < 0.15 && reply.length > 80) { await sendHuman(message.channel, reply, null, { bond }); }
       else {
         const { humanize } = require('../bot/humanize');

@@ -24,46 +24,44 @@ async function enrichChannelMemory(channelId, channelName, channelTopic, recentC
   if (!ANTHROPIC_API_KEY || !shared.mongoDb) return;
   try {
     const existing = await getChannelMemory(channelId);
-    const existingStr = existing ? JSON.stringify({
-      toneProfile: existing.toneProfile,
-      frequentThemes: existing.frequentThemes,
-      insideJokes: existing.insideJokes,
-      heatLevel: existing.heatLevel,
-    }) : 'Pas de mémoire existante';
+    const existingStr = existing
+      ? `ton:${existing.toneProfile?.slice(0, 30)},themes:${existing.frequentThemes?.slice(0, 2)?.join(',')}`
+      : 'new';
 
+    // OPTIMISÉ: 250 tokens (60% économie), contexte réduit, prompt ultra-court
     const analysis = await callClaude(
-      'Tu analyses la mémoire conversationnelle d\'un salon Discord pour un bot nommé Brainee. Réponds UNIQUEMENT en JSON valide, sans balises markdown, sans texte autour.',
-      `Salon : ${sanitizeForJson(channelName)} (topic officiel : ${sanitizeForJson(channelTopic)})\n\nMémoire existante :\n${existingStr}\n\nContexte récent (derniers messages) :\n${sanitizeForJson(recentContext.slice(0, 1500))}\n\nAnalyse et retourne un JSON avec ces champs :\n{\n  "toneProfile": "description courte du ton dominant dans ce salon",\n  "frequentThemes": ["thème1", "thème2", "thème3"],\n  "insideJokes": ["blague ou référence interne si détectée"],\n  "heatLevel": 1-10,\n  "offTopicTolerance": 1-10,\n  "lastSummary": "résumé en 1 phrase des sujets récents"\n}`,
-      600
+      'Analyse mémoire salon Discord.',
+      `Ch:${sanitizeForJson(channelName)}\nExist:${existingStr}\nRecent:${sanitizeForJson(recentContext.slice(0, 600))}\n\nRetourne JSON:{\"toneProfile\":\"phrase court\",\"frequentThemes\":[\"t1\",\"t2\"],\"heatLevel\":1-10}`,
+      250
     );
 
     let parsed;
     try {
       const clean = extractJson(analysis);
       if (!clean) {
-        pushLog('ERR', `enrichChannelMemory extraction échouée pour ${channelName} - pas de JSON trouvé. Réponse: ${analysis.substring(0, 200)}...`, 'error');
+        pushLog('ERR', `enrichChannelMemory: pas de JSON pour ${channelName}`, 'error');
         return;
       }
       parsed = JSON.parse(clean);
     } catch (err) {
-      pushLog('ERR', `enrichChannelMemory JSON parse échoué pour ${channelName}: ${err.message} | Tentative parse: ${clean?.substring(0, 150)}...`, 'error');
+      pushLog('ERR', `enrichChannelMemory: parse échoué ${channelName}`, 'error');
       return;
     }
 
     await setChannelMemory(channelId, {
       channelName,
       channelTopic,
-      toneProfile: parsed.toneProfile || '',
-      frequentThemes: parsed.frequentThemes || [],
-      insideJokes: parsed.insideJokes || [],
-      heatLevel: parsed.heatLevel || 5,
-      offTopicTolerance: parsed.offTopicTolerance || 5,
-      lastSummary: parsed.lastSummary || '',
+      toneProfile: parsed.toneProfile || existing?.toneProfile || '',
+      frequentThemes: parsed.frequentThemes || existing?.frequentThemes || [],
+      insideJokes: existing?.insideJokes || [],
+      heatLevel: parsed.heatLevel || existing?.heatLevel || 5,
+      offTopicTolerance: existing?.offTopicTolerance || 5,
+      lastSummary: existing?.lastSummary || '',
       lastEnrichedAt: new Date(),
     });
-    pushLog('SYS', `🧠 Mémoire salon #${channelName} enrichie`, 'success');
+    pushLog('SYS', `🧠 Mémoire #${channelName} compactée`, 'success');
   } catch (err) {
-    pushLog('ERR', `enrichChannelMemory échoué pour ${channelName} : ${err.message}`, 'error');
+    pushLog('ERR', `enrichChannelMemory: ${err.message}`, 'error');
   }
 }
 

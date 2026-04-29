@@ -72,40 +72,8 @@ async function handleDrift(guild, channelId, channelName, driftResult, participa
       const targetChannel = guild.channels.cache.get(targetId);
       if (!targetChannel) return;
 
-      if (shouldCreateThread(driftResult.dominantTheme)) {
-        try {
-          const threadName = await callClaude(
-            'Tu génères des noms de fils Discord courts (max 60 caractères, pas de guillemets, emoji gaming).',
-            `Nom de fil pour ce sujet : "${sanitizeForJson(driftResult.dominantTheme)}". Max 60 car. Emoji adapté.`, 60
-          );
-          const cleanThreadName = threadName.replace(/"/g, '').trim().slice(0, 100);
-          const bridgeResolved = resolveMentionsInText(driftResult.bridgeMessage || `ce sujet mérite son propre espace 🧵`, guild);
-          const sentMsg = await originChannel.send(bridgeResolved);
-          const thread = await sentMsg.startThread({
-            name: cleanThreadName,
-            autoArchiveDuration: 1440,
-            reason: 'Fil dérive Brainee',
-          });
-
-          // Premier message dans le fil : intro + invitation (+ tag des participants actifs)
-          const threadIntro = await callClaude(
-            `\nTu viens d'ouvrir un fil Discord "${cleanThreadName}" sur le sujet "${driftResult.dominantTheme}".`,
-            `Écris un message d'ouverture pour ce fil : 1 ligne de titre en gras style "**[titre accrocheur]**", puis 1-2 phrases d'invitation à continuer la discussion ici. Ton style Brainee, oral, chaleureux. Pas de @.`,
-            140,
-            BOT_PERSONA_CONVERSATION
-          );
-          const tagLine = (Array.isArray(participantIds) && participantIds.length)
-            ? participantIds.slice(0, 5).map(id => `<@${id}>`).join(' ') + ' '
-            : '';
-          await thread.send(tagLine + resolveMentionsInText(threadIntro, guild));
-
-          shared.lastAnyBotPostTime = Date.now();
-          pushLog('SYS', `🧵 Thread "${cleanThreadName}" créé + intro postée dans #${channelName} (${participantIds.length} participants tagués)`, 'success');
-        } catch (threadErr) {
-          pushLog('ERR', `Thread dérive échoué : ${threadErr.message}`, 'error');
-        }
-        return;
-      }
+      // Threads désactivés par défaut (personne ne les utilise)
+      // Peuvent être activés sur demande explicite seulement
 
       const bridgeMsg = resolveMentionsInText(driftResult.bridgeMessage || `ok on a clairement dérivé vers du ${driftResult.dominantTheme} — je vous ouvre un coin dans ${targetName} 🔀`, guild);
       await simulateTyping(originChannel, 800);
