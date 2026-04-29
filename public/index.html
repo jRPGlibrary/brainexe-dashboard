@@ -111,6 +111,7 @@
           <span class="pill" id="mood-pill">⚡ <span id="mood-label">—</span></span>
           <span class="pill" id="funding-pill">💰 <span id="funding-label">—</span></span>
           <span class="pill offline" id="ws-pill" title="État de la connexion temps réel"><span class="dot"></span>Connexion…</span>
+          <button class="btn btn-sm btn-ghost" id="logout-btn" onclick="handleLogout()" style="display:none" title="Se déconnecter">🚪 Déconnexion</button>
         </div>
       </header>
 
@@ -140,6 +141,7 @@
   <div id="modal-bg" class="modal-bg" role="dialog" aria-modal="true"></div>
 
   <!-- ── Core ── -->
+  <script src="js/auth.js"></script>
   <script src="js/core.js"></script>
   <script src="js/websocket.js"></script>
   <script src="js/navigation.js"></script>

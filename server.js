@@ -23,6 +23,7 @@ require('dotenv').config();
 
 const http = require('http');
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const WebSocket = require('ws');
 const path = require('path');
 const discord_js = require('discord.js');
@@ -41,7 +42,7 @@ const INTENTS_DIRECT_MESSAGES = discord_js.GatewayIntentBits?.DirectMessages ?? 
 const shared = require('./src/shared');
 
 // ── CONFIG ────────────────────────────────────────────────────
-const { TOKEN, PORT } = require('./src/config');
+const { TOKEN, PORT, ADMIN_PASSWORD } = require('./src/config');
 
 // ── BOT CONFIG ──────────────────────────────────────────────────
 const { loadConfig } = require('./src/botConfig');
@@ -53,6 +54,19 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 app.use(express.json());
+app.use(cookieParser());
+
+// Middleware d'authentification pour les pages HTML (protéger index.html)
+if (ADMIN_PASSWORD) {
+  app.get('/', (req, res) => {
+    const token = req.cookies?.admin_session;
+    if (!token || !isSessionValid(token)) {
+      return res.redirect('/login.html');
+    }
+    res.sendFile(path.join(__dirname, 'public/index.html'));
+  });
+}
+
 app.use(express.static(path.join(__dirname, 'public')));
 shared.app = app;
 shared.wss = wss;
@@ -83,6 +97,9 @@ const { getDailyVibe } = require('./src/bot/adaptiveSchedule');
 const { registerRoutes } = require('./src/api/routes');
 const { getFundingData, calculateTotalCosts, updateBotStatus } = require('./src/project/funding');
 const { ensureSupportChannel } = require('./src/features/supportChannel');
+
+// ── AUTH UTILS ──────────────────────────────────────────────────────
+const { isSessionValid } = require('./src/api/auth');
 
 // ── API ROUTES ─────────────────────────────────────────────────────
 registerRoutes(app);
