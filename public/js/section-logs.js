@@ -6,6 +6,7 @@
 const LOG_TYPES = ['SYS', 'ERR', 'D2F', 'F2D', 'API', 'JOIN'];
 let _logFilter = '';
 let _logTypeFilter = '';
+let _autoScrollLogs = true;
 
 function renderLogs() {
   const sec = document.getElementById('section-logs');
@@ -16,7 +17,10 @@ function renderLogs() {
           <div class="card-title">Logs en direct</div>
           <div class="card-subtitle" id="logs-count">${state.logs.length} événements</div>
         </div>
-        <button class="btn btn-sm btn-ghost" onclick="state.logs = []; renderLogsStream()">🗑 Vider (local)</button>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-sm" id="autoscroll-toggle" onclick="toggleAutoScroll()" title="Auto-scroll vers les nouveaux logs">📍 Auto</button>
+          <button class="btn btn-sm btn-ghost" onclick="state.logs = []; renderLogsStream()">🗑 Vider</button>
+        </div>
       </div>
       <div class="filter-bar">
         <input class="input search" placeholder="Rechercher…" value="${escapeHtml(_logFilter)}"
@@ -31,6 +35,8 @@ function renderLogs() {
       </div>
     </div>
   `;
+  updateAutoScrollButton();
+  scrollLogsToBottom();
 }
 
 function renderLogsStream() {
@@ -38,4 +44,28 @@ function renderLogsStream() {
   if (el) el.innerHTML = renderLogEntries([...state.logs].reverse(), _logFilter, _logTypeFilter);
   const count = document.getElementById('logs-count');
   if (count) count.textContent = `${state.logs.length} événements`;
+  if (_autoScrollLogs) {
+    setTimeout(() => scrollLogsToBottom(), 0);
+  }
+}
+
+function toggleAutoScroll() {
+  _autoScrollLogs = !_autoScrollLogs;
+  updateAutoScrollButton();
+  if (_autoScrollLogs) scrollLogsToBottom();
+}
+
+function updateAutoScrollButton() {
+  const btn = document.getElementById('autoscroll-toggle');
+  if (btn) {
+    btn.style.opacity = _autoScrollLogs ? '1' : '0.5';
+    btn.title = _autoScrollLogs ? 'Auto-scroll activé' : 'Auto-scroll désactivé';
+  }
+}
+
+function scrollLogsToBottom() {
+  const el = document.getElementById('logs-stream');
+  if (el) {
+    el.scrollTop = el.scrollHeight;
+  }
 }

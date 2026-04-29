@@ -7,8 +7,34 @@ const { startActusCron } = require('../../features/actus');
 const { startConvCron } = require('../../crons');
 const { auditLog } = require('../../audit');
 const { generalLimiter } = require('../rateLimits');
+const { ADMIN_PASSWORD } = require('../../config');
+const { requireAuth, createSession, destroySession } = require('../auth');
 
 function registerRoutes(app) {
+  // Routes d'auth (sans protection)
+  app.post('/api/auth/login', (req, res) => {
+    const { password } = req.body;
+    if (!ADMIN_PASSWORD) {
+      return res.status(500).json({ ok: false, error: 'Auth non configurée' });
+    }
+    if (password !== ADMIN_PASSWORD) {
+      auditLog('auth.fail', { ip: req.ip, timestamp: new Date() });
+      return res.status(401).json({ ok: false, error: 'Mot de passe incorrect' });
+    }
+    createSession(res);
+    auditLog('auth.login', { ip: req.ip, timestamp: new Date() });
+    res.json({ ok: true, message: 'Connecté' });
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    destroySession(req);
+    res.clearCookie('admin_session');
+    res.json({ ok: true, message: 'Déconnecté' });
+  });
+
+  // Middleware d'auth sur toutes les routes /api
+  app.use('/api/', requireAuth);
+
   // Limiteur général appliqué sur toute l'API en filet de sécurité
   app.use('/api/', generalLimiter);
 

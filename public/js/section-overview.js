@@ -141,12 +141,23 @@ function renderLogEntries(logs, filter = '', typeFilter = '') {
     return true;
   });
   if (!filtered.length) return '<div class="log-empty-filtered">Aucun résultat pour ce filtre</div>';
+
+  const typeEmojis = {
+    'SYS': '⚙️',
+    'ERR': '❌',
+    'D2F': '↓',
+    'F2D': '↑',
+    'API': '🔗',
+    'JOIN': '➕'
+  };
+
   return filtered.map(l => {
     const t = l.ts ? new Date(l.ts).toLocaleTimeString('fr-FR') : (l.time ? l.time.slice(11, 19) : '--:--:--');
     const dirClass = l.dir || l.type || '';
+    const emoji = typeEmojis[dirClass] || '•';
     return `<div class="log-entry">
       <span class="log-time">${t}</span>
-      <span class="log-type ${dirClass}">${dirClass || '—'}</span>
+      <span class="log-type ${dirClass}"><span style="margin-right:2px">${emoji}</span>${dirClass || '—'}</span>
       <span class="log-msg">${escapeHtml(l.msg || '')}</span>
     </div>`;
   }).join('');

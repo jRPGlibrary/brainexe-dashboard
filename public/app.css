@@ -661,22 +661,42 @@ a:hover { text-decoration: underline; }
 }
 .log-entry {
   display: flex;
-  gap: 10px;
-  padding: 4px 6px;
+  gap: 8px;
+  padding: 6px 8px;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   align-items: flex-start;
   line-height: 1.5;
+  border-radius: 6px;
+  transition: background 0.15s;
 }
+.log-entry:hover { background: var(--surface-hover); }
 .log-entry:last-child { border-bottom: none; }
-.log-time  { color: var(--text-3); flex-shrink: 0; font-variant-numeric: tabular-nums; }
-.log-type  { font-weight: 700; flex-shrink: 0; width: 44px; }
-.log-type.SYS  { color: var(--info); }
-.log-type.ERR  { color: var(--danger); }
-.log-type.D2F  { color: var(--success); }
-.log-type.F2D  { color: var(--warning); }
-.log-type.API  { color: var(--accent); }
-.log-type.JOIN { color: var(--success); }
-.log-msg { color: var(--text); word-break: break-word; }
+.log-time {
+  color: var(--text-3);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  min-width: 52px;
+}
+.log-type {
+  font-weight: 700;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  min-width: 48px;
+  text-align: center;
+  background: var(--surface-hover);
+}
+.log-type.SYS  { background: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info); }
+.log-type.ERR  { background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
+.log-type.D2F  { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.log-type.F2D  { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
+.log-type.API  { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+.log-type.JOIN { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.log-msg { color: var(--text); word-break: break-word; flex: 1; min-width: 0; }
 
 /* ─── TOAST ─── */
 #toasts {
@@ -824,7 +844,27 @@ a:hover { text-decoration: underline; }
   margin: 14px 0;
 }
 
-/* ─── SAVE INDICATOR (live) ─── */
+/* ─── BADGES NAVIGATION ─── */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  background: var(--danger);
+  color: white;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: auto;
+  animation: badgeFlash 0.6s;
+}
+
+@keyframes badgeFlash {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
 .save-indicator {
   display: inline-flex;
   align-items: center;
@@ -1184,6 +1224,212 @@ a:hover { text-decoration: underline; }
   color: var(--danger);
   margin: 12px 0;
   align-items: flex-start;
+}
+
+/* ─── MINI CHARTS ─── */
+.chart-container {
+  padding: 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+
+.chart-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.mini-chart {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 100px;
+  margin-bottom: 8px;
+}
+
+.chart-bar {
+  flex: 1;
+  background: var(--accent);
+  border-radius: 2px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  min-height: 4px;
+}
+
+.chart-bar:hover {
+  opacity: 1;
+}
+
+.chart-scale {
+  font-size: 10px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.top-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.top-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  background: var(--surface-hover);
+  border-radius: 6px;
+}
+
+.top-rank {
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 20px;
+  text-align: center;
+}
+
+.top-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.top-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+/* ─── READONLY MODE ─── */
+[data-readonly="true"] .btn-primary,
+[data-readonly="true"] .btn-danger {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ─── SEARCH MODAL ─── */
+.search-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 100px;
+  z-index: 200;
+  backdrop-filter: blur(2px);
+}
+
+.search-content {
+  width: 100%;
+  max-width: 500px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.search-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.search-results {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.search-result {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  transition: background 0.12s;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+
+.search-result:hover,
+.search-result.selected {
+  background: var(--surface-hover);
+}
+
+.search-type {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  padding: 2px 6px;
+  background: var(--accent-bg);
+  border-radius: 4px;
+}
+
+.search-title {
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-empty {
+  padding: 30px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.search-hint {
+  padding: 8px 16px;
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-3);
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+/* ─── HOTKEYS HELP ─── */
+.hotkeys-help {
+  padding: 24px;
+  color: var(--text);
+}
+
+.hotkeys-help h3 {
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
+.hotkeys-help table {
+  width: 100%;
+  font-size: 12px;
+}
+
+.hotkeys-help tr {
+  border-bottom: 1px solid var(--border);
+}
+
+.hotkeys-help td {
+  padding: 8px;
+}
+
+.hotkeys-help td:first-child {
+  color: var(--accent);
+  font-weight: 600;
+  width: 180px;
 }
 
 /* Styles responsive dans mobile.css */

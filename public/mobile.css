@@ -235,11 +235,20 @@
     padding: 8px;
   }
   .log-entry {
-    gap: 6px;
-    padding: 3px 4px;
+    gap: 5px;
+    padding: 5px 6px;
   }
   .log-time {
-    display: none;
+    font-size: 10px;
+    min-width: 46px;
+  }
+  .log-type {
+    min-width: 44px;
+    font-size: 9px;
+    padding: 2px 4px;
+  }
+  .log-msg {
+    font-size: 11px;
   }
 
   /* ── Schedule ── */
@@ -374,5 +383,62 @@
   .nav-item {
     padding: 10px 10px;
     font-size: 14px;
+  }
+
+  /* ── Bottom Tab Bar (sur petit mobile) ── */
+  .bottom-tabs {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 40;
+    padding-bottom: max(0, env(safe-area-inset-bottom, 0px));
+  }
+
+  .bottom-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    color: var(--text-3);
+    font-size: 10px;
+    transition: all 0.15s;
+    border-top: 3px solid transparent;
+    position: relative;
+  }
+
+  .bottom-tab:hover,
+  .bottom-tab.active {
+    color: var(--accent);
+    border-top-color: var(--accent);
+  }
+
+  .bottom-tab-icon {
+    font-size: 20px;
+  }
+
+  .bottom-tab-badge {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 3px;
+    background: var(--danger);
+    color: white;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .main {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
 }
