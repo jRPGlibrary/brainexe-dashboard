@@ -1,12 +1,13 @@
 /**
  * ================================================
- * ⚡ PROACTIVE OUTREACH v2.3.5
+ * ⚡ PROACTIVE OUTREACH v2.3.7
  * ================================================
  * Brainee n'attend plus toujours qu'on lui parle. Elle peut :
  *   - random_thought   : balancer une pensée qui la traverse
  *   - group_observation: observer la dynamique du groupe et la nommer
  *   - vip_callback     : reprendre une story d'un VIP/inner_circle absent
  *   - challenge        : lancer un mini-défi improvisé au salon
+ *   - dm_outreach      : initier un DM spontané avec un VIP (v2.3.7)
  *
  * Garde-fous :
  *   - Respecte vibe (skip si introvert/withdrawn) et state (pas si overloaded)
@@ -30,6 +31,7 @@ const { sendHuman } = require('../bot/messaging');
 const { getConvDailyCount, getConvMaxPerDay, updateConvStats } = require('./convStats');
 const { detectMissedVips } = require('../db/vipSystem');
 const { getMemberStories, touchStory } = require('../db/memberStories');
+const { fireProactiveDmToVip } = require('./dmOutreach');
 
 const COOLDOWN_MS = 90 * 60 * 1000;
 let lastOutreachAt = 0;
@@ -69,14 +71,16 @@ function isEligibleNow() {
 
 // ─── CHOIX DU TYPE ───────────────────────────────────────────────
 function pickType() {
-  const types = ['random_thought', 'group_observation', 'vip_callback', 'challenge'];
+  // dm_outreach : type spécial géré séparément dans fireOutreach (v2.3.7)
+  const types = ['random_thought', 'group_observation', 'vip_callback', 'challenge', 'dm_outreach'];
   const filtered = types.filter(t => t !== lastOutreachType);
-  // Pondération : random_thought plus fréquent, challenge plus rare
+  // Pondération : random_thought plus fréquent, dm_outreach très rare
   const weights = {
-    random_thought: 0.45,
+    random_thought: 0.42,
     group_observation: 0.20,
-    vip_callback: 0.25,
+    vip_callback: 0.22,
     challenge: 0.10,
+    dm_outreach: 0.06,
   };
   const total = filtered.reduce((acc, t) => acc + (weights[t] || 0.1), 0);
   let r = Math.random() * total;
@@ -140,6 +144,31 @@ async function fireOutreach(forcedType = null) {
   if (!ANTHROPIC_API_KEY) return false;
 
   const type = forcedType || pickType();
+
+  // 💬 DM outreach proactif (v2.3.7) : traité en dehors du flow salon
+  if (type === 'dm_outreach') {
+    const missed = await detectMissedVips({ minDaysAbsent: 3, maxResults: 8 });
+    if (!missed.length) {
+      pushLog('SYS', '🤐 Outreach dm_outreach skip : aucun VIP éligible');
+      return false;
+    }
+    const target = missed[Math.floor(Math.random() * missed.length)];
+    const stories = await getMemberStories(target.userId);
+    const usable = stories.find(s => ['quest', 'project', 'concern'].includes(s.type)) || stories[0];
+    const storyHint = usable
+      ? `${target.username} ${({ quest: 'cherchait', project: 'travaillait sur', concern: 'disait' }[usable.type] || 'évoquait')} : "${usable.content}"`
+      : null;
+
+    const ok = await fireProactiveDmToVip(target.userId, target.username, storyHint);
+    if (ok) {
+      lastOutreachAt = Date.now();
+      lastOutreachType = type;
+      if (usable) await touchStory(target.userId, usable.id).catch(() => {});
+      pushLog('SYS', `⚡ Outreach (dm_outreach) → ${target.username}`, 'success');
+    }
+    return ok;
+  }
+
   let channelCfg = pickChannelForType(type);
   if (!channelCfg) return false;
 

@@ -41,6 +41,11 @@ const { sendWelcomeMessage } = require('../features/welcome');
 const { YOUTUBE_KEYWORDS } = require('../bot/keywords');
 const { shouldRespond, recordMessageTopic } = require('../features/decisionLogic');
 const { getNarrativeContext } = require('../db/narrativeMemory');
+const {
+  detectDmInvite, detectDmAccept, detectDmRefuse,
+  handleDmInvite, maybeProposeInDm,
+  checkPendingDmProposal, consumeDmProposal, openAndSendDm,
+} = require('../features/dmOutreach');
 
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
@@ -105,6 +110,16 @@ async function handleMentionReply(message, userQuery) {
 
     // Record topic for fatigue tracking
     await recordMessageTopic(userQuery);
+
+    // 💬 Court-circuit : invitation DM détectée (v2.3.7)
+    // On traite ici avant tout chargement de contexte inutile
+    if (detectDmInvite(userQuery)) {
+      await updateMemberProfile(message.author.id, message.author.username, userQuery);
+      await applyInteractionToBond(message.author.id, message.author.username, userQuery);
+      await handleDmInvite(message, userQuery);
+      pushLog('SYS', `💬 Invite DM → ${message.author.username}`);
+      return;
+    }
 
     const bond = await ensureMemberBond(message.author.id, message.author.username);
     const bondBlock = describeBond(bond, message.author.username);
@@ -171,6 +186,9 @@ async function handleMentionReply(message, userQuery) {
     await sendHuman(message.channel, replyResolved + youtubeBlock, message, { bond });
     await updateMemberProfile(message.author.id, message.author.username, userQuery);
     await applyInteractionToBond(message.author.id, message.author.username, userQuery);
+
+    // 💬 Proposal DM sortante (v2.3.7) : Brainee propose de continuer en DM (faible proba)
+    await maybeProposeInDm(message, userQuery, bond).catch(() => {});
 
     // 📚 Détection narrative — on enregistre les stories pertinentes (max 1 par message)
     try {
@@ -352,6 +370,28 @@ function registerMessageHandlers() {
     const delayMs = getMentionDelayMs(slot);
     if (delayMs > 0) setTimeout(() => handleMentionReply(message, userQuery), delayMs);
     else handleMentionReply(message, userQuery);
+  });
+
+  // 💬 Réponse à une proposal DM de Brainee (v2.3.7)
+  shared.discord.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot || !message.guild || message.guild.id !== GUILD_ID) return;
+    // Ignorer les messages qui mentionnent Brainee (déjà gérés par le handler @mention)
+    if (shared.discord.user && message.mentions.has(shared.discord.user)) return;
+
+    const proposal = checkPendingDmProposal(message);
+    if (!proposal) return;
+
+    const content = message.content?.trim();
+    if (!content) return;
+
+    if (detectDmAccept(content)) {
+      consumeDmProposal(message.author.id);
+      const bond = await ensureMemberBond(message.author.id, message.author.username);
+      await openAndSendDm(message.author, proposal.contextHint, bond);
+    } else if (detectDmRefuse(content)) {
+      consumeDmProposal(message.author.id);
+      pushLog('SYS', `💬 Proposal DM refusée par ${message.author.username}`);
+    }
   });
 
   // Reaction roles
