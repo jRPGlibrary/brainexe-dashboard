@@ -111,6 +111,16 @@ async function handleMentionReply(message, userQuery) {
     // Record topic for fatigue tracking
     await recordMessageTopic(userQuery);
 
+    // 💬 Court-circuit : invitation DM détectée (v2.3.7)
+    // On traite ici avant tout chargement de contexte inutile
+    if (detectDmInvite(userQuery)) {
+      await updateMemberProfile(message.author.id, message.author.username, userQuery);
+      await applyInteractionToBond(message.author.id, message.author.username, userQuery);
+      await handleDmInvite(message, userQuery);
+      pushLog('SYS', `💬 Invite DM → ${message.author.username}`);
+      return;
+    }
+
     const bond = await ensureMemberBond(message.author.id, message.author.username);
     const bondBlock = describeBond(bond, message.author.username);
     const emotionBlock = getEmotionalInjection();
@@ -159,15 +169,6 @@ async function handleMentionReply(message, userQuery) {
     }
 
     const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
-
-    // 💬 Invitation DM détectée (v2.3.7) : court-circuit avant la réponse normale
-    if (detectDmInvite(userQuery)) {
-      await updateMemberProfile(message.author.id, message.author.username, userQuery);
-      await applyInteractionToBond(message.author.id, message.author.username, userQuery);
-      await handleDmInvite(message, userQuery);
-      pushLog('SYS', `💬 Invite DM détectée → ${message.author.username}`);
-      return;
-    }
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
