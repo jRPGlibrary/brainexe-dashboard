@@ -17,6 +17,8 @@
     "express-rate-limit": "^8.4.1",
     "mongodb": "^6.5.0",
     "node-cron": "^4.2.1",
+    "qrcode": "^1.5.4",
+    "speakeasy": "^2.0.0",
     "tiktok-live-connector": "^2.1.1-beta1",
     "ws": "^8.18.0"
   },
