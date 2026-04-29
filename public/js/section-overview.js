@@ -98,6 +98,10 @@ function renderOverview() {
       </div>
     </div>
 
+    <div>
+      ${analyticsDashboard.renderAnalyticsDashboard()}
+    </div>
+
     <div class="card">
       <div class="card-header">
         <div>

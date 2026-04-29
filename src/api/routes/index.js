@@ -9,6 +9,7 @@ const { auditLog } = require('../../audit');
 const { generalLimiter } = require('../rateLimits');
 const { ADMIN_PASSWORD } = require('../../config');
 const { requireAuth, createSession, destroySession } = require('../auth');
+const totp = require('../totp');
 
 function registerRoutes(app) {
   // Routes d'auth (sans protection)
@@ -30,6 +31,34 @@ function registerRoutes(app) {
     destroySession(req);
     res.clearCookie('admin_session');
     res.json({ ok: true, message: 'Déconnecté' });
+  });
+
+  // Routes 2FA (sans protection)
+  app.post('/api/auth/2fa/setup', async (req, res) => {
+    try {
+      const { email } = req.body;
+      const result = await totp.generateSecret(email || 'admin@brainexe');
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  app.post('/api/auth/2fa/verify', (req, res) => {
+    try {
+      const { secret, token } = req.body;
+      if (!secret || !token) {
+        return res.status(400).json({ ok: false, error: 'secret et token requis' });
+      }
+      const verified = totp.verifyToken(secret, token);
+      if (verified) {
+        res.json({ ok: true, message: 'Code valide' });
+      } else {
+        res.status(401).json({ ok: false, error: 'Code invalide' });
+      }
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
   });
 
   // Middleware d'auth sur toutes les routes /api
