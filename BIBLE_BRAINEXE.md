@@ -402,6 +402,28 @@ Pins intelligents (Brainee peut épingler des messages notables) et mini-sondage
 
 ---
 
+### 5.26 💬 DM Outreach (v2.3.7)
+**Fichiers :** `features/dmOutreach.js`, `discord/events.js`, `features/proactiveOutreach.js`
+
+Brainee peut désormais initier ou rejoindre une conversation en message privé selon trois scénarios :
+
+**1. Invitation reçue (membre → Brainee)**
+Quand un membre mentionne Brainee avec une invitation DM ("ça te dit qu'on débate en DM ?", "slide en DM", "on se parle en privé ?"), elle détecte le pattern, répond dans le salon ("ouais go, check tes DMs 👀") puis ouvre le DM automatiquement et envoie un premier message contextualisé.
+
+**2. Proposal sortante (Brainee → membre)**
+Après avoir répondu dans un salon, Brainee peut – avec une faible probabilité (7–17 % selon le VIP tier) – proposer de continuer la discussion en DM. Le membre a 5 minutes pour répondre "oui/ok/yep" dans le même salon. Brainee écoute et ouvre le DM en cas d'acceptation, ou abandonne silencieusement en cas de refus.
+
+**3. Outreach proactif DM (type `dm_outreach`)**
+Ajouté dans la liste des types de `proactiveOutreach.js` (6 % de proba). Brainee choisit un VIP absent depuis 3+ jours, charge son fil narratif et lui envoie un DM spontané : pas de "hey comment tu vas", mais un rappel naturel d'un projet/question/préoccupation déjà évoquée.
+
+**Garde-fous :**
+- Cooldown 10 min par userId entre deux ouvertures de DM
+- TTL 5 min sur les proposals en attente
+- Bond minimum (VIP tier ou score ≥ 40) pour les proposals sortantes
+- `dm_outreach` uniquement via `detectMissedVips` (membres absents)
+
+---
+
 ## 6. Comment ça marche techniquement
 
 ### Les 3 technologies cœur
@@ -1094,7 +1116,7 @@ Oui techniquement, mais ils partageraient `botConfig` et MongoDB — à adapter.
 
 ## ✨ Fin
 
-Tu as la **BIBLE COMPLÈTE** du projet à la version **2.3.5**.
+Tu as la **BIBLE COMPLÈTE** du projet à la version **2.3.7**.
 Tu sais :
 - ce que Brainee fait, et pourquoi elle le fait comme ça
 - comment les pièces s'assemblent (Discord, Claude, Mongo, dashboard)
