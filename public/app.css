@@ -661,22 +661,42 @@ a:hover { text-decoration: underline; }
 }
 .log-entry {
   display: flex;
-  gap: 10px;
-  padding: 4px 6px;
+  gap: 8px;
+  padding: 6px 8px;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   align-items: flex-start;
   line-height: 1.5;
+  border-radius: 6px;
+  transition: background 0.15s;
 }
+.log-entry:hover { background: var(--surface-hover); }
 .log-entry:last-child { border-bottom: none; }
-.log-time  { color: var(--text-3); flex-shrink: 0; font-variant-numeric: tabular-nums; }
-.log-type  { font-weight: 700; flex-shrink: 0; width: 44px; }
-.log-type.SYS  { color: var(--info); }
-.log-type.ERR  { color: var(--danger); }
-.log-type.D2F  { color: var(--success); }
-.log-type.F2D  { color: var(--warning); }
-.log-type.API  { color: var(--accent); }
-.log-type.JOIN { color: var(--success); }
-.log-msg { color: var(--text); word-break: break-word; }
+.log-time {
+  color: var(--text-3);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  min-width: 52px;
+}
+.log-type {
+  font-weight: 700;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  min-width: 48px;
+  text-align: center;
+  background: var(--surface-hover);
+}
+.log-type.SYS  { background: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info); }
+.log-type.ERR  { background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
+.log-type.D2F  { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.log-type.F2D  { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
+.log-type.API  { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+.log-type.JOIN { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.log-msg { color: var(--text); word-break: break-word; flex: 1; min-width: 0; }
 
 /* ─── TOAST ─── */
 #toasts {

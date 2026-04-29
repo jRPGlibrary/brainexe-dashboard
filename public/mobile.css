@@ -235,11 +235,20 @@
     padding: 8px;
   }
   .log-entry {
-    gap: 6px;
-    padding: 3px 4px;
+    gap: 5px;
+    padding: 5px 6px;
   }
   .log-time {
-    display: none;
+    font-size: 10px;
+    min-width: 46px;
+  }
+  .log-type {
+    min-width: 44px;
+    font-size: 9px;
+    padding: 2px 4px;
+  }
+  .log-msg {
+    font-size: 11px;
   }
 
   /* ── Schedule ── */
