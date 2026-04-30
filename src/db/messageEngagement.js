@@ -2,13 +2,13 @@
  * ================================================
  * 📊 SUIVI D'ENGAGEMENT DES MESSAGES v1.0
  * ================================================
- * Suivre les réactions et réponses aux messages du bot.
- * Si un message reçoit peu d'engagement, le sujet devient "tabou" temporairement.
+ * Suivre l'engagement réel sur les sujets.
+ * Si un sujet ne génère aucune interaction, ne pas insister.
  *
- * Logique:
- * - Chaque message du bot enregistre les réactions/réponses
- * - Si 3 messages consécutifs sur un sujet = 0 engagement → skip ce sujet
- * - Nettoyage automatique des données après 2 semaines
+ * Philosophie: Pragmatisme, pas punition
+ * - On essaie un sujet
+ * - Si zéro engagement → on en reparle pas cette semaine
+ * - Économise les conversations inutiles, tokens précieux
  * ================================================
  */
 
@@ -60,25 +60,24 @@ async function recordEngagement(messageId, type = 'reaction') {
 }
 
 /**
- * Vérifie si un sujet a reçu peu d'engagement récemment.
- * C'est le cœur du système : si les gens ne réagissent pas au sujet,
- * Brainee arrête de le relancer.
+ * Pragmatisme: vérifie si on devrait ÉVITER ce sujet cette semaine.
+ * Logique: si les 2 derniers messages ont 0 engagement, pas besoin d'insister.
  *
  * @param {string} topic - Sujet à vérifier
- * @returns {boolean} true si les 3 derniers messages sur ce sujet ont 0 engagement
+ * @returns {boolean} true si on devrait éviter ce sujet (ça n'a pas marché)
  */
-async function isTopicUnengaged(topic) {
+async function shouldAvoidTopic(topic) {
   if (!shared.mongoDb) return false;
   try {
     const topicLower = topic.toLowerCase().trim();
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    // Récupère les 3 derniers messages sur ce sujet (derniers 3 jours)
+    // Récupère les messages récents sur ce sujet
     const recentMessages = await shared.mongoDb
       .collection('messageEngagement')
       .find({
         topic: topicLower,
-        createdAt: { $gte: threeDaysAgo },
+        createdAt: { $gte: weekAgo },
       })
       .sort({ createdAt: -1 })
       .limit(3)
@@ -86,11 +85,12 @@ async function isTopicUnengaged(topic) {
 
     if (recentMessages.length === 0) return false;
 
-    // Si tous les 3 derniers ont 0 engagement → sujet "tabou" temporairement
-    const allLowEngagement = recentMessages.every(msg => msg.engagementScore < 1);
-    return allLowEngagement;
+    // Si les derniers messages n'ont eu aucun engagement → éviter le sujet
+    // C'est pragmatique: pourquoi insister sur quelque chose qui ne marche pas?
+    const noEngagement = recentMessages.every(msg => msg.engagementScore === 0);
+    return noEngagement;
   } catch (err) {
-    pushLog('ERR', `isTopicUnengaged: ${err.message}`, 'error');
+    pushLog('ERR', `shouldAvoidTopic: ${err.message}`, 'error');
     return false;
   }
 }
@@ -147,7 +147,7 @@ async function cleanupOldMessages() {
 module.exports = {
   recordBotMessage,
   recordEngagement,
-  isTopicUnengaged,
+  shouldAvoidTopic,
   getTopicEngagementScore,
   cleanupOldMessages,
 };

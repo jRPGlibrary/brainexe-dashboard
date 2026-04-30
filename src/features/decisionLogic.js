@@ -8,7 +8,7 @@
  */
 
 const { checkTopicRedundance, recordTopic } = require('../db/topicFatigue');
-const { isTopicUnengaged } = require('../db/messageEngagement');
+const { shouldAvoidTopic } = require('../db/messageEngagement');
 const { pushLog } = require('../logger');
 
 /**
@@ -75,12 +75,12 @@ async function shouldRespond(slot, vibe, mentalLoad, messageContent, isUrgent = 
       }
 
       for (const topic of topics) {
-        const unengaged = await isTopicUnengaged(topic);
-        if (unengaged) {
+        const avoid = await shouldAvoidTopic(topic);
+        if (avoid) {
           return {
             should: false,
-            reason: 'unengaged_topic',
-            message: `Cette topic n'a pas eu d'engagement récemment... peut-être mieux de parler d'autre chose?`,
+            reason: 'topic_without_engagement',
+            message: `${topic} ça n'a marché 0 fois cette semaine, pas besoin d'insister là-dessus`,
           };
         }
       }
