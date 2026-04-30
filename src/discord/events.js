@@ -4,6 +4,7 @@ const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
 const { GUILD_ID, ANTHROPIC_API_KEY } = require('../config');
 const { callClaude } = require('../ai/claude');
+const { recordTokenUsage } = require('../db/tokenUsage');
 const { extractYoutubeQuery, searchYoutube } = require('../ai/youtube');
 const { getMemberProfile, updateMemberProfile, getToneInstruction } = require('../db/members');
 const { getChannelMemory, formatChannelMemoryBlock } = require('../db/channelMem');
@@ -182,7 +183,8 @@ async function handleMentionReply(message, userQuery) {
       scheduleDelayedReplyAfterEmoji(message, userQuery, emoji, slot, mood);
       return;
     }
-    const reply = await callClaude(dynamicPrompt, `${message.author.username} dit : "${userQuery}"\nMax 3 phrases.`, adjustMaxTokens(250), BOT_PERSONA_CONVERSATION);
+    const { text: reply, usage } = await callClaude(dynamicPrompt, `${message.author.username} dit : "${userQuery}"\nMax 3 phrases.`, adjustMaxTokens(250), BOT_PERSONA_CONVERSATION);
+    await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'mention_reply');
     const replyResolved = resolveMentionsInText(reply, message.guild);
     if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
 
@@ -289,7 +291,8 @@ function registerMessageHandlers() {
       const dynamicPrompt = `${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
       const userPrompt = `${message.author.username} : "${enrichedUserContent}"`;
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
-      const reply = await callClaude(dynamicPrompt, userPrompt, adjustMaxTokens(350), BOT_PERSONA_DM);
+      const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, adjustMaxTokens(350), BOT_PERSONA_DM);
+      await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'dm_reply');
 
       let dmSteamBlock = '';
       if (GAMING_KEYWORDS.some(kw => `${userContent} ${reply}`.toLowerCase().includes(kw))) {

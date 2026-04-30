@@ -2,6 +2,7 @@ const shared = require('../shared');
 const { pushLog } = require('../logger');
 const { GUILD_ID } = require('../config');
 const { callClaude } = require('../ai/claude');
+const { recordTokenUsage } = require('../db/tokenUsage');
 const { getMemberProfile, updateMemberProfile, getToneInstruction } = require('../db/members');
 const { getChannelMemory, formatChannelMemoryBlock } = require('../db/channelMem');
 const { getChannelDirectory } = require('../db/channelDir');
@@ -53,7 +54,8 @@ async function scheduleDelayedReplyAfterEmoji(message, userQuery, emojiUsed, slo
       const intentBlockD = getChannelIntentBlock(message.channel.name, chTopicD, dirEntryD?.officialDescription || '');
       const dynamicPrompt = `${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\n${intentBlockD}\nContexte récent #${sanitizeForJson(message.channel.name)} :\n${contextLines}\nTu reviens après avoir réagi avec ${emojiUsed} sans répondre.`;
       const userPrompt = `Tu dois répondre à cette question de ${sanitizeForJson(message.author.username)} que t'as laissée sans réponse : "${sanitizeForJson(userQuery)}"\nCommence par cette excuse (reformule légèrement si besoin) : "${excuse}"\nPuis réponds vraiment à la question. Max 3 phrases au total.`;
-      const reply = await callClaude(dynamicPrompt, userPrompt, 250, BOT_PERSONA_CONVERSATION);
+      const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, 250, BOT_PERSONA_CONVERSATION);
+      await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'delayed_reply');
       const replyResolved = resolveMentionsInText(reply, message.guild);
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
       await message.reply(replyResolved);
@@ -87,7 +89,8 @@ async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, 
       const intentBlockS = getChannelIntentBlock(channel.name, channelObj.topic || '', dirEntryS?.officialDescription || '');
       const dynamicPrompt = `${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\n${intentBlockS}\nContexte récent #${sanitizeForJson(channel.name)} :\n${context}\nTu reviens après avoir réagi avec ${emojiUsed} sans rien dire.`;
       const userPrompt = `${sanitizeForJson(lastMsg.author.username)} avait dit : "${sanitizeForJson(lastMsg.content)}"\nTu avais juste réagi avec ${emojiUsed} sans répondre. Tu reviens maintenant.\nCommence par : "${excuse}"\nPuis réponds naturellement. Max 2-3 phrases.`;
-      const reply = await callClaude(dynamicPrompt, userPrompt, 200, BOT_PERSONA_CONVERSATION);
+      const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, 200, BOT_PERSONA_CONVERSATION);
+      await recordTokenUsage(lastMsg.author.id, lastMsg.author.username, usage.inputTokens, usage.outputTokens, 'delayed_reply');
       const replyResolved = resolveMentionsInText(reply, guild);
       await simulateTyping(channel, 800 + Math.random() * 1500);
       await lastMsg.reply(replyResolved);

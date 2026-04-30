@@ -76,7 +76,15 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
       shared.claudeHealth.lastSuccess = Date.now();
       shared.claudeHealth.lastLatencyMs = latency;
       shared.claudeHealth.consecutiveErrors = 0;
-      return data.content[0].text.trim();
+      return {
+        text: data.content[0].text.trim(),
+        usage: {
+          inputTokens: data.usage?.input_tokens || 0,
+          outputTokens: data.usage?.output_tokens || 0,
+          cacheCreationInputTokens: data.usage?.cache_creation_input_tokens || 0,
+          cacheReadInputTokens: data.usage?.cache_read_input_tokens || 0,
+        },
+      };
     } catch (err) {
       clearTimeout(timer);
       lastErr = err;

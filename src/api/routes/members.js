@@ -5,6 +5,7 @@ const { readGuildState } = require('../../discord/sync');
 const { auditLog } = require('../../audit');
 const { discordActionLimiter } = require('../rateLimits');
 const { getVipTier } = require('../../db/vipSystem');
+const { getMemberTokenStats, getAllTokenStats, getMemberTokenStatsByDay, getMemberTokenStatsByContext } = require('../../db/tokenUsage');
 
 const router = Router();
 
@@ -100,6 +101,44 @@ router.patch('/members/:id/roles', discordActionLimiter, async (req, res) => {
         .filter(r => r.name !== '@everyone')
         .map(r => ({ id: r.id, name: r.name, color: '#' + r.color.toString(16).padStart(6, '0') })),
     });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+router.get('/members/:id/token-stats', async (req, res) => {
+  if (!shared.mongoDb) return res.json({ ok: false, error: 'MongoDB non connecté' });
+  try {
+    const userId = req.params.id;
+    const stats = await getMemberTokenStats(userId);
+    if (!stats) return res.json({ ok: true, stats: null });
+    res.json({ ok: true, stats });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+router.get('/members/token-stats/leaderboard', async (req, res) => {
+  if (!shared.mongoDb) return res.json({ ok: false, error: 'MongoDB non connecté' });
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const stats = await getAllTokenStats(limit);
+    res.json({ ok: true, stats });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+router.get('/members/:id/token-stats/daily', async (req, res) => {
+  if (!shared.mongoDb) return res.json({ ok: false, error: 'MongoDB non connecté' });
+  try {
+    const userId = req.params.id;
+    const days = Math.min(parseInt(req.query.days) || 30, 365);
+    const stats = await getMemberTokenStatsByDay(userId, days);
+    res.json({ ok: true, stats });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+router.get('/members/:id/token-stats/context', async (req, res) => {
+  if (!shared.mongoDb) return res.json({ ok: false, error: 'MongoDB non connecté' });
+  try {
+    const userId = req.params.id;
+    const stats = await getMemberTokenStatsByContext(userId);
+    res.json({ ok: true, stats });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
