@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.3.5
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.5.0
  * ================================================
  * Architecture refactorisée — entry point minimal
  * Toute la logique est dans src/
@@ -16,6 +16,12 @@
  *   🎭 Combos d'états (fatiguée+loyale, nostalgique+énergique, etc)
  *   🤍 Vulnerability windows (Brainee s'autorise à montrer fatigue, boost bond si soutien)
  *   📌 Pins intelligents + mini-sondages (extended permissions, quotas stricts)
+ *
+ * v2.5.0 — Token Usage Tracking :
+ *   📊 Suivi détaillé des tokens par membre (privé et serveur)
+ *   📈 Leaderboard + évolution journalière
+ *   💾 Stats par contexte (mention, DM, delayed reply)
+ *   🎯 Dashboard section pour visualiser l'utilisation
  * ================================================
  */
 
