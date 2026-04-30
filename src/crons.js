@@ -234,6 +234,7 @@ function startConvCron() {
   // Analyse narrative des derniers messages — une fois par jour à 02h
   narrativeCron = cron.schedule('0 2 * * *', async () => {
     try {
+      if (!shared.discord?.isReady()) return;
       const guild = await shared.discord.guilds.fetch(shared.botConfig.guildId);
       if (!guild) return;
       await guild.channels.fetch();
