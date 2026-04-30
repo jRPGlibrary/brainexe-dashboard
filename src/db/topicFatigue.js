@@ -71,7 +71,9 @@ async function checkTopicRedundance(messageContent) {
     const contentLower = messageContent.toLowerCase();
 
     const topicKeywords = {
-      gaming: ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'rpg', 'moba', 'speedrun'],
+      'elden ring': ['elden ring', 'elden-ring', 'erdtree', 'grace'],
+      eternights: ['eternights', 'eternight', 'dating sim', 'post-apocalyptic'],
+      'gaming-general': ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'speedrun', 'indie'],
       anime: ['anime', 'manga', 'weeb', 'otaku', 'isekai', 'shonen'],
       tech: ['api', 'code', 'dev', 'javascript', 'python', 'database', 'git'],
       debate: ['débat', 'argument', 'opinion', 'philosophie', 'contredit'],
@@ -79,6 +81,8 @@ async function checkTopicRedundance(messageContent) {
       crypto: ['bitcoin', 'ethereum', 'nft', 'crypto', 'blockchain', 'web3'],
       politics: ['politique', 'gouvernement', 'élection', 'parti', 'président'],
       sports: ['sport', 'football', 'tennis', 'basket', 'olympic', 'match'],
+      rpg: ['rpg', 'jrpg', 'turn-based', 'moba'],
+      silence: ['silence', 'silence des mondes', 'hérité', 'héritage'],
     };
 
     for (const [topicName, keywords] of Object.entries(topicKeywords)) {
@@ -87,10 +91,10 @@ async function checkTopicRedundance(messageContent) {
       }
     }
 
-    // Check fatigue for detected topics
+    // Check fatigue for detected topics (seuil abaissé à 3 pour éviter la répétition)
     for (const topic of topics) {
       const count = await getTopicFatigue(topic);
-      if (count >= 5) {
+      if (count >= 3) {
         return {
           isRedundant: true,
           topic,
