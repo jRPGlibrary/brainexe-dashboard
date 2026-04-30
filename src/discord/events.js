@@ -49,6 +49,7 @@ const {
   handleDmInvite, maybeProposeInDm,
   checkPendingDmProposal, consumeDmProposal, openAndSendDm,
 } = require('../features/dmOutreach');
+const { recordEngagement } = require('../db/messageEngagement');
 
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
@@ -64,6 +65,16 @@ async function handleReaction(reaction, user, add) {
   try {
     if (reaction.partial) await reaction.fetch();
     if (reaction.message.partial) await reaction.message.fetch();
+
+    // Tracker l'engagement sur les messages du bot
+    if (add && reaction.message.author?.id === shared.discord?.user?.id) {
+      try {
+        await recordEngagement(reaction.message.id, 'reaction');
+      } catch (err) {
+        // Silent fail, engagement tracking ne doit pas bloquer
+      }
+    }
+
     const cfg = shared.botConfig.reactionRoles;
     if (!cfg.enabled || reaction.message.id !== cfg.messageId) return;
     const mapping = cfg.mappings.find(m => m.emoji === reaction.emoji.name);
@@ -437,6 +448,20 @@ function registerMessageHandlers() {
   // Reaction roles
   shared.discord.on(Events.MessageReactionAdd, (r, u) => handleReaction(r, u, true));
   shared.discord.on(Events.MessageReactionRemove, (r, u) => handleReaction(r, u, false));
+
+  // Track engagement when people reply to bot messages
+  shared.discord.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot || !message.guild || message.guild.id !== GUILD_ID) return;
+    if (!message.reference) return;
+    try {
+      const repliedTo = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (repliedTo && repliedTo.author?.id === shared.discord?.user?.id) {
+        await recordEngagement(repliedTo.id, 'reply');
+      }
+    } catch (_) {
+      // Silent fail
+    }
+  });
 
   // New member
   shared.discord.on(Events.GuildMemberAdd, async (member) => {

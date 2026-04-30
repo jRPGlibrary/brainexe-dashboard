@@ -8,6 +8,7 @@
  */
 
 const { checkTopicRedundance, recordTopic } = require('../db/topicFatigue');
+const { isTopicUnengaged } = require('../db/messageEngagement');
 const { pushLog } = require('../logger');
 
 /**
@@ -39,15 +40,49 @@ async function shouldRespond(slot, vibe, mentalLoad, messageContent, isUrgent = 
       };
     }
 
-    // Vérifier si le sujet est redondant
+    // Vérifier si le sujet est redondant (plus strict pour éviter la répétition)
     if (messageContent) {
       const redundanceCheck = await checkTopicRedundance(messageContent);
-      if (redundanceCheck.isRedundant && mentalLoad > 60) {
+      if (redundanceCheck.isRedundant && mentalLoad > 40) {
         return {
           should: false,
           reason: 'topic_fatigue',
           message: redundanceCheck.warning,
         };
+      }
+
+      // Vérifier si le sujet a eu peu d'engagement récemment
+      // Extraire le topic principal du message
+      const topics = [];
+      const contentLower = messageContent.toLowerCase();
+      const topicKeywords = {
+        'elden ring': ['elden ring', 'elden-ring', 'erdtree', 'grace'],
+        eternights: ['eternights', 'eternight', 'dating sim', 'post-apocalyptic'],
+        'gaming-general': ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'speedrun', 'indie'],
+        anime: ['anime', 'manga', 'weeb', 'otaku', 'isekai', 'shonen'],
+        tech: ['api', 'code', 'dev', 'javascript', 'python', 'database', 'git'],
+        debate: ['débat', 'argument', 'opinion', 'philosophie', 'contredit'],
+        music: ['musique', 'album', 'artiste', 'playlist', 'chanson'],
+        rpg: ['rpg', 'jrpg', 'turn-based', 'moba'],
+        silence: ['silence', 'silence des mondes', 'hérité', 'héritage'],
+      };
+
+      for (const [topicName, keywords] of Object.entries(topicKeywords)) {
+        if (keywords.some(kw => contentLower.includes(kw))) {
+          topics.push(topicName);
+          break;
+        }
+      }
+
+      for (const topic of topics) {
+        const unengaged = await isTopicUnengaged(topic);
+        if (unengaged) {
+          return {
+            should: false,
+            reason: 'unengaged_topic',
+            message: `Cette topic n'a pas eu d'engagement récemment... peut-être mieux de parler d'autre chose?`,
+          };
+        }
       }
     }
 
@@ -72,11 +107,15 @@ async function recordMessageTopic(messageContent) {
 
     // Keywords pour détection simple de sujets
     const topicKeywords = {
-      gaming: ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'rpg', 'moba', 'speedrun'],
+      'elden ring': ['elden ring', 'elden-ring', 'erdtree', 'grace'],
+      eternights: ['eternights', 'eternight', 'dating sim', 'post-apocalyptic'],
+      'gaming-general': ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'speedrun', 'indie'],
       anime: ['anime', 'manga', 'weeb', 'otaku', 'isekai', 'shonen'],
       tech: ['api', 'code', 'dev', 'javascript', 'python', 'database', 'git'],
       debate: ['débat', 'argument', 'opinion', 'philosophie', 'contredit'],
       music: ['musique', 'album', 'artiste', 'playlist', 'chanson'],
+      rpg: ['rpg', 'jrpg', 'turn-based', 'moba'],
+      silence: ['silence', 'silence des mondes', 'hérité', 'héritage'],
     };
 
     const contentLower = messageContent.toLowerCase();

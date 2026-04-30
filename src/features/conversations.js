@@ -138,6 +138,19 @@ async function replyToConversations() {
     if (age < 20 * 60 * 1000 || age > 3 * 60 * 60 * 1000) return;
     if (Date.now() - (cfg.lastPostByChannel?.[ch.channelId] || 0) < Math.max(getSlotIntervalMs(slot), 90 * 60 * 1000)) return;
     if (Date.now() - shared.lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
+
+    // No-insist check : si Brainee a déjà posté dans ce salon sans réponse, ne pas relancer
+    const channelResolver = async (id) => {
+      const g = await shared.discord.guilds.fetch(GUILD_ID);
+      await g.channels.fetch();
+      return g.channels.cache.get(id);
+    };
+    const alone = await hasUnansweredLastPost(ch.channelId, channelResolver);
+    if (alone) {
+      pushLog('SYS', `🔇 Skip reply ${ch.channelName} — dernier post sans réponse (no-insist)`);
+      return;
+    }
+
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
 
