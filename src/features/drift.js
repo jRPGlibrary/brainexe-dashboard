@@ -9,7 +9,7 @@ const { shouldCreateThread } = require('../bot/reactions');
 const { getCurrentSlot } = require('../bot/scheduling');
 const { DRIFT_REDIRECT_MAP } = require('../bot/keywords');
 const { formatContext } = require('./context');
-const { sleep, sanitizeForJson } = require('../utils');
+const { sleep, sanitizeForJson, extractJson } = require('../utils');
 
 async function detectThematicDrift(channelId, channelName, channelTopic, recentContext, channelMemory) {
   if (!ANTHROPIC_API_KEY) return null;
@@ -27,7 +27,11 @@ async function detectThematicDrift(channelId, channelName, channelTopic, recentC
 
     let parsed;
     try {
-      const clean = result.replace(/```json|```/g, '').trim();
+      const clean = extractJson(result);
+      if (!clean) {
+        pushLog('ERR', `detectThematicDrift: pas de JSON pour ${channelName}`, 'error');
+        return null;
+      }
       parsed = JSON.parse(clean);
     } catch {
       pushLog('ERR', `detectThematicDrift JSON parse échoué pour ${channelName}`, 'error');
