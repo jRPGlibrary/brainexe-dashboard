@@ -7,6 +7,44 @@ function getTodayStr() {
   return new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
 }
 
+function getWeekStr() {
+  const d = new Date();
+  const day = d.getUTCDay() || 7;
+  const thursday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 4 - day));
+  const yearStart = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((thursday - yearStart) / 86400000 + 1) / 7);
+  return `${thursday.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+function getWeeklyPostMap() {
+  if (!shared.botConfig.conversations.weeklyPostsByChannel) shared.botConfig.conversations.weeklyPostsByChannel = {};
+  return shared.botConfig.conversations.weeklyPostsByChannel;
+}
+
+function resetWeeklyPostsIfNeeded() {
+  const { saveConfig } = require('../botConfig');
+  const weekStr = getWeekStr();
+  const map = getWeeklyPostMap();
+  if (map._week !== weekStr) {
+    shared.botConfig.conversations.weeklyPostsByChannel = { _week: weekStr };
+    saveConfig();
+  }
+}
+
+function incrementWeeklyPostCount(channelId) {
+  resetWeeklyPostsIfNeeded();
+  const map = getWeeklyPostMap();
+  map[channelId] = (map[channelId] || 0) + 1;
+}
+
+function resetWeeklyPostCount(channelId) {
+  resetWeeklyPostsIfNeeded();
+  const map = getWeeklyPostMap();
+  map[channelId] = 0;
+}
+
+const WEEKLY_DEAD_LIMIT = 2;
+
 function getConvDailyCount() {
   return shared.botConfig.conversations.dailyCount || 0;
 }
@@ -44,12 +82,39 @@ async function updateConvStats(channelId) {
     shared.botConfig.conversations.lastPostDate = todayStr;
   }
   shared.botConfig.conversations.dailyCount = (shared.botConfig.conversations.dailyCount || 0) + 1;
+  incrementWeeklyPostCount(channelId);
   saveConfig();
   setBotState({
     convDailyCount: shared.botConfig.conversations.dailyCount,
     convLastPostDate: todayStr,
     convLastPostByChannel: shared.botConfig.conversations.lastPostByChannel,
   }).catch(err => pushLog('ERR', `setBotState convStats: ${err.message}`, 'error'));
+}
+
+/**
+ * Vérifie si le canal est "calme plat" : aucune activité humaine depuis 72h
+ * ET le bot a déjà posté WEEKLY_DEAD_LIMIT fois cette semaine sans réponse.
+ * Si oui, Brainee s'abstient pour le reste de la semaine.
+ */
+async function isChannelDeadThisWeek(channelId, guildChannelResolver) {
+  resetWeeklyPostsIfNeeded();
+  const map = getWeeklyPostMap();
+  if ((map[channelId] || 0) < WEEKLY_DEAD_LIMIT) return false;
+  try {
+    const channel = await guildChannelResolver(channelId);
+    if (!channel?.messages) return false;
+    const msgs = await channel.messages.fetch({ limit: 30 });
+    const botId = shared.discord?.user?.id;
+    const cutoff = Date.now() - 72 * 60 * 60 * 1000;
+    const hasRecentHuman = [...msgs.values()].some(m => !m.author?.bot && m.author?.id !== botId && m.createdTimestamp > cutoff);
+    if (hasRecentHuman) {
+      resetWeeklyPostCount(channelId);
+      return false;
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 // Salons "topic profonds" où Brainee doit être plus entreprenante (hors QG/général/off-topic).
@@ -117,4 +182,5 @@ module.exports = {
   getTodayStr, getConvDailyCount, getConvMaxPerDay,
   resetDailyCountIfNeeded, updateConvStats, getQuietestChannel,
   isDeepTopicChannel, hasUnansweredLastPost, DEEP_TOPIC_HINTS,
+  isChannelDeadThisWeek, resetWeeklyPostCount,
 };

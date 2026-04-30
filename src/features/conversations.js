@@ -24,6 +24,7 @@ const { scheduleDelayedSpontaneousReply } = require('./delayedReply');
 const {
   getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded,
   updateConvStats, getQuietestChannel, hasUnansweredLastPost, isDeepTopicChannel,
+  isChannelDeadThisWeek, resetWeeklyPostCount,
 } = require('./convStats');
 const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
 const { getNarrativeContext } = require('../db/narrativeMemory');
@@ -48,13 +49,19 @@ async function postRandomConversation() {
 
     // No-insist : si Brainee a posté dans ce salon et que personne n'a répondu depuis,
     // on ne relance PAS dessus (évite le monologue).
-    const alone = await hasUnansweredLastPost(ch.channelId, async (id) => {
+    const channelResolver = async (id) => {
       const g = await shared.discord.guilds.fetch(GUILD_ID);
       await g.channels.fetch();
       return g.channels.cache.get(id);
-    });
+    };
+    const alone = await hasUnansweredLastPost(ch.channelId, channelResolver);
     if (alone) {
       pushLog('SYS', `🔇 Skip ${ch.channelName} — dernier post sans réponse humaine (no-insist)`);
+      return;
+    }
+    // Calme plat : si aucune activité humaine depuis 72h et déjà 2 posts cette semaine → pause
+    if (await isChannelDeadThisWeek(ch.channelId, channelResolver)) {
+      pushLog('SYS', `🔇 Skip ${ch.channelName} — calme plat (limite 2 posts/semaine sans interaction)`);
       return;
     }
     const isDeep = isDeepTopicChannel(ch.channelName);
@@ -182,38 +189,35 @@ async function replyToConversations() {
     const reply = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\n1-2 phrases.`, adjustMaxTokens(150), BOT_PERSONA_CONVERSATION);
     const replyResolved = resolveMentionsInText(reply, guild);
     if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
-    await sendHuman(channel, replyResolved, lastMsg, { bond });
+    // Si le message parle d'un jeu et qu'un fil existe déjà → répondre dans le fil plutôt que le channel
+    const { THREAD_TRIGGERS } = require('../bot/keywords');
+    const lowerReply = replyResolved.toLowerCase();
+    const lowerMsg = msgContent.toLowerCase();
+    let postedInThread = false;
+    try {
+      const matchedTopic = THREAD_TRIGGERS.find(kw => lowerReply.includes(kw) || lowerMsg.includes(kw));
+      if (matchedTopic) {
+        const activeThreads = await channel.threads.fetchActive();
+        const existingThread = activeThreads.threads.find(t =>
+          THREAD_TRIGGERS.some(kw => t.name.toLowerCase().includes(kw) && (lowerReply.includes(kw) || lowerMsg.includes(kw)))
+        );
+        if (existingThread) {
+          await existingThread.send(`<@${lastMsg.author.id}> ${replyResolved}`);
+          pushLog('SYS', `🧵 Reply dans fil existant "${existingThread.name}"`, 'success');
+          broadcast('conversation', { channel: ch.channelName, type: 'thread-reply' });
+          postedInThread = true;
+        }
+      }
+    } catch (_) {}
+    if (!postedInThread) {
+      await sendHuman(channel, replyResolved, lastMsg, { bond });
+      pushLog('SYS', `💬 Reply → ${lastMsg.author.username} (mood: ${mood})`, 'success');
+      broadcast('conversation', { channel: ch.channelName, type: 'reply' });
+    }
     shared.lastAnyBotPostTime = Date.now();
     await updateConvStats(ch.channelId);
     await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
     await applyInteractionToBond(lastMsg.author.id, lastMsg.author.username, msgContent);
-    const hasEngagement = (lastMsg.reactions?.cache?.size > 0) ||
-      ([...msgs.values()].filter(m => m.reference?.messageId === lastMsg.id).length > 0);
-    if (shouldCreateThread(reply, channel.name, hasEngagement)) {
-      try {
-        const tName = await callClaude('Nom de fil Discord court (max 60 car, pas de guillemets, emoji adapté).', `Nom pour : "${reply}"`, 60);
-        const cleanName = tName.replace(/"/g, '').trim().slice(0, 100);
-        const thread = await lastMsg.startThread({ name: cleanName, autoArchiveDuration: 1440, reason: 'Fil reply Brainee' });
-        const threadIntro = await callClaude(
-          `\nTu viens d'ouvrir un fil Discord "${cleanName}" depuis un message de ${lastMsg.author.username}.`,
-          `Écris l'ouverture : 1 ligne titre en gras "**[titre]**", puis 1-2 phrases d'invitation. Style Brainee. Pas de @.`,
-          140,
-          BOT_PERSONA_CONVERSATION
-        );
-        // Tag l'auteur du message déclencheur + quelques participants récents actifs
-        const recentParticipants = [...new Set(
-          [...msgs.values()]
-            .filter(m => !m.author?.bot && m.author?.id !== lastMsg.author.id)
-            .map(m => m.author?.id)
-            .filter(Boolean)
-        )].slice(0, 3);
-        const tagLine = [lastMsg.author.id, ...recentParticipants].map(id => `<@${id}>`).join(' ');
-        await thread.send(`${tagLine} ${resolveMentionsInText(threadIntro, guild)}`);
-        pushLog('SYS', `🧵 Fil reply créé + intro (${recentParticipants.length + 1} tagués)`, 'success');
-      } catch (_) {}
-    }
-    pushLog('SYS', `💬 Reply → ${lastMsg.author.username} (mood: ${mood})`, 'success');
-    broadcast('conversation', { channel: ch.channelName, type: 'reply' });
   } catch (err) {
     if (!err.message.includes('Missing Permissions') && !err.message.includes('Unknown Message')) {
       pushLog('ERR', `Reply échouée : ${err.message}`, 'error');
