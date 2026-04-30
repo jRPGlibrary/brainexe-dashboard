@@ -1,7 +1,7 @@
 const shared = require('../shared');
 const { pushLog } = require('../logger');
 const { callClaude } = require('../ai/claude');
-const { sanitizeForJson } = require('../utils');
+const { sanitizeForJson, extractJson } = require('../utils');
 
 // Système de mémoire intelligent qui compacte et oublie les infos non utilisées
 
@@ -66,7 +66,11 @@ async function compactMemory(entityId, entityType, recentEvents, existingMemory)
 
     let parsed;
     try {
-      const clean = analysis.replace(/```json|```/g, '').trim();
+      const clean = extractJson(analysis);
+      if (!clean) {
+        pushLog('ERR', `compactMemory: pas de JSON pour ${entityId}`, 'error');
+        return existingMemory;
+      }
       parsed = JSON.parse(clean);
     } catch {
       pushLog('ERR', `compactMemory JSON parse échoué pour ${entityId}`, 'error');
