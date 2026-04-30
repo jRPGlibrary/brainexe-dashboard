@@ -100,7 +100,7 @@ Continue là où la convo s'est arrêtée — ou relance de façon directe sur l
 Max 2 phrases. Ton DM, pas un mail.`;
 
     await simulateTyping(dmChannel, 1500 + Math.random() * 2000);
-    const reply = await callClaude(systemPrompt, 'Génère le premier message DM.', adjustMaxTokens(150), BOT_PERSONA_DM);
+    const { text: reply } = await callClaude(systemPrompt, 'Génère le premier message DM.', adjustMaxTokens(150), BOT_PERSONA_DM);
     if (!reply || reply.length < 5) return false;
 
     await dmChannel.send(reply);
@@ -232,7 +232,7 @@ Pas de "hey comment tu vas" générique. Max 2 phrases.`;
 
     const dmChannel = await member.user.createDM();
     await simulateTyping(dmChannel, 1500 + Math.random() * 2000);
-    const reply = await callClaude(systemPrompt, 'Génère le DM spontané.', adjustMaxTokens(150), BOT_PERSONA_DM);
+    const { text: reply } = await callClaude(systemPrompt, 'Génère le DM spontané.', adjustMaxTokens(150), BOT_PERSONA_DM);
     if (!reply || reply.length < 5) return false;
 
     await dmChannel.send(reply);

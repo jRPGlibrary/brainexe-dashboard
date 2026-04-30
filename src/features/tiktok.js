@@ -15,12 +15,13 @@ let tiktokOfflineNotified = false;
 
 async function generateLiveIntro(title) {
   if (!ANTHROPIC_API_KEY) return 'Le live vient de démarrer 🔥';
-  return callClaude(
+  const { text } = await callClaude(
     '\nTu annonces un live TikTok.',
     `Titre : "${title}". Accroche 2 phrases max. Direct. 🔥`,
     150,
     BOT_PERSONA
   );
+  return text;
 }
 
 function pickTikTokCover(roomInfo) {

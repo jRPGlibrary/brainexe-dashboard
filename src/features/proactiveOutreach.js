@@ -224,7 +224,7 @@ async function fireOutreach(forcedType = null) {
       vipCallback,
     });
 
-    const reply = await callClaude(prompt, 'Génère le message demandé.', adjustMaxTokens(180), BOT_PERSONA_CONVERSATION);
+    const { text: reply } = await callClaude(prompt, 'Génère le message demandé.', adjustMaxTokens(180), BOT_PERSONA_CONVERSATION);
     if (!reply || reply.length < 5) return false;
 
     await sendHuman(channel, reply, null, {});

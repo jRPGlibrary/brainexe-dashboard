@@ -7,7 +7,7 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-2.3.5-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.5.0-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
@@ -68,7 +68,7 @@ npm start
 
 ## 🎨 Le dashboard
 
-**16 sections**, 3 thèmes (light / dark / sombre), responsive mobile avec tiroir de navigation.
+**17 sections**, 3 thèmes (light / dark / sombre), responsive mobile avec tiroir de navigation.
 
 | Live | Serveur | Bot | Système |
 |---|---|---|---|
@@ -77,8 +77,9 @@ npm start
 | ❤️ Santé | 👥 Membres | 💗 Émotions | ⚙️ Paramètres |
 | 📜 Logs | | 💞 Relations | 💰 Soutien |
 | | | 🗓️ Planning | |
+| | | 📊 Tokens | |
 
-> Architecture frontend : `public/index.html` + `public/app.css` + `public/mobile.css` + **21 modules** dans `public/js/` — pas de bundler, scope global maîtrisé.
+> Architecture frontend : `public/index.html` + `public/app.css` + `public/mobile.css` + **38 modules** dans `public/js/` — pas de bundler, scope global maîtrisé.
 
 ---
 
@@ -98,8 +99,8 @@ brainexe-dashboard/
 │   │                reactions · keywords · hyperFocus · vulnerability
 │   ├── config/     channelManager · channels.json
 │   ├── db/         index · members · memberBonds · memberStories · narrativeMemory
-│   │                tasteProfile · topicFatigue · vipSystem
-│   │                channelMem · channelDir · dmHistory · botState
+│   │                tasteProfile · topicFatigue · vipSystem · tokenUsage
+│   │                channelMem · channelDir · dmHistory · botState · intelligentMemory
 │   ├── discord/    events · sync
 │   ├── features/   anecdotes · actus · conversations · decisionLogic · greetings
 │   │                drift · tiktok · welcome · sidebar · supportChannel
@@ -137,6 +138,10 @@ Toutes les routes sont sous `http://localhost:3000/api/*`, éclatées par thème
 | `GET` | `/api/slot` · `/api/schedule` | Slot courant + grille hebdomadaire |
 | `GET` | `/api/emotions/state` · `/emotions/bonds[/:id]` | État émotionnel + liens membres |
 | `GET` | `/api/channel-memory[/:id]` · `/dm-history/:userId` | Mémoires conversationnelles |
+| `GET` | `/api/members/token-stats/leaderboard` | Leaderboard tokens (top 50) |
+| `GET` | `/api/members/:id/token-stats` | Stats tokens d'un membre |
+| `GET` | `/api/members/:id/token-stats/daily` | Évolution journalière (30 j) |
+| `GET` | `/api/members/:id/token-stats/context` | Répartition par contexte |
 | `POST` | `/api/admin/(mood\|slot\|state\|tiktok\|sidebar/refresh)` | Override live |
 | `POST` | `/api/post` | Post manuel (texte ou embed) |
 | `POST` `GET` `DELETE` | `/api/backups…` | Cycle de vie des backups |
@@ -175,6 +180,13 @@ npm test
 ---
 
 ## 📝 Changelog (extrait)
+
+### `v2.5.0` — 📊 Token Usage Tracking
+- **Suivi des tokens par membre** : chaque message privé, mention ou réponse différée enregistre les tokens consommés en base MongoDB
+- **API de stats** : 4 endpoints (leaderboard · stats individuelles · évolution journalière · répartition par contexte)
+- **Dashboard section "Tokens"** : vue d'ensemble globale, leaderboard top-50, recherche par membre, graphique d'évolution sur 30 j
+- **`callClaude` retourne maintenant `{ text, usage }`** au lieu d'une chaîne brute — tous les appelants ont été mis à jour
+- **Correction critique** : 14 fichiers qui utilisaient `callClaude` comme une chaîne ont été corrigés (youtube · steam · crons · greetings · anecdotes · actus · drift · tiktok · dmOutreach · conversations · hyperFocusRevisit · intelligentMemory · channelMem · channelDir)
 
 ### `v2.3.5` — ⚡ Initiative & émotions complexes
 - **Proactive outreach** : pensées spontanées, observations, callbacks VIP, défis créatifs

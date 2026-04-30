@@ -28,7 +28,7 @@ async function enrichChannelMemory(channelId, channelName, channelTopic, recentC
       ? `ton:${existing.toneProfile?.slice(0, 30)},themes:${existing.frequentThemes?.slice(0, 2)?.join(',')}`
       : 'new';
 
-    const analysis = await callClaude(
+    const { text: analysis } = await callClaude(
       'Analyse mémoire salon Discord.',
       `Ch:${sanitizeForJson(channelName)}\nExist:${existingStr}\nRecent:${sanitizeForJson(recentContext.slice(0, 400))}\n\nRetourne JSON compact (valeurs TRÈS courtes):\n{"toneProfile":"3-5 mots max","frequentThemes":["t1","t2"],"heatLevel":5}`,
       300

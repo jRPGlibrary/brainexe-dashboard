@@ -4,7 +4,7 @@ const { pushLog } = require('../logger');
 const { sanitizeForJson } = require('../utils');
 
 async function extractYoutubeQuery(userMessage) {
-  const q = await callClaude(
+  const { text: q } = await callClaude(
     'Tu extrais une requête YouTube optimale depuis un message Discord. Réponds UNIQUEMENT avec la requête, max 8 mots.',
     `Message : "${sanitizeForJson(userMessage)}"\nQuelle est la meilleure requête YouTube ?`,
     50
