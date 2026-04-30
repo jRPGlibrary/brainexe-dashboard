@@ -47,7 +47,7 @@ async function postMorningGreeting() {
       if (ctx.length > 30) recentCtx = `\nDerniers échanges (pour capter l'ambiance) :\n${ctx}`;
     } catch (_) {}
 
-    const content = await callClaude(
+    const { text: content } = await callClaude(
       `\nHumeur : ${mood}. Vibe du jour : ${vibe.name} (${vibe.desc}). Tu viens de te lever, c'est ${dayCtx}.${recentCtx}\n${NO_TAG_CLAUSE}`,
       `Message de bonjour matinal naturel et varié. Ne parle pas forcément de café. Demande ce que les gens ont de prévu aujourd'hui ou cette journée. Reste dans l'élan de la conversation récente si c'est pertinent. 2 phrases max. Jamais de @ à quelqu'un. Varie la façon de dire bonjour (pas toujours "bonjour", parfois "yo", "salut", "hey", "ça commence" ...).`,
       140,
@@ -73,7 +73,7 @@ async function postLunchBack() {
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel) return;
     const vibe = getDailyVibe();
-    const content = await callClaude(
+    const { text: content } = await callClaude(
       `\nTu reviens de ta pause. Vibe : ${vibe.name}.\n${NO_TAG_CLAUSE}`,
       `Retour de pause dans ${sanitizeForJson(ch.topic)}. 1-2 phrases. Décontracté. Pas de @ à quelqu'un.`,
       100,
@@ -99,7 +99,7 @@ async function postGoodnight() {
     const channel = guild.channels.cache.get(targetId);
     if (!channel) return;
     const vibe = getDailyVibe();
-    const content = await callClaude(
+    const { text: content } = await callClaude(
       `\nFin de soirée gaming. Vibe : ${vibe.name}.\n${NO_TAG_CLAUSE}`,
       `Message fin de soirée naturel. Style "je finis cette quête et je dors... normalement". 1-2 phrases. Jamais "bonsoir". Pas de @ à quelqu'un.`,
       100,
@@ -121,7 +121,7 @@ async function postNightWakeup() {
     await guild.channels.fetch();
     const channel = guild.channels.cache.get('1481028189680570421');
     if (!channel) return;
-    const content = await callClaude(
+    const { text: content } = await callClaude(
       `\nRéveil nocturne, mode zombie.\n${NO_TAG_CLAUSE}`,
       `Message ultra court — "j'arrive pas à dormir et je pense encore à [jeu/boss]". 1 phrase MAX. Pas de @ à quelqu'un.`,
       80,
@@ -154,7 +154,7 @@ async function postRelanceMention({ userId, username, channelId, messageId, quer
       if (ctx.length > 20) recentCtx = `\n\nContexte récent du salon (30 derniers messages) :\n${ctx}`;
     } catch (_) {}
 
-    const content = await callClaude(
+    const { text: content } = await callClaude(
       `\nVibe : ${vibe.name}. Tu avais zappé un message hier d'une personne qui voulait ton avis.\n${tagInstruction}${recentCtx}`,
       `Hier ${username} t'avait écrit : "${query}"\nTu relances maintenant, avec une mini-excuse naturelle ("désolée j'ai zappé hier", "j'ai mis du temps mais..."). Puis tu réponds/réagis à son message en tenant compte de ce qui s'est dit depuis. Max 3 phrases.`,
       220,

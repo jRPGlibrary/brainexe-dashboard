@@ -64,7 +64,7 @@ async function processDueObsessions() {
       `Pas de résumé du contexte. Pas "comme tu disais tout à l'heure". Plutôt : "attends j'ai repensé à un truc", "tiens ça m'a fait penser…", "ouais bon j'ai pas lâché ton truc sur X". ` +
       `Tu peux mentionner @${obsession.sourceUsername} naturellement. Max 2 phrases.`;
 
-    const reply = await callClaude(prompt, 'Génère ce retour différé.', adjustMaxTokens(180), BOT_PERSONA_CONVERSATION);
+    const { text: reply } = await callClaude(prompt, 'Génère ce retour différé.', adjustMaxTokens(180), BOT_PERSONA_CONVERSATION);
     if (!reply || reply.length < 8) {
       await markObsessionRevisited(obsession._id);
       return;

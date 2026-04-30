@@ -43,7 +43,7 @@ async function enrichDMWithServerContext(userId, userName, dmContent) {
     const memoryBlock = formatSmartMemory(userMemory);
 
     // Analyser le lien entre DM et serveur (ultra-court, 150 tokens max)
-    const linkAnalysis = await callClaude(
+    const { text: linkAnalysis } = await callClaude(
       'Tu lis un DM et trouves le lien avec ce qui s\'est passé sur le serveur.',
       `Utilisateur: ${sanitizeForJson(userName)}\n\nDM: "${sanitizeForJson(dmContent)}"\n\nRécent sur le serveur:\n${sanitizeForJson(serverContext)}\n\nMémoire:\n${memoryBlock}\n\nDécris en 1-2 phrases si le DM fait référence à quelque chose du serveur.`,
       150

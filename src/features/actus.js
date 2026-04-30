@@ -64,22 +64,22 @@ async function postActuForChannel(ch) {
       const newsContext = selected.map((a, i) =>
         `${i + 1}. ${a.title}\n   ${a.description || ''}\n   Lien : ${a.url}`
       ).join('\n\n');
-      content = await callClaude(
+      ({ text: content } = await callClaude(
         '\nTu résumes des actualités gaming récentes fournies. Inclus chaque lien en format Markdown [titre](url) dans le résumé.',
         `Actus gaming ${month} pour : ${sanitizeForJson(ch.topic)}\n\n${newsContext}\n\n4-6 actus avec emojis. Style Brainee. Commence direct. Intègre les liens.`,
         900,
         BOT_PERSONA
-      );
+      ));
       const newPostedUrls = [...postedUrls, ...selected.map(a => a.url)].slice(-100);
       await setBotState({ postedNewsUrls: newPostedUrls });
     } else {
       pushLog('SYS', `⚠️ GNews sans résultats pour ${ch.channelName} → fallback Claude`, 'warn');
-      content = await callClaude(
+      ({ text: content } = await callClaude(
         '\nTu résumes les actus gaming récentes.',
         `Récap actus pour : ${sanitizeForJson(ch.topic)}. 4-6 actus avec emojis. Ton Brainee. Commence direct.`,
         600,
         BOT_PERSONA
-      );
+      ));
     }
 
     const embed = new EmbedBuilder()

@@ -19,7 +19,7 @@ async function detectThematicDrift(channelId, channelName, channelTopic, recentC
       .map(([k, v]) => `${k} → ${v.channelName}`)
       .join(', ');
 
-    const result = await callClaude(
+    const { text: result } = await callClaude(
       'Tu analyses la dérive thématique d\'un salon Discord. Réponds UNIQUEMENT en JSON valide sans balises markdown ni texte autour.',
       `Salon analysé : ${sanitizeForJson(channelName)}\nTopic officiel : ${sanitizeForJson(channelTopic)}\n${memoryStr}\n\nRedirections disponibles : ${redirectOptions}\n\nDerniers messages :\n${sanitizeForJson(recentContext.slice(0, 1200))}\n\nAnalyse et réponds en JSON :\n{\n  "dominantTheme": "le thème dominant des derniers messages",\n  "driftScore": 1-10,\n  "driftDuration": "court/moyen/long",\n  "membersInvolved": 1-10,\n  "action": "observe|suggest|redirect|moderate",\n  "reason": "explication courte de pourquoi cette action",\n  "suggestedChannelId": "ID Discord si redirection sinon null",\n  "suggestedChannelName": "nom du salon cible sinon null",\n  "bridgeMessage": "message naturel Brainee pour le salon d'origine (style oral, max 2 phrases, jamais corporate)",\n  "targetMessage": "mini résumé à poster dans le salon cible si redirection (style Brainee, max 2 phrases)"\n}\n\nRègles de scoring :\n- driftScore 1-3 : dérive légère ou normale pour ce salon → observe\n- driftScore 4-6 : dérive notable mais pas urgente → suggest\n- driftScore 7-8 : dérive claire, plusieurs membres, salon précis dispo → redirect\n- driftScore 9-10 : spam, conflit ou dérapage sérieux → moderate\n- Si le topic officiel du salon est large (général, off-topic), la tolérance est plus haute\n- Ne jamais rediriger sur des conversations légères ou spontanées normales`,
       400
@@ -97,7 +97,7 @@ async function handleDrift(guild, channelId, channelName, driftResult, participa
     }
 
     if (driftResult.action === 'moderate') {
-      const moderateMsg = await callClaude(
+      const { text: moderateMsg } = await callClaude(
         '\nTu interviens dans un salon Discord qui dérive sérieusement.',
         `Le salon ${channelName} dérive sur : "${driftResult.dominantTheme}". Raison : ${driftResult.reason}. Lance une intervention ferme mais humaine — pas de message admin froid, pas de liste de règles. Style Brainee direct. Max 2 phrases.`,
         100,

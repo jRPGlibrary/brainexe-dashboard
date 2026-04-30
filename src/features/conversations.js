@@ -97,7 +97,7 @@ async function postRandomConversation() {
     const deepInject = isDeep
       ? `\nCONTEXTE SALON : c'est un salon de thématique profonde (${channel.name}). Lance un angle vraiment fouillé, qui donne envie de creuser. Pas de question générique. Tu peux être plus précise, citer un détail, un souvenir, un mécanisme, une référence. Laisse l'entrée ouverte mais pas vague. Si personne ne rebondit, c'est ok — tu n'insistes pas.`
       : '';
-    const content = await callClaude(
+    const { text: content } = await callClaude(
       `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}\n${NO_TAG_CLAUSE}` + contextBlock,
       `Max 3 phrases. Direct. Adapte-toi au salon. Pas de @ à quelqu'un — c'est un lance-conv ambiant.`,
       adjustMaxTokens(isDeep ? 200 : 150),
@@ -186,7 +186,7 @@ async function replyToConversations() {
       scheduleDelayedSpontaneousReply(lastMsg, ch, slot, mood, emoji);
       return;
     }
-    const reply = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\n1-2 phrases.`, adjustMaxTokens(150), BOT_PERSONA_CONVERSATION);
+    const { text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\n1-2 phrases.`, adjustMaxTokens(150), BOT_PERSONA_CONVERSATION);
     const replyResolved = resolveMentionsInText(reply, guild);
     if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
     // Si le message parle d'un jeu et qu'un fil existe déjà → répondre dans le fil plutôt que le channel

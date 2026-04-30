@@ -35,11 +35,11 @@ async function initChannelDirectory() {
         let purpose = '';
         const { ANTHROPIC_API_KEY } = require('../config');
         if (ANTHROPIC_API_KEY) {
-          purpose = await callClaude(
+          ({ text: purpose } = await callClaude(
             'Tu analyses la description officielle d\'un salon Discord pour en extraire le but en 1-2 phrases très courtes, directes, sans formatting.',
             `Salon : #${sanitizeForJson(ch.channelName)}\nDescription : "${description}"\nRéponds uniquement avec le but du salon en 1-2 phrases.`,
             80
-          );
+          ));
         }
 
         await shared.mongoDb.collection('channelDirectory').updateOne(
