@@ -16,20 +16,24 @@ const shared = require('../shared');
 const { pushLog } = require('../logger');
 
 /**
- * Enregistre qu'un message du bot a été posté
+ * Enregistre qu'un message du bot a été posté (avec longueur)
  * @param {string} messageId - ID du message Discord
  * @param {string} channelId - ID du salon Discord
- * @param {string} topic - Sujet du message (ex: "elden ring", "eternights")
+ * @param {string} topic - Sujet du message
+ * @param {number} messageLength - Longueur du message en caractères
  */
-async function recordBotMessage(messageId, channelId, topic) {
+async function recordBotMessage(messageId, channelId, topic, messageLength = 0) {
   if (!shared.mongoDb) return;
   try {
     const now = new Date();
+    const isPavé = messageLength > 300; // Pavé = message très long
     await shared.mongoDb.collection('messageEngagement').insertOne({
       messageId,
       channelId,
       topic: topic.toLowerCase().trim(),
       createdAt: now,
+      messageLength,
+      isPavé,
       reactions: 0,
       replies: 0,
       engagementScore: 0,
@@ -125,6 +129,53 @@ async function getTopicEngagementScore(topic) {
 }
 
 /**
+ * Calcule si on devrait faire des pavés dans ce salon
+ * Logique: si les gens répondent peu, faire des messages plus courts
+ *
+ * @param {string} channelId - ID du salon
+ * @returns {object} {shouldBePavé: bool, avgEngagement: number}
+ */
+async function getChannelVerbosity(channelId) {
+  if (!shared.mongoDb) return { shouldBePavé: false, avgEngagement: 0 };
+  try {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const messages = await shared.mongoDb
+      .collection('messageEngagement')
+      .find({
+        channelId,
+        createdAt: { $gte: weekAgo },
+      })
+      .toArray();
+
+    if (messages.length === 0) return { shouldBePavé: false, avgEngagement: 0 };
+
+    // Calcul du taux d'engagement moyen
+    const totalEngagement = messages.reduce((sum, msg) => sum + msg.engagementScore, 0);
+    const avgEngagement = Math.round(totalEngagement / messages.length);
+
+    // Compter les pavés qui ont eu engagement vs pas
+    const pavés = messages.filter(m => m.isPavé);
+    const pavésWithEngagement = pavés.filter(m => m.engagementScore > 0);
+
+    // Si >50% des pavés ont 0 engagement → salons qui n'aiment pas les pavés
+    const pavéSuccessRate = pavés.length > 0
+      ? pavésWithEngagement.length / pavés.length
+      : 0.5;
+
+    // Decision: faire des pavés SEULEMENT si:
+    // 1. Engagement moyen >2 ET
+    // 2. Pavés fonctionnent bien (>60% ont engagement)
+    const shouldBePavé = avgEngagement >= 2 && pavéSuccessRate > 0.6;
+
+    return { shouldBePavé, avgEngagement, pavéSuccessRate: Math.round(pavéSuccessRate * 100) };
+  } catch (err) {
+    pushLog('ERR', `getChannelVerbosity: ${err.message}`, 'error');
+    return { shouldBePavé: false, avgEngagement: 0 };
+  }
+}
+
+/**
  * Nettoie les données anciennes (>2 semaines) pour éviter les accumulations
  */
 async function cleanupOldMessages() {
@@ -149,5 +200,6 @@ module.exports = {
   recordEngagement,
   shouldAvoidTopic,
   getTopicEngagementScore,
+  getChannelVerbosity,
   cleanupOldMessages,
 };

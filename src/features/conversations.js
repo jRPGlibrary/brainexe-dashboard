@@ -30,6 +30,7 @@ const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
 const { getNarrativeContext } = require('../db/narrativeMemory');
 const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { logMessageForBridge } = require('./dmServerBridge');
+const { getChannelVerbosity } = require('../db/messageEngagement');
 
 async function postRandomConversation() {
   const cfg = shared.botConfig.conversations;
@@ -94,13 +95,25 @@ async function postRandomConversation() {
       const ctx = formatContext(msgs, null, 40);
       if (ctx.length > 20) contextBlock = `\nContexte récent:\n${ctx}`;
     } catch (_) {}
+    // Adapter la verbosité en fonction du salon
+    const verbosity = await getChannelVerbosity(ch.channelId);
+    const verbosityInstruct = verbosity.shouldBePavé
+      ? `\nCe salon aime les messages détaillés (engagement: ${verbosity.avgEngagement}/5). Va-y, sois bavarde si tu veux.`
+      : `\nCe salon préfère les messages courts et directs. Concis > pavé. Max 3 phrases vraiment courtes.`;
+
     const deepInject = isDeep
       ? `\nCONTEXTE SALON : c'est un salon de thématique profonde (${channel.name}). Lance un angle vraiment fouillé, qui donne envie de creuser. Pas de question générique. Tu peux être plus précise, citer un détail, un souvenir, un mécanisme, une référence. Laisse l'entrée ouverte mais pas vague. Si personne ne rebondit, c'est ok — tu n'insistes pas.`
       : '';
+
+    // Adapter les tokens en fonction de la verbosité
+    const maxTokens = verbosity.shouldBePavé
+      ? adjustMaxTokens(isDeep ? 250 : 200)
+      : adjustMaxTokens(isDeep ? 150 : 100);
+
     const { text: content } = await callClaude(
-      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}\n${NO_TAG_CLAUSE}` + contextBlock,
-      `Max 3 phrases. Direct. Adapte-toi au salon. Pas de @ à quelqu'un — c'est un lance-conv ambiant.`,
-      adjustMaxTokens(isDeep ? 200 : 150),
+      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${verbosityInstruct}\n${NO_TAG_CLAUSE}` + contextBlock,
+      `Direct. Adapte-toi au salon. Pas de @ — c'est un lance-conv ambiant.`,
+      maxTokens,
       BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
@@ -186,7 +199,16 @@ async function replyToConversations() {
     const dirEntryR = await getChannelDirectory(ch.channelId);
     const intentBlockR = getChannelIntentBlock(channel.name, ch.topic, dirEntryR?.officialDescription || '');
     const context = formatContext(msgs, null, 80);
-    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${LIGHT_TAG_CLAUSE}`;
+
+    // Adapter selon la verbosité du salon
+    const verbosity = await getChannelVerbosity(ch.channelId);
+    const verbosityReplyInstruct = verbosity.shouldBePavé
+      ? `Tu peux être bavarde si tu veux (ce salon aime l'engagement).`
+      : `Reste concise et directe. Les gens ici préfèrent les réponses courtes.`;
+    const replyMaxTokens = verbosity.shouldBePavé ? adjustMaxTokens(200) : adjustMaxTokens(120);
+
+    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
+
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
       const emoji = getRandomReaction(msgContent);
@@ -199,7 +221,7 @@ async function replyToConversations() {
       scheduleDelayedSpontaneousReply(lastMsg, ch, slot, mood, emoji);
       return;
     }
-    const { text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\n1-2 phrases.`, adjustMaxTokens(150), BOT_PERSONA_CONVERSATION);
+    const { text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\nSois naturelle.`, replyMaxTokens, BOT_PERSONA_CONVERSATION);
     const replyResolved = resolveMentionsInText(reply, guild);
     if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
     // Si le message parle d'un jeu et qu'un fil existe déjà → répondre dans le fil plutôt que le channel
