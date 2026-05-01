@@ -19,16 +19,14 @@ async function fetchGamingNews(topic, postedUrls = []) {
   const cleanTopic = topic.replace(/[,;]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
   const query = encodeURIComponent(`gaming ${cleanTopic}`);
 
-  const now = new Date();
-  const from = new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000).toISOString();
-  const to = now.toISOString();
-  const base = `https://gnews.io/api/v4/search?q=${query}&max=25&sortby=publishedAt&from=${from}&to=${to}&apikey=${GNEWS_API_KEY}`;
+  const from = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const base = `https://gnews.io/api/v4/search?q=${query}&max=25&sortby=publishedAt&from=${from}&apikey=${GNEWS_API_KEY}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
-    pushLog('DBG', `GNews FR fetch : "${cleanTopic}" (date: ${from.slice(0, 10)} à ${to.slice(0, 10)})`, 'debug');
+    pushLog('DBG', `GNews FR fetch : "${cleanTopic}" (depuis: ${from})`, 'debug');
     const resFr = await fetch(`${base}&lang=fr`, { signal: controller.signal });
     clearTimeout(timeout);
 
@@ -40,7 +38,7 @@ async function fetchGamingNews(topic, postedUrls = []) {
     }
 
     let articles = dataFr.articles
-      .filter(a => a?.url && a?.title && a?.description)
+      .filter(a => a?.url && a?.title)
       .filter(a => !postedUrls.includes(a.url))
       .slice(0, 6);
 
@@ -57,7 +55,7 @@ async function fetchGamingNews(topic, postedUrls = []) {
           const dataEn = await resEn.json();
           if (dataEn.articles && Array.isArray(dataEn.articles)) {
             const extra = dataEn.articles
-              .filter(a => a?.url && a?.title && a?.description)
+              .filter(a => a?.url && a?.title)
               .filter(a => !postedUrls.includes(a.url) && !articles.find(b => b.url === a.url))
               .slice(0, 4);
             pushLog('DBG', `GNews EN "${cleanTopic}" → ${dataEn.articles.length} articles bruts, ${extra.length} ajoutés`, 'debug');
