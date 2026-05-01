@@ -7,7 +7,7 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-2.5.1-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.6.0-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
@@ -180,6 +180,16 @@ npm test
 ---
 
 ## 📝 Changelog (extrait)
+
+### `v2.6.0` — 💰 Token Optimization
+
+- **Sélection de modèle** : `callClaude()` accepte un 5ème paramètre `model` optionnel (rétrocompatible, Sonnet par défaut)
+- **Haiku sur tâches simples** : actus gaming, extraction YouTube query, extraction Steam game name → `claude-haiku-4-5` (−65% coût sur ces appels)
+- **Liens actus garantis** : instruction stricte `CHAQUE ACTU DOIT AVOIR SON LIEN [titre](url)` — plus d'actus sans lien cliquable
+- **max_tokens réduits** : actus 900→500, fallback actus 600→350, proactive outreach 180→120
+- **Proactive outreach moins agressif** : probabilité max réduite de 18% à 8% par tick
+- **Activité check** : outreach bloqué si le salon n'a pas eu ≥3 messages humains dans la dernière heure — fini le bot qui parle tout seul
+- **Emojis strictement limités** : max 1 emoji par message dans la persona (règle explicite dans BOT_PERSONA et BOT_PERSONA_CONVERSATION)
 
 ### `v2.5.1` — 🕐 Conscience temporelle & GNews stable
 

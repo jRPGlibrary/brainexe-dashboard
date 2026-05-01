@@ -18,7 +18,7 @@ if (!shared.claudeHealth) {
   };
 }
 
-async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefix = null) {
+async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefix = null, model = 'claude-sonnet-4-6') {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante');
 
   const cleanSystemPrompt = sanitizeForJson(systemPrompt);
@@ -33,7 +33,7 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
     : cleanSystemPrompt;
 
   const payload = {
-    model: 'claude-sonnet-4-6',
+    model,
     max_tokens: Math.min(Math.max(Math.floor(maxTokens), 50), 1024),
     system,
     messages: [{ role: 'user', content: cleanUserPrompt }],

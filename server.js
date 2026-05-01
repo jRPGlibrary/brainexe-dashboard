@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.5.2
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.6.0
  * ================================================
  * Architecture refactorisée — entry point minimal
  * Toute la logique est dans src/
@@ -30,6 +30,15 @@
  *   🔧 Limite à 3 mots-clés par topic (évite les 400 Bad Request)
  *   🔧 Détection des doublons 'gaming' dans les queries
  *   🔧 Filtrage assoupli (articles sans description acceptés)
+ *
+ * v2.6.0 — Token Optimization :
+ *   💰 Haiku 4.5 sur actus, YouTube extract et Steam extract (−65% coût)
+ *   🔗 Liens actus garantis — chaque actu DOIT avoir son [titre](url)
+ *   📉 max_tokens réduits : actus 900→500, proactive 180→120, fallback 600→350
+ *   🤫 Proactive outreach : proba max 18%→8%, cooldown renforcé
+ *   🔇 Activité check : outreach bloqué si <3 messages humains dans l'heure (no spam salons vides)
+ *   😶 Emojis : max 1 par message (règle stricte dans la persona)
+ *   🔧 callClaude() : paramètre `model` optionnel (rétrocompatible, Sonnet par défaut)
  * ================================================
  */
 
@@ -137,7 +146,7 @@ discord.once('clientReady', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
   const vibe = getDailyVibe();
-  pushLog('SYS', `🧠 BRAINEXE v2.3.5 — Bot : ${discord.user.tag}`);
+  pushLog('SYS', `🧠 BRAINEXE v2.6.0 — Bot : ${discord.user.tag}`);
   pushLog('SYS', `⏰ Slot : ${slot.label} | 🎭 Humeur : ${getDailyMood()} | 🎨 Vibe : ${vibe.name}`);
   pushLog('SYS', `🌐 Dashboard : http://localhost:${PORT}`);
 
@@ -178,7 +187,7 @@ discord.once('clientReady', async () => {
     pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
   ), 30000);
 
-  await syncDiscordToFile('Démarrage v2.3.5');
+  await syncDiscordToFile('Démarrage v2.6.0');
 });
 
 server.listen(PORT, '0.0.0.0', () => pushLog('SYS', `🌐 Serveur démarré sur le port ${PORT}`));

@@ -106,10 +106,11 @@ async function postActuForChannel(ch) {
         `${i + 1}. ${a.title}\n   ${a.description || ''}\n   Source : ${a.source?.name || 'GNews'} (${new Date(a.publishedAt).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })})\n   Lien : ${a.url}`
       ).join('\n\n');
       ({ text: content } = await callClaude(
-        '\nTu résumes des actualités gaming récentes fournies. Inclus chaque lien en format Markdown [titre](url) dans le résumé.',
-        `Actus gaming ${month} pour : ${sanitizeForJson(ch.topic)}\n\n${newsContext}\n\n4-6 actus avec emojis. Style Brainee. Commence direct. Intègre les liens.`,
-        900,
-        BOT_PERSONA
+        '\nTu résumes des actualités gaming récentes. IMPORTANT : chaque actu DOIT avoir son lien au format Markdown [titre](url), c\'est obligatoire.',
+        `Actus gaming ${month} pour : ${sanitizeForJson(ch.topic)}\n\n${newsContext}\n\n4-6 actus avec emojis. Style Brainee. Commence direct. CHAQUE ACTU DOIT AVOIR SON LIEN [titre](url).`,
+        500,
+        BOT_PERSONA,
+        'claude-haiku-4-5-20251001'
       ));
       const newPostedUrls = [...postedUrls, ...selected.map(a => a.url)].slice(-100);
       try {
@@ -122,8 +123,9 @@ async function postActuForChannel(ch) {
       ({ text: content } = await callClaude(
         '\nTu résumes les actus gaming récentes.',
         `Récap actus pour : ${sanitizeForJson(ch.topic)}. 4-6 actus avec emojis. Ton Brainee. Commence direct.`,
-        600,
-        BOT_PERSONA
+        350,
+        BOT_PERSONA,
+        'claude-haiku-4-5-20251001'
       ));
     }
 
