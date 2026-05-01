@@ -7,7 +7,7 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-2.5.0-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.5.1-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
@@ -180,6 +180,13 @@ npm test
 ---
 
 ## 📝 Changelog (extrait)
+
+### `v2.5.1` — 🕐 Conscience temporelle & GNews stable
+
+- **Time awareness** : Brainee sait maintenant quelle heure et quel jour on est — chaque message dans le contexte affiche son horodatage relatif (`aujourd'hui 08:42`, `hier 14:30`...) et tous les prompts reçoivent la date/heure courante (timezone Paris)
+- **GNews stabilisé** : format de date ISO datetime complet (`YYYY-MM-DDTHH:MM:SSZ`), timeout 8 s, validation des articles, `max=25`, paramètre `to` ajouté, tri explicite par date de publication
+- **GNews sanitize** : les topics avec virgules ou points-virgules ne provoquent plus de `400 Bad Request`
+- **Robustesse cache actus** : `Array.isArray()` sur `postedNewsUrls`, gestion d'erreur non-bloquante sur `setBotState`
 
 ### `v2.5.0` — 📊 Token Usage Tracking
 - **Suivi des tokens par membre** : chaque message privé, mention ou réponse différée enregistre les tokens consommés en base MongoDB

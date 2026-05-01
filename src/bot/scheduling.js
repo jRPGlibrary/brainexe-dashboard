@@ -87,9 +87,24 @@ function getSlotIntervalMs(slot) {
   return Math.max(slot.interval * 60 * 1000, 15 * 60 * 1000);
 }
 
+const FRENCH_DAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const FRENCH_MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+function getTemporalBlock() {
+  const paris = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+  const day = FRENCH_DAYS[paris.getDay()];
+  const date = paris.getDate();
+  const month = FRENCH_MONTHS[paris.getMonth()];
+  const year = paris.getFullYear();
+  const hh = String(paris.getHours()).padStart(2, '0');
+  const mm = String(paris.getMinutes()).padStart(2, '0');
+  return `📅 Aujourd'hui : ${day} ${date} ${month} ${year}, ${hh}h${mm} (heure Paris). Utilise ces infos pour situer les messages dans le temps.`;
+}
+
 module.exports = {
   WEEKDAY_SLOTS, SATURDAY_SLOTS, SUNDAY_SLOTS,
   getParisHour, getParisDay, getCurrentSlot,
   getRandomMode, getMentionDelayMs, getSlotIntervalMs,
   setForcedSlot, getForcedSlot, getAllSlots,
+  getTemporalBlock,
 };
