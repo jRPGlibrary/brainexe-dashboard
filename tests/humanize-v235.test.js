@@ -169,7 +169,7 @@ describe('detectPollOpportunity', () => {
 // ─── proactiveOutreach.pickType ──────────────────────────────────
 describe('pickType', () => {
   test('renvoie une string parmi les types attendus', () => {
-    const validTypes = ['random_thought', 'group_observation', 'vip_callback', 'challenge'];
+    const validTypes = ['random_thought', 'group_observation', 'vip_callback', 'challenge', 'dm_outreach'];
     for (let i = 0; i < 10; i++) {
       const t = pickType();
       expect(validTypes).toContain(t);
