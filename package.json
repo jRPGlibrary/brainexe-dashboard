@@ -27,5 +27,8 @@
   },
   "devDependencies": {
     "jest": "^30.3.0"
+  },
+  "overrides": {
+    "protobufjs": "^7.5.6"
   }
 }
