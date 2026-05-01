@@ -1,6 +1,6 @@
 /**
  * ================================================
- * ⚡ PROACTIVE OUTREACH v2.3.7
+ * ⚡ PROACTIVE OUTREACH v2.6.0
  * ================================================
  * Brainee n'attend plus toujours qu'on lui parle. Elle peut :
  *   - random_thought   : balancer une pensée qui la traverse
