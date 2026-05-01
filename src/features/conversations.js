@@ -7,7 +7,7 @@ const { getChannelMemory, formatChannelMemoryBlock } = require('../db/channelMem
 const { getChannelDirectory } = require('../db/channelDir');
 const { BOT_PERSONA, BOT_PERSONA_CONVERSATION } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
-const { getCurrentSlot, getRandomMode, getSlotIntervalMs } = require('../bot/scheduling');
+const { getCurrentSlot, getRandomMode, getSlotIntervalMs, getTemporalBlock } = require('../bot/scheduling');
 const { getDailyVibe, shouldSkipConvCron } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock, getModeInjectionForChannel } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
@@ -111,7 +111,7 @@ async function postRandomConversation() {
       : adjustMaxTokens(isDeep ? 150 : 100);
 
     const { text: content } = await callClaude(
-      `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${verbosityInstruct}\n${NO_TAG_CLAUSE}` + contextBlock,
+      `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${verbosityInstruct}\n${NO_TAG_CLAUSE}` + contextBlock,
       `Direct. Adapte-toi au salon. Pas de @ — c'est un lance-conv ambiant.`,
       maxTokens,
       BOT_PERSONA
@@ -207,7 +207,7 @@ async function replyToConversations() {
       : `Reste concise et directe. Les gens ici préfèrent les réponses courtes.`;
     const replyMaxTokens = verbosity.shouldBePavé ? adjustMaxTokens(200) : adjustMaxTokens(120);
 
-    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
+    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {

@@ -12,7 +12,7 @@ const { getChannelDirectory } = require('../db/channelDir');
 const { getDmHistory, appendDmMessage, formatDmHistory } = require('../db/dmHistory');
 const { BOT_PERSONA_CONVERSATION, BOT_PERSONA_DM } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
-const { getCurrentSlot, getMentionDelayMs, getParisDay } = require('../bot/scheduling');
+const { getCurrentSlot, getMentionDelayMs, getParisDay, getTemporalBlock } = require('../bot/scheduling');
 const { getDailyVibe, isUrgentQuery, decideMentionResponse, queueRelance } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
@@ -182,7 +182,8 @@ async function handleMentionReply(message, userQuery) {
       } catch (_) {}
     }
 
-    const dynamicPrompt = `${toneInstruction}\n💞 LIEN : ${bondBlock}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
+    const temporalBlock = getTemporalBlock();
+    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -299,7 +300,8 @@ function registerMessageHandlers() {
       // Enrichir le DM avec le contexte serveur (faire la liaison DM ↔ Serveur)
       const enrichedUserContent = await enrichDMWithServerContext(message.author.id, message.author.username, userContent);
 
-      const dynamicPrompt = `${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
+      const dmTemporalBlock = getTemporalBlock();
+      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
       const userPrompt = `${message.author.username} : "${enrichedUserContent}"`;
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
       const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, adjustMaxTokens(350), BOT_PERSONA_DM);
