@@ -18,29 +18,63 @@ async function fetchGamingNews(topic, postedUrls = []) {
   }
   const cleanTopic = topic.replace(/[,;]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
   const query = encodeURIComponent(`gaming ${cleanTopic}`);
-  const from = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const base = `https://gnews.io/api/v4/search?q=${query}&max=10&sortby=publishedAt&from=${from}&apikey=${GNEWS_API_KEY}`;
+
+  const now = new Date();
+  const from = new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000).toISOString();
+  const to = now.toISOString();
+  const base = `https://gnews.io/api/v4/search?q=${query}&max=25&sortby=publishedAt&from=${from}&to=${to}&apikey=${GNEWS_API_KEY}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
   try {
-    const resFr = await fetch(`${base}&lang=fr`);
+    pushLog('DBG', `GNews FR fetch : "${cleanTopic}" (date: ${from.slice(0, 10)} à ${to.slice(0, 10)})`, 'debug');
+    const resFr = await fetch(`${base}&lang=fr`, { signal: controller.signal });
+    clearTimeout(timeout);
+
     if (!resFr.ok) throw new Error(`GNews FR ${resFr.status}: ${resFr.statusText}`);
     const dataFr = await resFr.json();
-    if (!dataFr.articles) throw new Error(`GNews réponse invalide (pas de articles)`);
-    let articles = dataFr.articles.filter(a => !postedUrls.includes(a.url));
-    pushLog('DBG', `GNews FR "${topic}" → ${dataFr.articles.length} articles (${articles.length} neufs)`, 'debug');
-    if (articles.length < 3) {
-      const resEn = await fetch(`${base}&lang=en`);
-      if (resEn.ok) {
-        const dataEn = await resEn.json();
-        if (dataEn.articles) {
-          const extra = dataEn.articles.filter(a => !postedUrls.includes(a.url) && !articles.find(b => b.url === a.url));
-          pushLog('DBG', `GNews EN "${topic}" → ${dataEn.articles.length} articles (${extra.length} ajoutés)`, 'debug');
-          articles.push(...extra);
+
+    if (!dataFr.articles || !Array.isArray(dataFr.articles)) {
+      throw new Error(`GNews réponse invalide (pas de articles array)`);
+    }
+
+    let articles = dataFr.articles
+      .filter(a => a?.url && a?.title && a?.description)
+      .filter(a => !postedUrls.includes(a.url))
+      .slice(0, 6);
+
+    pushLog('DBG', `GNews FR "${cleanTopic}" → ${dataFr.articles.length} articles bruts, ${articles.length} neufs et valides`, 'debug');
+
+    if (articles.length < 2) {
+      const controller2 = new AbortController();
+      const timeout2 = setTimeout(() => controller2.abort(), 8000);
+      pushLog('DBG', `GNews EN fallback (résultats FR insuffisants)`, 'debug');
+      try {
+        const resEn = await fetch(`${base}&lang=en`, { signal: controller2.signal });
+        clearTimeout(timeout2);
+        if (resEn.ok) {
+          const dataEn = await resEn.json();
+          if (dataEn.articles && Array.isArray(dataEn.articles)) {
+            const extra = dataEn.articles
+              .filter(a => a?.url && a?.title && a?.description)
+              .filter(a => !postedUrls.includes(a.url) && !articles.find(b => b.url === a.url))
+              .slice(0, 4);
+            pushLog('DBG', `GNews EN "${cleanTopic}" → ${dataEn.articles.length} articles bruts, ${extra.length} ajoutés`, 'debug');
+            articles.push(...extra);
+          }
         }
+      } catch (enErr) {
+        clearTimeout(timeout2);
+        pushLog('DBG', `GNews EN fallback échoué (non critique) : ${enErr.message}`, 'debug');
       }
     }
+
+    articles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
     return articles;
   } catch (err) {
-    pushLog('ERR', `GNews échouée pour "${topic}" : ${err.message}`, 'error');
+    clearTimeout(timeout);
+    pushLog('ERR', `GNews échouée pour "${cleanTopic}" : ${err.message}`, 'error');
     return [];
   }
 }
@@ -54,7 +88,7 @@ async function postActuForChannel(ch) {
 
     const month = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
     const state = await getBotState();
-    const postedUrls = state.postedNewsUrls || [];
+    const postedUrls = Array.isArray(state.postedNewsUrls) ? state.postedNewsUrls : [];
 
     const articles = await fetchGamingNews(ch.topic, postedUrls);
     let content;
@@ -63,7 +97,7 @@ async function postActuForChannel(ch) {
     if (articles.length >= 2) {
       const selected = articles.slice(0, 6);
       const newsContext = selected.map((a, i) =>
-        `${i + 1}. ${a.title}\n   ${a.description || ''}\n   Lien : ${a.url}`
+        `${i + 1}. ${a.title}\n   ${a.description || ''}\n   Source : ${a.source?.name || 'GNews'} (${new Date(a.publishedAt).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })})\n   Lien : ${a.url}`
       ).join('\n\n');
       ({ text: content } = await callClaude(
         '\nTu résumes des actualités gaming récentes fournies. Inclus chaque lien en format Markdown [titre](url) dans le résumé.',
@@ -72,7 +106,11 @@ async function postActuForChannel(ch) {
         BOT_PERSONA
       ));
       const newPostedUrls = [...postedUrls, ...selected.map(a => a.url)].slice(-100);
-      await setBotState({ postedNewsUrls: newPostedUrls });
+      try {
+        await setBotState({ postedNewsUrls: newPostedUrls });
+      } catch (cacheErr) {
+        pushLog('WARN', `Actus : mise en cache échouée (non critique) : ${cacheErr.message}`, 'warn');
+      }
     } else {
       pushLog('SYS', `⚠️ GNews sans résultats pour ${ch.channelName} → fallback Claude`, 'warn');
       ({ text: content } = await callClaude(
