@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.5.0
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.5.2
  * ================================================
  * Architecture refactorisée — entry point minimal
  * Toute la logique est dans src/
@@ -22,6 +22,14 @@
  *   📈 Leaderboard + évolution journalière
  *   💾 Stats par contexte (mention, DM, delayed reply)
  *   🎯 Dashboard section pour visualiser l'utilisation
+ *
+ * v2.5.2 — Fix intégration GNews :
+ *   🔧 Suppression du paramètre 'to' non supporté par l'API GNews
+ *   🔧 Format de date corrigé (YYYY-MM-DD accepté par GNews)
+ *   🔧 Nettoyage agressif des topics (tirets, virgules, caractères spéciaux)
+ *   🔧 Limite à 3 mots-clés par topic (évite les 400 Bad Request)
+ *   🔧 Détection des doublons 'gaming' dans les queries
+ *   🔧 Filtrage assoupli (articles sans description acceptés)
  * ================================================
  */
 
