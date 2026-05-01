@@ -16,7 +16,14 @@ async function fetchGamingNews(topic, postedUrls = []) {
     pushLog('ERR', `GNews : API key manquante`, 'error');
     return [];
   }
-  const cleanTopic = topic.replace(/[,;]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+  const cleanTopic = topic
+    .replace(/[,;:()—–-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .slice(0, 3)
+    .join(' ')
+    .slice(0, 50);
   const query = encodeURIComponent(`gaming ${cleanTopic}`);
 
   const from = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
