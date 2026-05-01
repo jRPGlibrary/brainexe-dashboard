@@ -69,6 +69,31 @@ function isEligibleNow() {
   return { ok: true };
 }
 
+// ─── ACTIVITÉ SALON ──────────────────────────────────────────────
+async function hasChannelActivity(channelId, minMessages = 3, minHourWindow = 1) {
+  try {
+    const guild = await shared.discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.get(channelId);
+    if (!channel) return false;
+
+    const msgs = await channel.messages.fetch({ limit: 50 });
+    const now = Date.now();
+    const windowMs = minHourWindow * 60 * 60 * 1000;
+    const botId = shared.discord.user?.id;
+
+    // Compter les messages humains (pas du bot) dans la fenêtre
+    const humanMsgs = msgs.filter(m =>
+      !m.author.bot &&
+      (now - m.createdTimestamp) < windowMs
+    ).size;
+
+    return humanMsgs >= minMessages;
+  } catch (err) {
+    return false;
+  }
+}
+
 // ─── CHOIX DU TYPE ───────────────────────────────────────────────
 function pickType() {
   // dm_outreach : type spécial géré séparément dans fireOutreach (v2.3.7)
@@ -172,6 +197,13 @@ async function fireOutreach(forcedType = null) {
   let channelCfg = pickChannelForType(type);
   if (!channelCfg) return false;
 
+  // Vérifier que le salon a eu au moins 3 messages humains dans la dernière heure
+  const hasActivity = await hasChannelActivity(channelCfg.channelId, 3, 1);
+  if (!hasActivity) {
+    pushLog('SYS', `🤐 Outreach skip : activité insuffisante dans #${channelCfg.channelName}`);
+    return false;
+  }
+
   const mood = refreshDailyMood();
   const vibe = getDailyVibe();
   const emotionBlock = getEmotionalInjection();
@@ -224,7 +256,7 @@ async function fireOutreach(forcedType = null) {
       vipCallback,
     });
 
-    const { text: reply } = await callClaude(prompt, 'Génère le message demandé.', adjustMaxTokens(180), BOT_PERSONA_CONVERSATION);
+    const { text: reply } = await callClaude(prompt, 'Génère le message demandé.', adjustMaxTokens(120), BOT_PERSONA_CONVERSATION);
     if (!reply || reply.length < 5) return false;
 
     await sendHuman(channel, reply, null, {});
@@ -251,12 +283,12 @@ async function fireOutreach(forcedType = null) {
 function rollOutreach() {
   const vibe = getDailyVibe();
   const state = getInternalState();
-  let proba = 0.05;
-  if (vibe.chattiness >= 0.7) proba += 0.05;
-  if (state.socialNeed > 70) proba += 0.05;
-  if (state.stimulation > 70) proba += 0.03;
-  if (state.energy > 70) proba += 0.02;
-  proba = Math.min(0.18, proba);
+  let proba = 0.03;
+  if (vibe.chattiness >= 0.7) proba += 0.03;
+  if (state.socialNeed > 70) proba += 0.02;
+  if (state.stimulation > 70) proba += 0.01;
+  if (state.energy > 70) proba += 0.01;
+  proba = Math.min(0.08, proba);
   return Math.random() < proba;
 }
 

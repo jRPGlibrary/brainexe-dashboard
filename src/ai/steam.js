@@ -7,7 +7,9 @@ async function extractGameName(userQuery, botReply = '') {
   const { text: result } = await callClaude(
     'Tu identifies si un jeu vidéo PRÉCIS est mentionné dans ce texte. Réponds UNIQUEMENT avec le nom exact du jeu (ex: "Elden Ring"), ou "aucun" si aucun jeu précis n\'est nommé. Un genre ou une plateforme générique (RPG, PS5, indie...) n\'est pas un jeu.',
     `Texte : "${combined}"`,
-    25
+    25,
+    null,
+    'claude-haiku-4-5-20251001'
   );
   const name = result.replace(/["'.]/g, '').trim();
   return name.toLowerCase() === 'aucun' || name.length < 2 ? null : name;
