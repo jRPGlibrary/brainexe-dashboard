@@ -1,0 +1,261 @@
+.voice-control-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 20px auto;
+}
+
+.voice-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  padding: 40px 30px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  color: white;
+}
+
+.voice-card h2 {
+  margin: 0 0 30px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* Voice Buttons */
+.voice-button-group {
+  margin: 30px 0;
+}
+
+.btn-voice {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 4px solid white;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn-voice:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.btn-voice:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-voice-start {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-voice-stop {
+  background: rgba(255, 100, 100, 0.6);
+  border-color: #ff6464;
+}
+
+.btn-voice-listening {
+  animation: pulse-glow 1.5s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 5px 40px rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* Recording Indicator */
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0;
+  font-size: 16px;
+  color: #ffd700;
+  animation: fadeIn 0.3s ease;
+}
+
+.pulse {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffd700;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+  }
+}
+
+/* Processing Indicator */
+.processing-indicator {
+  margin: 15px 0;
+  font-size: 16px;
+  color: #87ceeb;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Feedback Message */
+.feedback-message {
+  background: rgba(255, 255, 255, 0.15);
+  border-left: 4px solid #90EE90;
+  padding: 15px 20px;
+  margin: 20px 0;
+  border-radius: 8px;
+  font-size: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: slideIn 0.3s ease;
+}
+
+.btn-clear {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.btn-clear:hover {
+  opacity: 1;
+}
+
+/* Error Message */
+.error-message {
+  background: rgba(255, 100, 100, 0.3);
+  border-left: 4px solid #ff6464;
+  padding: 15px 20px;
+  margin: 20px 0;
+  border-radius: 8px;
+  font-size: 16px;
+  animation: slideIn 0.3s ease;
+}
+
+/* Command Details */
+.command-details {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.command-details h3 {
+  margin: 0 0 15px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.command-info {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.command-info p {
+  margin: 6px 0;
+  display: flex;
+  gap: 10px;
+}
+
+.command-info strong {
+  min-width: 80px;
+}
+
+/* Voice Help */
+.voice-help {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 15px 20px;
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+.voice-help h4 {
+  margin: 0 0 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.voice-help ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.voice-help li {
+  margin: 6px 0;
+  padding-left: 10px;
+  position: relative;
+}
+
+.voice-help li:before {
+  content: "▸";
+  position: absolute;
+  left: 0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .voice-card {
+    padding: 30px 20px;
+  }
+
+  .btn-voice {
+    width: 120px;
+    height: 120px;
+    font-size: 16px;
+  }
+
+  .voice-help {
+    font-size: 13px;
+  }
+}

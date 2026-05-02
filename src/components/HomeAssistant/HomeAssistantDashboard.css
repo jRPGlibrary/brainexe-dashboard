@@ -1,0 +1,233 @@
+.ha-dashboard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow-x: hidden;
+}
+
+.ha-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.ha-content {
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+/* Header */
+.ha-header {
+  text-align: center;
+  color: white;
+  margin-bottom: 50px;
+  animation: slideDown 0.6s ease-out;
+}
+
+.ha-header h1 {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+.ha-header p {
+  margin: 10px 0 0;
+  font-size: 18px;
+  opacity: 0.9;
+  font-weight: 300;
+}
+
+/* Main Grid Layout */
+.ha-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 40px;
+  margin-bottom: 60px;
+}
+
+.ha-section {
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.ha-voice-section {
+  animation-delay: 0.1s;
+}
+
+.ha-devices-section {
+  animation-delay: 0.2s;
+}
+
+/* Footer */
+.ha-footer {
+  margin-top: 60px;
+  padding-top: 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.service-status {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: pulse-status 2s infinite;
+}
+
+.voice-status {
+  background: #ffd700;
+}
+
+.ha-status {
+  background: #00cc00;
+}
+
+.connected {
+  background: #87ceeb;
+}
+
+@keyframes pulse-status {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.footer-text {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* Animations */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .ha-main-grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .ha-content {
+    padding: 30px 20px;
+  }
+
+  .ha-header h1 {
+    font-size: 36px;
+  }
+
+  .ha-header p {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ha-content {
+    padding: 20px 15px;
+  }
+
+  .ha-header {
+    margin-bottom: 30px;
+  }
+
+  .ha-header h1 {
+    font-size: 28px;
+  }
+
+  .ha-header p {
+    font-size: 14px;
+  }
+
+  .ha-main-grid {
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  .service-status {
+    gap: 20px;
+  }
+
+  .status-item {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ha-content {
+    padding: 15px 10px;
+  }
+
+  .ha-header h1 {
+    font-size: 22px;
+  }
+
+  .ha-header p {
+    font-size: 13px;
+  }
+
+  .ha-main-grid {
+    gap: 15px;
+    margin-bottom: 30px;
+  }
+
+  .service-status {
+    gap: 15px;
+    flex-direction: column;
+  }
+
+  .ha-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+  }
+}
