@@ -16,8 +16,86 @@ let liveMessageId = null;
 let liveChannelId = null;
 let liveUpdateInterval = null;
 
+const liveStartMessages = [
+  '🔥 Ça va être INCROYABLE ce live !',
+  '⚡ Rejoins nous maintenant, tu vas pas le regretter !',
+  '🎮 C\'est en DIRECT ! Dépêche-toi avant que ça pète !',
+  '🚀 Viens pas rester dehors, c\'est qui commence !',
+  '💥 C\'est CHAUD en ce moment ! Rejoins vite !',
+  '🎯 Une occasion en or, ne la rate pas !',
+  '⭐ Prépare-toi, ça va être FOU !',
+  '🔥 Si tu veux t\'amuser, c\'est MAINTENANT !',
+  '🎪 Le spectacle commence, entre dans la danse !',
+  '💎 Moment exclusif en direct, rien à manquer !',
+  '🌟 Sois pas seul(e), rejoins la communauté !',
+  '🎉 Les vibes sont au top, viens le ressentir !',
+  '⚔️ Arena ouverte, tu es prêt(e) ? !',
+  '🏆 C\'est la folie en ce moment, sois au front !',
+  '🎸 La stream c\'est maintenant, pas demain !'
+];
+
+const liveEndMessages = [
+  'Merci d\'avoir été là, vous étiez TOPS 🙏❤️',
+  'Quel moment INCROYABLE avec vous ! À bientôt 💜',
+  'Merci pour cette énergie folle ! On remet ça bientôt 🔥',
+  'Vous étiez malades ce soir ! Merci beaucoup 🙏',
+  'C\'était DINGUE avec vous ! À très vite 💪',
+  'Merci d\'avoir chauffé ce live ! C\'était fou 🔥',
+  'Vous m\'avez donné trop d\'énergie ! Merci 😍',
+  'Quel délire ! Merci d\'être venus 🙏💜',
+  'C\'était malade ce soir ! À bientôt amis 🎉',
+  'Merci pour votre soutien INCROYABLE ❤️🔥',
+  'Vous avez fait ma soirée ! Merci 🙏🎮',
+  'Quelle bande ! Merci pour tout 💪❤️',
+  'Pas facile à quitter avec vous ! À plus 👋',
+  'C\'était trop top ! On se refait ça vite 🚀',
+  'Merci d\'avoir cru en moi ce soir 💜✨'
+];
+
+const giftNamesFR = {
+  'Rose': '🌹 Rose',
+  'Heart': '❤️ Coeur sur toi',
+  'Galaxy': '🌌 Galaxie',
+  'Rocket': '🚀 Fusée',
+  'Trophy': '🏆 Trophée',
+  'Diamond Ring': '💍 Bague',
+  'Panda': '🐼 Panda',
+  'Corgi': '🐕 Corgi',
+  'Lion': '🦁 Lion',
+  'Teddy Bear': '🧸 Ours',
+  'Cake': '🍰 Gâteau',
+  'Pizza': '🍕 Pizza',
+  'Beer': '🍺 Bière',
+  'Watermelon': '🍉 Pastèque',
+  'Lollipop': '🍭 Sucette',
+  'Icecream': '🍦 Glace',
+  'Gift Box': '🎁 Boîte Cadeau',
+  'Hand with Heart': '👐 Coeur de Main',
+  'Flamingo': '🦩 Flamant Rose',
+  'Monkey': '🐵 Singe',
+  'Octopus': '🐙 Poulpe',
+  'Bulb': '💡 Ampoule',
+  'Tropical Fish': '🐠 Poisson Tropical',
+  'Laptop': '💻 Laptop',
+  'Microphone': '🎤 Micro',
+  'Wings': '🪶 Ailes',
+  'Guitar': '🎸 Guitare',
+  'Lightsaber': '⚡ Sabre Laser',
+  'Sword': '⚔️ Épée',
+  'Magic Wand': '✨ Baguette Magique',
+  'Crown': '👑 Couronne'
+};
+
+function getRandomMessage(messages) {
+  return messages[Math.floor(Math.random() * messages.length)];
+}
+
+function translateGiftName(giftName) {
+  return giftNamesFR[giftName] || `🎁 ${giftName}`;
+}
+
 async function generateLiveIntro(title) {
-  if (!ANTHROPIC_API_KEY) return 'Le live vient de démarrer 🔥';
+  if (!ANTHROPIC_API_KEY) return getRandomMessage(liveStartMessages);
   const { text } = await callClaude(
     '\nTu annonces un live TikTok.',
     `Titre : "${title}". Accroche 2 phrases max. Direct. 🔥`,
@@ -109,7 +187,8 @@ async function sendLiveStartEmbed(title, viewerCount, roomInfo = null) {
     const avatar = pickTikTokAvatar(roomInfo);
 
     const embed = buildLiveEmbed(title, viewerCount, roomInfo);
-    embed.setDescription(`*"${hook}"*\n\n▶ **[Rejoindre le live](${liveUrl})**`);
+    const motivMsg = getRandomMessage(liveStartMessages);
+    embed.setDescription(`*"${hook}"*\n\n✨ **${motivMsg}**\n\n▶ **[Rejoindre le live](${liveUrl})**`);
 
     const pingRole = guild.roles.cache.find(r => r.name === cfg.pingRoleName);
     const msg = await channel.send({
@@ -159,11 +238,12 @@ async function sendLiveEndEmbed(title) {
     const profileUrl = `https://www.tiktok.com/@${cfg.username}`;
     const endTime = new Date().toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 
+    const thankMsg = getRandomMessage(liveEndMessages);
     const embed = new EmbedBuilder()
       .setColor(0x36393f)
       .setTitle(`⚫  Live terminé — @${cfg.username}`)
       .setURL(profileUrl)
-      .setDescription(title ? `_${title}_` : '_Merci d\'être passés 💜_')
+      .setDescription(`${title ? `_${title}_\n\n` : ''}💜 **${thankMsg}**`)
       .addFields(
         { name: '⏱️ Durée', value: `\`${dStr}\``, inline: true },
         { name: '👥 Pic viewers', value: `\`${liveStats.peakViewers ?? 0}\``, inline: true },
@@ -242,8 +322,8 @@ function connectToTikTokLive() {
         if (d.giftType === 1 && !d.repeatEnd) return;
         if ((d.diamondCount || 0) > 0 || d.giftName) {
           liveStats.totalGifts += (d.repeatCount || 1);
-          const g = d.giftName || 'Gift';
-          liveStats.giftDetails[g] = (liveStats.giftDetails[g] || 0) + (d.repeatCount || 1);
+          const giftFR = translateGiftName(d.giftName || 'Gift');
+          liveStats.giftDetails[giftFR] = (liveStats.giftDetails[giftFR] || 0) + (d.repeatCount || 1);
 
           const username = d.user?.uniqueId || d.uniqueId || 'Anonyme';
           const nickname = d.user?.nickname || d.nickname || username;
