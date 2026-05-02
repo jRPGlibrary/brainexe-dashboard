@@ -202,7 +202,7 @@ async function sendLiveStartEmbed(title, viewerCount, roomInfo = null) {
     liveChannelId = cfg.channelId;
 
     if (liveUpdateInterval) clearInterval(liveUpdateInterval);
-    liveUpdateInterval = setInterval(updateLiveEmbed, 20000);
+    liveUpdateInterval = setInterval(updateLiveEmbed, 15000);
 
     pushLog('SYS', `📺 Live start : "${title}"`, 'success');
     broadcast('tiktokLive', { status: 'started', title, viewers: viewerCount });
