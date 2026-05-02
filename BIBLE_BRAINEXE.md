@@ -1,7 +1,9 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version** : `2.3.5`
-**Dernière mise à jour** : Avril 2026
+**Version** : `0.9.17`
+**Dernière mise à jour** : Mai 2026
+
+> 🔄 **Note de renumérotation :** le projet a été entièrement renuméroté de l'ancien schéma chaotique `v2.x.x` vers une numérotation SemVer propre `v0.x.x`. Voir [CHANGELOG.md](./CHANGELOG.md) pour la table de correspondance complète. Les anciens repères inline (`// v2.3.5 : ...`) restent dans le code à titre d'archive historique.
 **Pour qui ?** : Comprendre TOUT ce que fait Brainee, son dashboard, et comment le code est organisé.
 
 ---
@@ -1116,7 +1118,7 @@ Oui techniquement, mais ils partageraient `botConfig` et MongoDB — à adapter.
 
 ## ✨ Fin
 
-Tu as la **BIBLE COMPLÈTE** du projet à la version **2.3.7**.
+Tu as la **BIBLE COMPLÈTE** du projet à la version **0.9.17**.
 Tu sais :
 - ce que Brainee fait, et pourquoi elle le fait comme ça
 - comment les pièces s'assemblent (Discord, Claude, Mongo, dashboard)

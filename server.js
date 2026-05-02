@@ -1,44 +1,28 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v2.6.0
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v0.9.17
  * ================================================
  * Architecture refactorisée — entry point minimal
  * Toute la logique est dans src/
  *
- * v2.3.4 — Humanisation Brainee :
+ * Voir CHANGELOG.md pour l'historique complet et la table de
+ * correspondance des anciennes versions v2.x.x → nouvelles v0.x.x.
+ *
+ * Highlights cumulés depuis v0.2.5 :
  *   📚 Mémoire narrative par membre (memberStories)
  *   💎 VIP system (4 tiers basés sur le bond)
  *   🎯 Taste profile (goûts/genres/vibes/avoidances détectés)
- *
- * v2.3.5 — Initiative & émotions complexes :
- *   ⚡ Proactive outreach (pensées spontanées, observations, callbacks VIP, défis)
- *   🎯 Hyper-focus triggers (obsessions + retours différés 2-14h plus tard)
- *   🎭 Combos d'états (fatiguée+loyale, nostalgique+énergique, etc)
- *   🤍 Vulnerability windows (Brainee s'autorise à montrer fatigue, boost bond si soutien)
- *   📌 Pins intelligents + mini-sondages (extended permissions, quotas stricts)
- *
- * v2.5.0 — Token Usage Tracking :
- *   📊 Suivi détaillé des tokens par membre (privé et serveur)
- *   📈 Leaderboard + évolution journalière
- *   💾 Stats par contexte (mention, DM, delayed reply)
- *   🎯 Dashboard section pour visualiser l'utilisation
- *
- * v2.5.2 — Fix intégration GNews :
- *   🔧 Suppression du paramètre 'to' non supporté par l'API GNews
- *   🔧 Format de date corrigé (YYYY-MM-DD accepté par GNews)
- *   🔧 Nettoyage agressif des topics (tirets, virgules, caractères spéciaux)
- *   🔧 Limite à 3 mots-clés par topic (évite les 400 Bad Request)
- *   🔧 Détection des doublons 'gaming' dans les queries
- *   🔧 Filtrage assoupli (articles sans description acceptés)
- *
- * v2.6.0 — Token Optimization :
- *   💰 Haiku 4.5 sur actus, YouTube extract et Steam extract (−65% coût)
- *   🔗 Liens actus garantis — chaque actu DOIT avoir son [titre](url)
- *   📉 max_tokens réduits : actus 900→500, proactive 180→120, fallback 600→350
- *   🤫 Proactive outreach : proba max 18%→8%, cooldown renforcé
- *   🔇 Activité check : outreach bloqué si <3 messages humains dans l'heure (no spam salons vides)
- *   😶 Emojis : max 1 par message (règle stricte dans la persona)
- *   🔧 callClaude() : paramètre `model` optionnel (rétrocompatible, Sonnet par défaut)
+ *   ⚡ Proactive outreach (pensées spontanées, callbacks VIP, défis)
+ *   🎯 Hyper-focus triggers (obsessions + retours différés 2-14h)
+ *   🎭 Combos d'états (fatiguée+loyale, nostalgique+énergique…)
+ *   🤍 Vulnerability windows (boost bond si soutien)
+ *   📌 Pins intelligents + mini-sondages (quotas stricts)
+ *   📊 Token Usage Tracking par membre (leaderboard + 30j)
+ *   🕐 Time awareness (timestamps relatifs, date/heure dans prompts)
+ *   📰 GNews stable (sanitize topic, ISO datetime, timeout 8 s)
+ *   💰 Token Optimization (Haiku 4.5 sur tâches simples, −65 % coût)
+ *   🛡️ Sécurité protobufjs override 7.5.6 (CVE GHSA-xq3m-2v4x-88gg)
+ *   📺 TikTok live dynamique + tracking donateurs (v0.9.17)
  * ================================================
  */
 
@@ -146,7 +130,7 @@ discord.once('clientReady', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
   const vibe = getDailyVibe();
-  pushLog('SYS', `🧠 BRAINEXE v2.6.0 — Bot : ${discord.user.tag}`);
+  pushLog('SYS', `🧠 BRAINEXE v0.9.17 — Bot : ${discord.user.tag}`);
   pushLog('SYS', `⏰ Slot : ${slot.label} | 🎭 Humeur : ${getDailyMood()} | 🎨 Vibe : ${vibe.name}`);
   pushLog('SYS', `🌐 Dashboard : http://localhost:${PORT}`);
 
@@ -187,7 +171,7 @@ discord.once('clientReady', async () => {
     pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
   ), 30000);
 
-  await syncDiscordToFile('Démarrage v2.6.0');
+  await syncDiscordToFile('Démarrage v0.9.17');
 });
 
 server.listen(PORT, '0.0.0.0', () => pushLog('SYS', `🌐 Serveur démarré sur le port ${PORT}`));

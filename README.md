@@ -7,7 +7,7 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-2.6.0-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.9.17-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
@@ -179,82 +179,37 @@ npm test
 
 ---
 
-## 📝 Changelog (extrait)
+## 📝 Changelog
 
-### `v2.6.0` — 💰 Token Optimization
+> 📖 **Historique complet, propre, dans [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.2.5 → v0.9.17** y sont documentées avec leurs commits.
 
-- **Sélection de modèle** : `callClaude()` accepte un 5ème paramètre `model` optionnel (rétrocompatible, Sonnet par défaut)
-- **Haiku sur tâches simples** : actus gaming, extraction YouTube query, extraction Steam game name → `claude-haiku-4-5` (−65% coût sur ces appels)
-- **Liens actus garantis** : instruction stricte `CHAQUE ACTU DOIT AVOIR SON LIEN [titre](url)` — plus d'actus sans lien cliquable
-- **max_tokens réduits** : actus 900→500, fallback actus 600→350, proactive outreach 180→120
-- **Proactive outreach moins agressif** : probabilité max réduite de 18% à 8% par tick
-- **Activité check** : outreach bloqué si le salon n'a pas eu ≥3 messages humains dans la dernière heure — fini le bot qui parle tout seul
-- **Emojis strictement limités** : max 1 emoji par message dans la persona (règle explicite dans BOT_PERSONA et BOT_PERSONA_CONVERSATION)
+### Dernière release — `v0.9.17` — 📺 TikTok live dynamique
+- Embed TikTok live dynamique avec messages aléatoires
+- Tracking des donateurs intégré au flux live
 
-### `v2.5.1` — 🕐 Conscience temporelle & GNews stable
+### Quelques jalons marquants
+| Version | Sujet |
+|---|---|
+| `v0.9.16` | 🛡️ Sécurité protobufjs (CVE GHSA-xq3m-2v4x-88gg) |
+| `v0.9.15` | 💰 Token Optimization (Haiku, max_tokens réduits, −65 %) |
+| `v0.9.13` | 🕐 Time awareness + GNews stable |
+| `v0.9.11` | 📊 Token Usage Tracking par membre |
+| `v0.9.6` | 🛡️ Sécurité avancée (2FA, sessions) + nouveau dashboard |
+| `v0.8.6` | 💬 DM Outreach (Brainee initie & rejoint des DMs) |
+| `v0.8.1` | ⚡ Initiative & émotions complexes |
+| `v0.8.0` | 💗 Humanisation (mémoire narrative, VIP, taste) |
+| `v0.7.7` | 🤖 CI GitHub Actions |
+| `v0.7.6` | ✅ 87 tests unitaires |
+| `v0.7.5` | 🧱 Frontend éclaté en 21 modules |
+| `v0.7.4` | 🧱 API éclatée en 6 fichiers thématiques |
+| `v0.7.1` | 🚦 Rate limiting Express (4 niveaux) |
+| `v0.6.0` | 🧠 5 features d'autonomie Brainee |
+| `v0.5.2` | 📱 Mobile responsive complet |
+| `v0.4.1` | 📚 Création de la BIBLE_BRAINEXE.md |
+| `v0.3.0` | 🎛️ Live Admin Panel + refonte dashboard |
+| `v0.2.5` | 🌱 Toute première mouture (point de départ) |
 
-- **Time awareness** : Brainee sait maintenant quelle heure et quel jour on est — chaque message dans le contexte affiche son horodatage relatif (`aujourd'hui 08:42`, `hier 14:30`...) et tous les prompts reçoivent la date/heure courante (timezone Paris)
-- **GNews stabilisé** : format de date ISO datetime complet (`YYYY-MM-DDTHH:MM:SSZ`), timeout 8 s, validation des articles, `max=25`, paramètre `to` ajouté, tri explicite par date de publication
-- **GNews sanitize** : les topics avec virgules ou points-virgules ne provoquent plus de `400 Bad Request`
-- **Robustesse cache actus** : `Array.isArray()` sur `postedNewsUrls`, gestion d'erreur non-bloquante sur `setBotState`
-
-### `v2.5.0` — 📊 Token Usage Tracking
-- **Suivi des tokens par membre** : chaque message privé, mention ou réponse différée enregistre les tokens consommés en base MongoDB
-- **API de stats** : 4 endpoints (leaderboard · stats individuelles · évolution journalière · répartition par contexte)
-- **Dashboard section "Tokens"** : vue d'ensemble globale, leaderboard top-50, recherche par membre, graphique d'évolution sur 30 j
-- **`callClaude` retourne maintenant `{ text, usage }`** au lieu d'une chaîne brute — tous les appelants ont été mis à jour
-- **Correction critique** : 14 fichiers qui utilisaient `callClaude` comme une chaîne ont été corrigés (youtube · steam · crons · greetings · anecdotes · actus · drift · tiktok · dmOutreach · conversations · hyperFocusRevisit · intelligentMemory · channelMem · channelDir)
-
-### `v2.3.5` — ⚡ Initiative & émotions complexes
-- **Proactive outreach** : pensées spontanées, observations, callbacks VIP, défis créatifs
-- **HyperFocus triggers** : Brainee détecte une obsession et revient dessus 2-14 h plus tard
-- **Emotion combos** : états combinés (`fatiguée+loyale`, `nostalgique+énergique`, etc.)
-- **Vulnerability windows** : Brainee s'autorise à montrer fatigue ou surcharge → boost de bond si soutien
-- **Extended permissions** : pins intelligents + mini-sondages avec quotas stricts
-
-### `v2.3.4` — 💗 Humanisation Brainee
-- **Mémoire narrative par membre** (`memberStories`) : Brainee se souvient des sujets, blagues, et moments importants pour chaque personne
-- **VIP system** (4 tiers basés sur le bond) : Superfan, Fidèle, Actif, Standard
-- **Taste profile** (`tasteProfile`) : goûts, genres, vibes et évitements détectés automatiquement
-
-### `v2.3.3` — 🤖 CI GitHub Actions
-Workflow `tests.yml` : `npm ci` + `npm test` sur Node 18 à chaque push / PR.
-
-### `v2.3.2` — ✅ 87 tests unitaires
-Jest 30, 5 suites couvrant les modules critiques.
-
-### `v2.3.1` — 🧱 Frontend modulaire
-`public/app.js` (1 771 lignes) éclaté en **21 modules** dans `public/js/`.
-
-### `v2.3.0` — 🧱 API modulaire
-`src/api/routes.js` (430 lignes) éclaté en 6 fichiers thématiques.
-
-### `v2.2.9` — 🛡️ TikTok watcher robuste
-Timeout 15 s, nettoyage écouteurs, garde-fou `liveActive` 12 h.
-
-### `v2.2.8` — 🔒 Vulnérabilités npm
-12/14 corrigées, 2 résiduelles documentées.
-
-### `v2.2.7` — 🚦 Rate limiting Express
-4 niveaux (claude / discord / backup / general).
-
-### `v2.2.6` — 📣 Logs explicites
-Tous les `.catch(() => {})` critiques remplacés par `pushLog('ERR', …)`.
-
-### `v2.2.5` — 🌅 Présence active + signalement émotionnel
-Morning varié (30 msg de contexte), `reactionScanCron` 20 min, `replyCron` 2 h → 45 min, emoji contextuel sur réponse différée.
-
-### `v2.2.4` — 💰 Salon soutien anti-redéploiement
-Scan des 50 derniers messages pour retrouver l'embed, ID persisté.
-
-### `v2.2.3` — 🧩 Fix doublons salons + tags normalisés
-`channelManager` + persistance d'ID, normalisation emoji-safe.
-
-### `v2.2.0–2.2.2` — 🧠 5 features d'autonomie
-Narrative memory (30 j), persistent emotions, learned preferences, topic fatigue, decision logic.
-
-### `v2.0.0–2.1.x` — 💗 Âme de Brainee + dashboard moderne
-Émotions 4 couches, member bonds, humanize, adaptive scheduling, sidebar Discord, refonte 3 thèmes.
+> La **v1.0.0** est réservée pour la future release stable finale figée.
 
 ---
 
