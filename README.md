@@ -7,7 +7,7 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.9.17-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.10.1-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
@@ -183,9 +183,10 @@ npm test
 
 > 📖 **Historique complet, propre, dans [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.2.5 → v0.9.17** y sont documentées avec leurs commits.
 
-### Dernière release — `v0.9.17` — 📺 TikTok live dynamique
-- Embed TikTok live dynamique avec messages aléatoires
-- Tracking des donateurs intégré au flux live
+### Dernière release — `v0.10.1` — 📊 Verbosité par salon active
+- Fix : `recordBotMessage` enfin enregistré → le système apprend vraiment ce que chaque salon aime
+- Fix : `replyToConversations` capture le message envoyé pour le tracking d'engagement
+- Les salons qui aiment les longs messages le montreront progressivement
 
 ### Quelques jalons marquants
 | Version | Sujet |

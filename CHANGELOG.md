@@ -8,6 +8,25 @@ Toutes les versions notables du projet, **renumérotées** pour suivre [SemVer](
 
 ---
 
+## 🔧 v0.10.1 — Verbosité par salon enfin active
+**Date :** 2026-05-03
+
+### 🐛 Fixes
+- `recordBotMessage()` enfin appelé après chaque message ambiant posté (`postRandomConversation`) — le système de verbosité peut désormais apprendre ce que chaque salon aime vraiment
+- `replyToConversations` capture maintenant le message retourné par `sendHuman` pour enregistrer l'engagement par salon
+- Ces deux corrections activent concrètement `getChannelVerbosity()` qui était basé sur des données jamais écrites
+
+### Impact
+- Brainee adapte progressivement la longueur de ses messages par salon (sur 7 jours glissants)
+- Les salons actifs avec engagement élevé déverrouilleront progressivement les messages plus riches
+- Aucune donnée existante n'est impactée — les premiers jours restent en mode court par défaut
+
+### 📊 Stats
+- **2 fichiers modifiés** (`conversations.js`, version files)
+- **100% backward compatible**
+
+---
+
 ## 🎯 v0.10.0 — Brainee humanization & vision (état actuel)
 **Date :** 2026-05-03
 **Commit :** `7073397eb8ab0becdbcf2ac54cb982789314b4a9`

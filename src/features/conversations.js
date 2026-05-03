@@ -31,7 +31,7 @@ const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
 const { getNarrativeContext } = require('../db/narrativeMemory');
 const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { logMessageForBridge } = require('./dmServerBridge');
-const { getChannelVerbosity } = require('../db/messageEngagement');
+const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
 
 async function postRandomConversation() {
   const cfg = shared.botConfig.conversations;
@@ -133,8 +133,7 @@ async function postRandomConversation() {
     const sentMsg = await channel.send(contentResolved);
     shared.lastAnyBotPostTime = Date.now();
     await updateConvStats(ch.channelId);
-    // Threads désactivés par défaut (personne ne les utilise)
-    // Peuvent être activés sur demande explicite seulement
+    recordBotMessage(sentMsg.id, ch.channelId, mode.name, contentResolved.length).catch(() => {});
     pushLog('SYS', `💬 Conv [${mode.name}] ${ch.channelName} [${slot.label}] (${getConvDailyCount()}/${getConvMaxPerDay()})`, 'success');
     broadcast('conversation', { channel: ch.channelName, time: new Date().toLocaleTimeString('fr-FR'), mode: mode.name, slot: slot.label, dayCount: getConvDailyCount() });
   } catch (err) { pushLog('ERR', `Lance-conv échouée : ${err.message}`, 'error'); }
@@ -264,7 +263,8 @@ async function replyToConversations() {
       }
     } catch (_) {}
     if (!postedInThread) {
-      await sendHuman(channel, replyResolved, lastMsg, { bond });
+      const replyMsg = await sendHuman(channel, replyResolved, lastMsg, { bond });
+      if (replyMsg) recordBotMessage(replyMsg.id, ch.channelId, 'reply', replyResolved.length).catch(() => {});
       pushLog('SYS', `💬 Reply → ${lastMsg.author.username} (mood: ${mood})`, 'success');
       broadcast('conversation', { channel: ch.channelName, type: 'reply' });
     }

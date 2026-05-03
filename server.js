@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v0.9.17
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v0.10.1
  * ================================================
  * Architecture refactorisée — entry point minimal
  * Toute la logique est dans src/
@@ -22,7 +22,8 @@
  *   📰 GNews stable (sanitize topic, ISO datetime, timeout 8 s)
  *   💰 Token Optimization (Haiku 4.5 sur tâches simples, −65 % coût)
  *   🛡️ Sécurité protobufjs override 7.5.6 (CVE GHSA-xq3m-2v4x-88gg)
- *   📺 TikTok live dynamique + tracking donateurs (v0.9.17)
+ *   📺 TikTok live dynamique + tracking donateurs (v0.10.1)
+ *   📊 Verbosité par salon — engagement tracking actif (v0.10.1)
  * ================================================
  */
 
@@ -130,7 +131,7 @@ discord.once('clientReady', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
   const vibe = getDailyVibe();
-  pushLog('SYS', `🧠 BRAINEXE v0.9.17 — Bot : ${discord.user.tag}`);
+  pushLog('SYS', `🧠 BRAINEXE v0.10.1 — Bot : ${discord.user.tag}`);
   pushLog('SYS', `⏰ Slot : ${slot.label} | 🎭 Humeur : ${getDailyMood()} | 🎨 Vibe : ${vibe.name}`);
   pushLog('SYS', `🌐 Dashboard : http://localhost:${PORT}`);
 
@@ -171,7 +172,7 @@ discord.once('clientReady', async () => {
     pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
   ), 30000);
 
-  await syncDiscordToFile('Démarrage v0.9.17');
+  await syncDiscordToFile('Démarrage v0.10.1');
 });
 
 server.listen(PORT, '0.0.0.0', () => pushLog('SYS', `🌐 Serveur démarré sur le port ${PORT}`));
