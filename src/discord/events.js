@@ -107,7 +107,7 @@ async function handleMentionReply(message, userQuery) {
     applyNaturalDecay();
     detectEmotionFromMessage(userQuery, { userId: message.author.id });
 
-    // v2.2.4 : Check if Brainee should respond (autonomy logic)
+    // v0.6.0 : Check if Brainee should respond (autonomy logic)
     // For mentions, we check but still respect the urgent flag from caller
     const vibe = getDailyVibe();
     const internalState = getInternalState();
@@ -125,7 +125,7 @@ async function handleMentionReply(message, userQuery) {
     // Record topic for fatigue tracking
     await recordMessageTopic(userQuery);
 
-    // 💬 Court-circuit : invitation DM détectée (v2.3.7)
+    // 💬 Court-circuit : invitation DM détectée (v0.8.6)
     // On traite ici avant tout chargement de contexte inutile
     if (detectDmInvite(userQuery)) {
       await updateMemberProfile(message.author.id, message.author.username, userQuery);
@@ -141,22 +141,22 @@ async function handleMentionReply(message, userQuery) {
     const temperamentBlock = getTemperamentInjection();
     const narrativeBlock = await getNarrativeContext();
 
-    // 📚 Mémoire narrative par membre (v2.3.4)
+    // 📚 Mémoire narrative par membre (v0.8.0)
     const memberStories = await getMemberStories(message.author.id);
     const memberStoriesBlock = formatStoriesBlock(memberStories, message.author.username);
 
-    // 💎 VIP tier (v2.3.4)
+    // 💎 VIP tier (v0.8.0)
     const vipTier = getVipTier(bond);
     const vipBlock = getVipBlockForPrompt(vipTier, bond, message.author.username);
 
-    // 🎯 Taste profile (v2.3.4)
+    // 🎯 Taste profile (v0.8.0)
     const tasteProfile = await getTasteProfile(message.author.id);
     const tasteBlock = formatTasteBlock(tasteProfile, message.author.username);
 
-    // 🎭 Combos émotionnels (v2.3.5)
+    // 🎭 Combos émotionnels (v0.8.1)
     const combosBlock = getEmotionCombosBlock(mood);
 
-    // 🤍 Fenêtre de fragilité (v2.3.5) — si support détecté, on l'enregistre
+    // 🤍 Fenêtre de fragilité (v0.8.1) — si support détecté, on l'enregistre
     const vulnWindow = await getActiveWindow();
     const vulnBlock = getVulnerabilityBlock(vulnWindow);
     if (vulnWindow && detectSupport(userQuery)) {
@@ -218,7 +218,7 @@ async function handleMentionReply(message, userQuery) {
     await updateMemberProfile(message.author.id, message.author.username, userQuery);
     await applyInteractionToBond(message.author.id, message.author.username, userQuery);
 
-    // 💬 Proposal DM sortante (v2.3.7) : Brainee propose de continuer en DM (faible proba)
+    // 💬 Proposal DM sortante (v0.8.6) : Brainee propose de continuer en DM (faible proba)
     await maybeProposeInDm(message, userQuery, bond).catch(() => {});
 
     // 📚 Détection narrative — on enregistre les stories pertinentes (max 1 par message)
@@ -358,7 +358,7 @@ function registerMessageHandlers() {
     } catch (err) { pushLog('ERR', `DM handler échoué pour ${message.author.username} : ${err.message}`, 'error'); }
   });
 
-  // @mention handler v2.1.0 — urgence + vibe + relance demain
+  // @mention handler v0.2.6 — urgence + vibe + relance demain
   shared.discord.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild || message.guild.id !== GUILD_ID) return;
     if (!shared.discord.user || !message.mentions.has(shared.discord.user)) return;
@@ -425,7 +425,7 @@ function registerMessageHandlers() {
     else handleMentionReply(message, userQuery);
   });
 
-  // 💬 Réponse à une proposal DM de Brainee (v2.3.7)
+  // 💬 Réponse à une proposal DM de Brainee (v0.8.6)
   shared.discord.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guild || message.guild.id !== GUILD_ID) return;
     // Ignorer les messages qui mentionnent Brainee (déjà gérés par le handler @mention)

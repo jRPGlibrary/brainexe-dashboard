@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🎯 HYPER-FOCUS REVISIT v2.3.5
+ * 🎯 HYPER-FOCUS REVISIT v0.8.1
  * ================================================
  * Tick cron qui regarde les obsessions arrivées à terme et publie
  * un retour différé dans le salon source ("attends j'ai repensé à ce que tu disais sur...").

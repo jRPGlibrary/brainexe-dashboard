@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 📚 MEMBER STORIES v2.3.4
+ * 📚 MEMBER STORIES v0.8.0
  * ================================================
  * Mémoire narrative PAR MEMBRE — complément à narrativeMemory (global)
  *

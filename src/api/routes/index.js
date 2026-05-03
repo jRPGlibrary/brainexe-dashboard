@@ -102,7 +102,7 @@ function registerRoutes(app) {
   app.use('/api', require('./admin'));
   app.use('/api', require('./data'));
   app.use('/api', require('./backups'));
-  // ── v2.4 Routes ─────────────────────────────────────────────
+  // ── v0.9.6 Routes ─────────────────────────────────────────────
   app.use('/api', require('./audit'));
   app.use('/api', require('./monitoring'));
   app.use('/api', require('./analytics'));

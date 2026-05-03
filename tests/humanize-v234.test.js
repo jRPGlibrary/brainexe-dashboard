@@ -1,5 +1,5 @@
 /**
- * Tests — v2.3.4 humanisation Brainee
+ * Tests — v0.8.0 humanisation Brainee
  * Couvre la détection des stories, des goûts, et le scoring VIP.
  */
 

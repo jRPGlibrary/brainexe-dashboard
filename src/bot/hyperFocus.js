@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🎯 HYPER-FOCUS v2.3.5
+ * 🎯 HYPER-FOCUS v0.8.1
  * ================================================
  * Certains sujets attrapent Brainee plus que d'autres : ses obsessions.
  * Quand l'un d'eux est mentionné par quelqu'un, on enregistre une "obsession active"

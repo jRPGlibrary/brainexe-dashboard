@@ -170,8 +170,8 @@ npm test
 | `audit.test.js` | Ring buffer, troncature, ordre |
 | `emotions.test.js` | Décroissance, résidus, stack émotions |
 | `funding.test.js` | Calcul coûts, dons, statut Discord |
-| `humanize-v234.test.js` | Mémoire narrative, VIP, taste profile (v2.3.4) |
-| `humanize-v235.test.js` | Outreach, hyperFocus, combos, vulnerability (v2.3.5) |
+| `humanize-v234.test.js` | Mémoire narrative, VIP, taste profile (v0.8.0) |
+| `humanize-v235.test.js` | Outreach, hyperFocus, combos, vulnerability (v0.8.1) |
 | `mood.test.js` | Sélection humeur, refresh, reroll |
 | `scheduling.test.js` | Slots semaine/we, forced slot, fuseau Paris |
 
