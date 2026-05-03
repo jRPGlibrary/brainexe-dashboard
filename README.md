@@ -181,36 +181,63 @@ npm test
 
 ## 📝 Changelog
 
-> 📖 **Historique complet, propre, dans [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.2.5 → v0.9.17** y sont documentées avec leurs commits.
+> 📖 **Historique complet, propre, dans [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.2.5 → v0.10.1** y sont documentées avec leurs commits.
 
 ### Dernière release — `v0.10.1` — 📊 Verbosité par salon active
 - Fix : `recordBotMessage` enfin enregistré → le système apprend vraiment ce que chaque salon aime
 - Fix : `replyToConversations` capture le message envoyé pour le tracking d'engagement
 - Les salons qui aiment les longs messages le montreront progressivement
 
-### Quelques jalons marquants
+### Jalons — de la naissance à aujourd'hui
+
+> Le projet est né en mars 2026 sous les versions `v1.x` et `v2.x`. En mai 2026, une renumérotation SemVer propre a tout réaligné sous `v0.2.5 → v0.10.x` (voir [RENUMEROTATION.md](./RENUMEROTATION.md)). La **v1.0.0** est réservée pour la future release stable finale.
+
+#### Origines — avant la renumérotation (mars → avril 2026)
+
+| Version originale | Date | Sujet |
+|---|---|---|
+| `v1.0.0` | 12 mars 2026 | 🌱 Naissance — Bot Discord + Express + WebSocket + sync bidirectionnel |
+| `v1.1.0` | 18 mars | 🧹 Reset propre, Dashboard responsive, switch Perplexity → **Claude Anthropic** |
+| `v1.2.0` | 19 mars | 🖥️ Dashboard multi-pages (Membres, Salons, Rôles, Logs, Backups) |
+| `v1.3.0` | 31 mars | 📰 Actus bi-mensuelles + conversations 24h/24 + rate limit global |
+| `v1.4.0` | 6 avril | 🎭 **Persona Brainee** — identité, 4 modes de conversation |
+| `v1.5.0` | 8 avril | 🔰 Reaction Roles natifs (Carl-bot retraité) |
+| `v1.6.0` | 9 avril | 🗂️ Catégories de salons + Scheduler 8h-22h + re-engage |
+| `v1.7.0` | 9 avril | 📱 **TikTok Live → Discord** (embeds démarrage + fin + stats) |
+| `v1.8.0` | 10 avril | 🗃️ **MongoDB Atlas** — profils membres persistants + toneScore adaptatif |
+| `v1.9.0` | 10 avril | 💾 MongoDB state migration (survie aux redeploys Railway) |
+| `v2.0.3` | 12 avril | 🧠 **Channel Memory** + détection de dérive thématique (4 niveaux) |
+| `v2.0.5` | 14 avril | 💌 DMs avec historique + résolution mentions `@Pseudo → <@id>` |
+| `v2.0.6` | 15 avril | 🏛️ **Discipline Salon** — 16 catégories + channelDirectory + intelligence élargie |
+| `v2.0.7` | 18 avril | 🎭 Planning adaptatif + Agency (Brainee peut refuser/différer) |
+| `v2.0.8` | 18 avril | 📰 **GNews API** — vraies actus gaming (fini les actus inventées) |
+| `v2.0.9` | 18 avril | 💜 **Âme de Brainee** — émotions 4 couches (tempérament, états, stack, bonds) |
+| `v2.1.0` | 19 avril | 📊 Sidebar Discord (6 salons vocaux live — membres, humeur, activité…) |
+| `v2.2.0` | 19 avril | 🎛️ **Live Admin Panel** — contrôle total en temps réel depuis le dashboard |
+
+#### Renumérotation → `v0.2.5` (mai 2026)
+
 | Version | Sujet |
 |---|---|
-| `v0.9.16` | 🛡️ Sécurité protobufjs (CVE GHSA-xq3m-2v4x-88gg) |
-| `v0.9.15` | 💰 Token Optimization (Haiku, max_tokens réduits, −65 %) |
-| `v0.9.13` | 🕐 Time awareness + GNews stable |
-| `v0.9.11` | 📊 Token Usage Tracking par membre |
-| `v0.9.6` | 🛡️ Sécurité avancée (2FA, sessions) + nouveau dashboard |
-| `v0.8.6` | 💬 DM Outreach (Brainee initie & rejoint des DMs) |
-| `v0.8.1` | ⚡ Initiative & émotions complexes |
-| `v0.8.0` | 💗 Humanisation (mémoire narrative, VIP, taste) |
-| `v0.7.7` | 🤖 CI GitHub Actions |
-| `v0.7.6` | ✅ 87 tests unitaires |
-| `v0.7.5` | 🧱 Frontend éclaté en 21 modules |
-| `v0.7.4` | 🧱 API éclatée en 6 fichiers thématiques |
-| `v0.7.1` | 🚦 Rate limiting Express (4 niveaux) |
-| `v0.6.0` | 🧠 5 features d'autonomie Brainee |
-| `v0.5.2` | 📱 Mobile responsive complet |
+| `v0.3.0` | 🎛️ Live Admin Panel + refonte dashboard 3 thèmes |
 | `v0.4.1` | 📚 Création de la BIBLE_BRAINEXE.md |
-| `v0.3.0` | 🎛️ Live Admin Panel + refonte dashboard |
-| `v0.2.5` | 🌱 Toute première mouture (point de départ) |
-
-> La **v1.0.0** est réservée pour la future release stable finale figée.
+| `v0.5.2` | 📱 Mobile responsive complet |
+| `v0.6.0` | 🤖 5 features d'autonomie Brainee |
+| `v0.7.1` | 🚦 Rate limiting Express (4 niveaux) |
+| `v0.7.4` | 🧱 API éclatée en 6 fichiers thématiques |
+| `v0.7.5` | 🧱 Frontend éclaté en 21 modules |
+| `v0.7.6` | ✅ 87 tests unitaires |
+| `v0.7.7` | 🤖 CI GitHub Actions |
+| `v0.8.0` | 💗 Humanisation (mémoire narrative, VIP, taste) |
+| `v0.8.1` | ⚡ Initiative & émotions complexes |
+| `v0.8.6` | 💬 DM Outreach (Brainee initie & rejoint des DMs) |
+| `v0.9.6` | 🛡️ Sécurité avancée (2FA, sessions) + nouveau dashboard |
+| `v0.9.11` | 📊 Token Usage Tracking par membre |
+| `v0.9.13` | 🕐 Time awareness + GNews stable |
+| `v0.9.15` | 💰 Token Optimization (Haiku, max_tokens réduits, −65 %) |
+| `v0.9.16` | 🛡️ Sécurité protobufjs (CVE GHSA-xq3m-2v4x-88gg) |
+| `v0.10.0` | 🖼️ Vision images + anti-monologue + bond system |
+| `v0.10.1` | 📊 Verbosité par salon enfin active *(actuelle)* |
 
 ---
 
