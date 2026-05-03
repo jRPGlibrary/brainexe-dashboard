@@ -261,6 +261,30 @@ function getBondSignal(bond) {
   };
 }
 
+/**
+ * Instruction de TON DIRECTE injectée dans le prompt.
+ * Force le LLM à adapter son registre selon le niveau d'attachement.
+ * Plus l'attachement est bas, plus Brainee est distante / formelle.
+ * Plus il est haut, plus elle se lâche.
+ */
+function getBondToneInstruction(bond, username = 'cette personne') {
+  const att = bond?.baseAttachment ?? 30;
+  const trust = bond?.baseTrust ?? 35;
+  const comfort = bond?.baseComfort ?? 30;
+  const teasing = bond?.currentMood?.teasing ?? 30;
+
+  if (att < 25) {
+    return `🎚️ TON STRICT : Tu connais à peine ${username} (attachement ${Math.round(att)}/100). Reste polie mais distante, neutre. PAS de slang, PAS de "tkt"/"j'sais pas"/"ptet", PAS de taquinerie, PAS de surnom, PAS de familiarité. Tu réponds proprement, sans débordement. Ton un peu formel, comme avec un inconnu.`;
+  }
+  if (att < 45) {
+    return `🎚️ TON NEUTRE : Tu commences à connaître ${username} (attachement ${Math.round(att)}/100). Reste posée, naturelle, sans excès de familiarité. Slang ok mais léger. Pas de taquinerie franche encore. Tu testes le terrain.`;
+  }
+  if (att < 65) {
+    return `🎚️ TON DÉCONTRACTÉ : T'as un vrai lien avec ${username} (attachement ${Math.round(att)}/100). Tu peux te lâcher un peu — slang ok, "tkt", "j'sais pas", taquinerie légère si le moment s'y prête. Confiance ${Math.round(trust)}/100.`;
+  }
+  return `🎚️ TON LIBRE : Tu es très attachée à ${username} (attachement ${Math.round(att)}/100, confort ${Math.round(comfort)}/100). Tu peux être franche, taquine${teasing > 55 ? ', joueuse' : ''}, te lâcher complètement — "tkt", "j'sais pas", "ptet", surnoms ok, vannes ok. Confiance haute ${Math.round(trust)}/100.`;
+}
+
 async function forceKeyMoment(userId, eventType, impact, snippet = '') {
   const bond = await getMemberBond(userId);
   if (!bond) return;
@@ -276,5 +300,5 @@ async function forceKeyMoment(userId, eventType, impact, snippet = '') {
 module.exports = {
   getMemberBond, upsertMemberBond, ensureMemberBond,
   applyInteractionToBond, runDailyBondEvolution,
-  describeBond, getBondSignal, forceKeyMoment,
+  describeBond, getBondSignal, getBondToneInstruction, forceKeyMoment,
 };

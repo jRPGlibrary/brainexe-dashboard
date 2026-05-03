@@ -1,5 +1,5 @@
 const { sleep } = require('../utils');
-const { humanize } = require('./humanize');
+const { humanize, maybeAddOccasionalEmoji } = require('./humanize');
 const { getHumanizationSignal } = require('./emotions');
 const { getBondSignal } = require('../db/memberBonds');
 const { getDailyMood } = require('./mood');
@@ -112,6 +112,10 @@ async function sendHuman(channel, content, replyTo = null, opts = {}) {
         slotStatus: getCurrentSlot()?.status || 'active',
       };
       content = humanize(content, ctx);
+      // Emoji occasionnel (~10% serveur, ~15% DM)
+      if (opts.skipEmoji !== true) {
+        content = maybeAddOccasionalEmoji(content, { isDM: !!opts.isDM });
+      }
     } catch (_) {}
   }
 

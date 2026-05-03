@@ -150,6 +150,33 @@ function maybeRepeatPunct(text) {
   return text;
 }
 
+// ─── EMOJI OCCASIONNEL ───────────────────────────────────────────
+// Ajoute un emoji léger SI le texte n'en contient pas déjà.
+// Probabilité visée :
+//  - serveur (reply/spontané) : ~10%
+//  - DM : ~15%
+const SERVER_EMOJIS = ['👀', '😏', '⚡', '🔥', '🧠', '🌙'];
+const DM_EMOJIS     = ['👀', '😏', '🌙', '🔥', '😅', '💭'];
+
+function hasAnyEmoji(text) {
+  // détecte un emoji unicode courant
+  return /[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F9FF}\u{2600}-\u{27BF}]/u.test(text);
+}
+
+function maybeAddOccasionalEmoji(text, { isDM = false, prob = null } = {}) {
+  if (!text) return text;
+  if (hasAnyEmoji(text)) return text;
+  if (/^https?:\/\//.test(text.trim())) return text;
+  const baseProb = prob !== null ? prob : (isDM ? 0.15 : 0.10);
+  if (Math.random() >= baseProb) return text;
+  const pool = isDM ? DM_EMOJIS : SERVER_EMOJIS;
+  const e = pool[Math.floor(Math.random() * pool.length)];
+  // Insère en fin de message, avant le dernier point/!/? si présent
+  const m = text.match(/^([\s\S]*?)([.!?]+)\s*$/);
+  if (m) return `${m[1]} ${e}${m[2]}`;
+  return `${text} ${e}`;
+}
+
 // ─── FILTRE PRINCIPAL ────────────────────────────────────────────
 /**
  * @param {string} text
@@ -218,4 +245,5 @@ function humanize(text, ctx = {}) {
 module.exports = {
   humanize,
   applyRelaxFilter, maybeDropAccents, injectSlang,
+  maybeAddOccasionalEmoji, hasAnyEmoji,
 };

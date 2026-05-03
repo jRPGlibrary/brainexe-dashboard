@@ -11,13 +11,13 @@ const { getCurrentSlot, getRandomMode, getSlotIntervalMs, getTemporalBlock } = r
 const { getDailyVibe, shouldSkipConvCron } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock, getModeInjectionForChannel } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
-const { sanitizeForJson } = require('../utils');
+const { sanitizeForJson, getContextualMaxTokens } = require('../utils');
 const { getRandomReaction, shouldCreateThread } = require('../bot/reactions');
 const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
   updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
 } = require('../bot/emotions');
-const { ensureMemberBond, applyInteractionToBond, describeBond } = require('../db/memberBonds');
+const { ensureMemberBond, applyInteractionToBond, describeBond, getBondToneInstruction } = require('../db/memberBonds');
 const { NO_TAG_CLAUSE, LIGHT_TAG_CLAUSE } = require('./greetings');
 const { formatContext } = require('./context');
 const { scheduleDelayedSpontaneousReply } = require('./delayedReply');
@@ -25,6 +25,7 @@ const {
   getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded,
   updateConvStats, getQuietestChannel, hasUnansweredLastPost, isDeepTopicChannel,
   isChannelDeadThisWeek, resetWeeklyPostCount,
+  isMonologueChannel, countConsecutiveBotPosts,
 } = require('./convStats');
 const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
 const { getNarrativeContext } = require('../db/narrativeMemory');
@@ -57,12 +58,23 @@ async function postRandomConversation() {
     };
     const alone = await hasUnansweredLastPost(ch.channelId, channelResolver);
     if (alone) {
-      pushLog('SYS', `🔇 Skip ${ch.channelName} — dernier post sans réponse humaine (no-insist)`);
+      pushLog('SYS', `🔇 Skip ${ch.channelName} — dernier post sans réponse humaine (no-insist 24h)`);
       return;
     }
-    // Calme plat : si aucune activité humaine depuis 72h et déjà 2 posts cette semaine → pause
+    // Détection monologue : Brainee parle seule, ratio bot/humain trop élevé
+    if (await isMonologueChannel(ch.channelId, channelResolver)) {
+      pushLog('SYS', `🔇 Skip ${ch.channelName} — salon monologue (Brainee parle seule)`);
+      return;
+    }
+    // Posts consécutifs : si Brainee a déjà 2+ posts d'affilée sans humain → stop
+    const consecutive = await countConsecutiveBotPosts(ch.channelId, channelResolver);
+    if (consecutive >= 2) {
+      pushLog('SYS', `🔇 Skip ${ch.channelName} — ${consecutive} posts consécutifs sans humain`);
+      return;
+    }
+    // Calme plat : si aucune activité humaine depuis 72h et 1 post cette semaine sans réponse → pause
     if (await isChannelDeadThisWeek(ch.channelId, channelResolver)) {
-      pushLog('SYS', `🔇 Skip ${ch.channelName} — calme plat (limite 2 posts/semaine sans interaction)`);
+      pushLog('SYS', `🔇 Skip ${ch.channelName} — calme plat (limite atteinte)`);
       return;
     }
     const isDeep = isDeepTopicChannel(ch.channelName);
@@ -105,10 +117,10 @@ async function postRandomConversation() {
       ? `\nCONTEXTE SALON : c'est un salon de thématique profonde (${channel.name}). Lance un angle vraiment fouillé, qui donne envie de creuser. Pas de question générique. Tu peux être plus précise, citer un détail, un souvenir, un mécanisme, une référence. Laisse l'entrée ouverte mais pas vague. Si personne ne rebondit, c'est ok — tu n'insistes pas.`
       : '';
 
-    // Adapter les tokens en fonction de la verbosité
+    // Adapter les tokens en fonction de la verbosité ET du salon (deep = plus de souffle)
     const maxTokens = verbosity.shouldBePavé
-      ? adjustMaxTokens(isDeep ? 250 : 200)
-      : adjustMaxTokens(isDeep ? 150 : 100);
+      ? adjustMaxTokens(isDeep ? 220 : 160)
+      : adjustMaxTokens(isDeep ? 130 : 85);
 
     const { text: content } = await callClaude(
       `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${verbosityInstruct}\n${NO_TAG_CLAUSE}` + contextBlock,
@@ -163,6 +175,11 @@ async function replyToConversations() {
       pushLog('SYS', `🔇 Skip reply ${ch.channelName} — dernier post sans réponse (no-insist)`);
       return;
     }
+    // Skip si salon monologue
+    if (await isMonologueChannel(ch.channelId, channelResolver)) {
+      pushLog('SYS', `🔇 Skip reply ${ch.channelName} — salon monologue`);
+      return;
+    }
 
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
@@ -193,6 +210,7 @@ async function replyToConversations() {
     detectEmotionFromMessage(msgContent, { userId: lastMsg.author.id });
     const bond = await ensureMemberBond(lastMsg.author.id, lastMsg.author.username);
     const bondBlock = describeBond(bond, lastMsg.author.username);
+    const bondToneInstruction = getBondToneInstruction(bond, lastMsg.author.username);
     const emotionBlock = getEmotionalInjection();
     const channelMemory = await getChannelMemory(ch.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
@@ -203,11 +221,12 @@ async function replyToConversations() {
     // Adapter selon la verbosité du salon
     const verbosity = await getChannelVerbosity(ch.channelId);
     const verbosityReplyInstruct = verbosity.shouldBePavé
-      ? `Tu peux être bavarde si tu veux (ce salon aime l'engagement).`
-      : `Reste concise et directe. Les gens ici préfèrent les réponses courtes.`;
-    const replyMaxTokens = verbosity.shouldBePavé ? adjustMaxTokens(200) : adjustMaxTokens(120);
+      ? `Tu peux te permettre 3-4 phrases si le sujet le mérite (ce salon aime l'engagement).`
+      : `Réponse courte (1-2 phrases). Les gens ici préfèrent les réponses concises.`;
+    const baseReplyTokens = getContextualMaxTokens(msgContent, { defaultShort: 100, extended: 200 });
+    const replyMaxTokens = adjustMaxTokens(verbosity.shouldBePavé ? Math.round(baseReplyTokens * 1.3) : baseReplyTokens);
 
-    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
+    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -221,7 +240,7 @@ async function replyToConversations() {
       scheduleDelayedSpontaneousReply(lastMsg, ch, slot, mood, emoji);
       return;
     }
-    const { text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\nSois naturelle.`, replyMaxTokens, BOT_PERSONA_CONVERSATION);
+    const { text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\nSois naturelle. Court par défaut (1-2 phrases). Plus long uniquement si vraiment utile.`, replyMaxTokens, BOT_PERSONA_CONVERSATION);
     const replyResolved = resolveMentionsInText(reply, guild);
     if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
     // Si le message parle d'un jeu et qu'un fil existe déjà → répondre dans le fil plutôt que le channel
