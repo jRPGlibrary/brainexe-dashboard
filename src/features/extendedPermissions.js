@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 📌 EXTENDED PERMISSIONS v2.3.5
+ * 📌 EXTENDED PERMISSIONS v0.8.1
  * ================================================
  * Donne à Brainee 2 nouveaux pouvoirs sur le serveur :
  *   - Pin intelligent : épingler un message vraiment marquant (réactions ≥ seuil + qualité)

@@ -1,13 +1,13 @@
 /**
  * ================================================
- * ⚡ PROACTIVE OUTREACH v2.6.0
+ * ⚡ PROACTIVE OUTREACH v0.9.15
  * ================================================
  * Brainee n'attend plus toujours qu'on lui parle. Elle peut :
  *   - random_thought   : balancer une pensée qui la traverse
  *   - group_observation: observer la dynamique du groupe et la nommer
  *   - vip_callback     : reprendre une story d'un VIP/inner_circle absent
  *   - challenge        : lancer un mini-défi improvisé au salon
- *   - dm_outreach      : initier un DM spontané avec un VIP (v2.3.7)
+ *   - dm_outreach      : initier un DM spontané avec un VIP (v0.8.6)
  *
  * Garde-fous :
  *   - Respecte vibe (skip si introvert/withdrawn) et state (pas si overloaded)
@@ -96,7 +96,7 @@ async function hasChannelActivity(channelId, minMessages = 3, minHourWindow = 1)
 
 // ─── CHOIX DU TYPE ───────────────────────────────────────────────
 function pickType() {
-  // dm_outreach : type spécial géré séparément dans fireOutreach (v2.3.7)
+  // dm_outreach : type spécial géré séparément dans fireOutreach (v0.8.6)
   const types = ['random_thought', 'group_observation', 'vip_callback', 'challenge', 'dm_outreach'];
   const filtered = types.filter(t => t !== lastOutreachType);
   // Pondération : random_thought plus fréquent, dm_outreach très rare
@@ -170,7 +170,7 @@ async function fireOutreach(forcedType = null) {
 
   const type = forcedType || pickType();
 
-  // 💬 DM outreach proactif (v2.3.7) : traité en dehors du flow salon
+  // 💬 DM outreach proactif (v0.8.6) : traité en dehors du flow salon
   if (type === 'dm_outreach') {
     const missed = await detectMissedVips({ minDaysAbsent: 3, maxResults: 8 });
     if (!missed.length) {

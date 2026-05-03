@@ -1,5 +1,5 @@
 /**
- * Tests — v2.3.5 humanisation Brainee
+ * Tests — v0.8.1 humanisation Brainee
  * Couvre : hyperFocus detection, emotionCombos, vulnerability eligibility,
  *          extendedPermissions (pin worthiness, poll detection), proactive outreach picker.
  */

@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🎯 TASTE PROFILE v2.3.4
+ * 🎯 TASTE PROFILE v0.8.0
  * ================================================
  * Track les goûts précis de chaque membre, au-delà du `preferences`
  * basique de memberProfiles.

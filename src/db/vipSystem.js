@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 💎 VIP SYSTEM v2.3.4
+ * 💎 VIP SYSTEM v0.8.0
  * ================================================
  * Couche au-dessus de memberBonds : segmentation des membres en tiers
  * pour différencier le comportement de Brainee.

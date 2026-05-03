@@ -72,7 +72,7 @@ function renderSettings() {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">ℹ️ BrainEXE v2.4</div>
+            <div class="card-title">ℹ️ BrainEXE v0.9.6</div>
             <div class="card-subtitle">Dashboard sécurisé avec analytiques</div>
           </div>
         </div>

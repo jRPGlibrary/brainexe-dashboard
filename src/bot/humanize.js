@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧬 HUMANIZE FILTER v2.1.0
+ * 🧬 HUMANIZE FILTER v0.2.6
  * ================================================
  * Applique des micro-transformations sur le texte généré pour casser
  * le "feel bot". Les règles sont CONTEXTUELLES, pas aléatoires :

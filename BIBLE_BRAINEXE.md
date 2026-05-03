@@ -1,7 +1,10 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version** : `2.3.5`
-**Dernière mise à jour** : Avril 2026
+**Version** : `0.9.17`
+**Dernière mise à jour** : Mai 2026
+
+> 🔄 **Note de renumérotation :** le projet a été entièrement renuméroté de l'ancien schéma chaotique (downgrades, bumps incohérents) vers une numérotation SemVer propre `v0.x.y`. Tous les fichiers — racine, source, tests, doc — ont été alignés sur cette numérotation. Voir [CHANGELOG.md](./CHANGELOG.md) pour la table de correspondance complète. La **v1.0.0** est réservée pour la future release stable finale.
+
 **Pour qui ?** : Comprendre TOUT ce que fait Brainee, son dashboard, et comment le code est organisé.
 
 ---
@@ -159,7 +162,7 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
    - répondre tout de suite
    - répondre avec délai (3-15 min)
    - repousser au lendemain (hors slot sommeil)
-   - skip silencieux ⛔ (interdit sur les @mention depuis v2.2.5)
+   - skip silencieux ⛔ (interdit sur les @mention depuis v0.6.3)
    ↓
 5. persona.js + emotions.js construisent le system prompt
    ↓
@@ -217,7 +220,7 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
    - +5s : init soutien Brainee (statut + ensureSupportChannel)
    - +25s : checkAnecdoteMissed + checkActusMissed (rattrapage)
    - +30s : initChannelDirectory
-   - syncDiscordToFile('Démarrage v2.x.x')
+   - syncDiscordToFile('Démarrage v0.x.y')
 ✅ Bot prêt
 ```
 
@@ -246,7 +249,7 @@ chaque jour 02:00  📚  Cron narratif (analyse 50 messages → 3-4 arcs)
 ### 5.1 💬 Conversations ambiantes
 **Fichiers :** `features/conversations.js` · `bot/channelIntel.js` · `crons.js`
 
-Brainee parle d'elle-même, sans qu'on lui demande. Elle choisit le salon le plus calme, demande à Claude un sujet pertinent au vibe du salon, et poste. Si quelqu'un répond, elle continue (replyCron toutes les 45 min depuis v2.2.5).
+Brainee parle d'elle-même, sans qu'on lui demande. Elle choisit le salon le plus calme, demande à Claude un sujet pertinent au vibe du salon, et poste. Si quelqu'un répond, elle continue (replyCron toutes les 45 min depuis v0.6.3).
 
 ### 5.2 📖 Anecdote quotidienne
 **Fichiers :** `features/anecdotes.js` · `crons.js` · `ai/claude.js`
@@ -261,7 +264,7 @@ Cron à 9h30. Si l'anecdote a été manquée (bot offline), `checkAnecdoteMissed
 ### 5.4 📱 TikTok Live Watcher
 **Fichiers :** `features/tiktok.js` · `crons.js`
 
-Check toutes les 2 min. Depuis **v2.2.9** :
+Check toutes les 2 min. Depuis **v0.7.3** :
 - timeout 15 s sur `connect()` via `Promise.race`
 - nettoyage des écouteurs (`removeAllListeners()` + `disconnect()`) sur fail
 - garde-fou : si `liveActive` est true depuis > 12 h, reset forcé
@@ -272,7 +275,7 @@ Quand un live démarre → embed riche (thumbnail, viewers, bouton). Quand il s'
 ### 5.5 🌅 Greetings (matin / midi / soir / nuit)
 **Fichiers :** `features/greetings.js` · `bot/adaptiveSchedule.js`
 
-Depuis **v2.2.5** : matin **varié** (pas que café/somnolent), demande aux gens leurs plans du jour, charge les 30 derniers messages pour capter l'ambiance.
+Depuis **v0.6.3** : matin **varié** (pas que café/somnolent), demande aux gens leurs plans du jour, charge les 30 derniers messages pour capter l'ambiance.
 
 ### 5.6 🚧 Drift detection
 **Fichiers :** `features/drift.js` · `bot/channelIntel.js`
@@ -321,7 +324,7 @@ Cron quotidien à 02:00 — Claude analyse les 50 derniers messages serveur et e
 ### 5.13 🤔 Decision logic (autonomie de refus)
 **Fichiers :** `features/decisionLogic.js`
 
-Brainee peut refuser de répondre si `mentalLoad > 80` + vibe `introvert`/`lazy`, ou si redondance de sujet. ⚠️ Depuis **v2.2.5**, **jamais en silence sur les @mentions** : elle répond avec délai et signale par un emoji contextuel (😒/😴/👀/🔕/💤).
+Brainee peut refuser de répondre si `mentalLoad > 80` + vibe `introvert`/`lazy`, ou si redondance de sujet. ⚠️ Depuis **v0.6.3**, **jamais en silence sur les @mentions** : elle répond avec délai et signale par un emoji contextuel (😒/😴/👀/🔕/💤).
 
 ### 5.14 ✨ Reaction scan passif
 **Fichiers :** `crons.js` (reactionScanCron) · `bot/reactions.js`
@@ -346,12 +349,12 @@ Embed personnalisé à l'arrivée + auto-rôle configurable depuis le dashboard.
 
 File d'attente de réponses programmées au lendemain (vibe `defer_tomorrow`). `postRelanceMention` charge les 30 derniers messages avant de répondre — Brainee ne perd plus le fil.
 
-### 5.18 📖 Mémoire narrative par membre (v2.3.4)
+### 5.18 📖 Mémoire narrative par membre (v0.8.0)
 **Fichiers :** `db/memberStories.js`
 
 Brainee se souvient des sujets importants, blagues internes et moments marquants pour chaque personne. Ces souvenirs sont injectés dans ses prompts quand elle parle à ce membre — elle ne repart plus de zéro à chaque conversation.
 
-### 5.19 💎 VIP System (v2.3.4)
+### 5.19 💎 VIP System (v0.8.0)
 **Fichiers :** `db/vipSystem.js`
 
 Quatre tiers basés sur le score de bond :
@@ -362,12 +365,12 @@ Quatre tiers basés sur le score de bond :
 
 Le tier influence la fréquence des callbacks proactifs et la profondeur des réponses.
 
-### 5.20 🎯 Taste profile (v2.3.4)
+### 5.20 🎯 Taste profile (v0.8.0)
 **Fichiers :** `db/tasteProfile.js`
 
 Goûts, genres préférés, vibes et sujets à éviter détectés automatiquement au fil des conversations. Brainee s'en sert pour personnaliser ses anecdotes, suggestions et sujets de conversation.
 
-### 5.21 ⚡ Proactive Outreach (v2.3.5)
+### 5.21 ⚡ Proactive Outreach (v0.8.1)
 **Fichiers :** `features/proactiveOutreach.js`
 
 Initiative spontanée de Brainee sans qu'on lui demande quoi que ce soit. Quatre types :
@@ -376,12 +379,12 @@ Initiative spontanée de Brainee sans qu'on lui demande quoi que ce soit. Quatre
 - **Callback VIP** : elle repense à quelque chose qu'un Superfan lui a dit
 - **Défi créatif** : elle propose un mini-défi thématique au salon
 
-### 5.22 🔁 HyperFocus (v2.3.5)
+### 5.22 🔁 HyperFocus (v0.8.1)
 **Fichiers :** `bot/hyperFocus.js` · `features/hyperFocusRevisit.js`
 
 Brainee détecte quand elle (ou un salon) est en mode hyperfocus sur un sujet. Elle programme un retour différé (2-14 h plus tard) pour relancer la discussion au moment opportun — même si le salon est passé à autre chose.
 
-### 5.23 🎭 Emotion Combos (v2.3.5)
+### 5.23 🎭 Emotion Combos (v0.8.1)
 **Fichiers :** `bot/emotionCombos.js`
 
 États combinés qui créent des comportements nuancés :
@@ -390,19 +393,19 @@ Brainee détecte quand elle (ou un salon) est en mode hyperfocus sur un sujet. E
 - `grumpy+curieuse` → pose des questions un peu cash
 - etc.
 
-### 5.24 🤍 Vulnerability Windows (v2.3.5)
+### 5.24 🤍 Vulnerability Windows (v0.8.1)
 **Fichiers :** `bot/vulnerability.js`
 
 Fenêtres où Brainee s'autorise à montrer sa fatigue ou sa surcharge. Si un membre répond avec du soutien → boost significatif du bond. Quotas stricts pour éviter l'effet dramatique répétitif.
 
-### 5.25 📌 Extended Permissions (v2.3.5)
+### 5.25 📌 Extended Permissions (v0.8.1)
 **Fichiers :** `features/extendedPermissions.js`
 
 Pins intelligents (Brainee peut épingler des messages notables) et mini-sondages Discord. Tout est soumis à des quotas journaliers stricts pour ne pas spam.
 
 ---
 
-### 5.26 💬 DM Outreach (v2.3.7)
+### 5.26 💬 DM Outreach (v0.8.6)
 **Fichiers :** `features/dmOutreach.js`, `discord/events.js`, `features/proactiveOutreach.js`
 
 Brainee peut désormais initier ou rejoindre une conversation en message privé selon trois scénarios :
@@ -454,7 +457,7 @@ Modèle par défaut : `claude-opus-4-7`.
 #### 6.3 MongoDB
 Connexion async dans `src/db/index.js`, exposée via `shared.mongoDb`. Toutes les routes vérifient `if (!shared.mongoDb)` avant de requêter — pas de crash si la DB est down, juste un fallback gracieux.
 
-### Le flux d'une réponse à @mention (v2.2.5+)
+### Le flux d'une réponse à @mention (v0.6.3+)
 
 ```
 MESSAGE: "@Brainee t'en penses quoi de Zelda ?"
@@ -519,7 +522,7 @@ COUCHE 1 — TEMPÉRAMENT          (rare, base)
 COUCHE 2 — ÉTATS INTERNES       (sliders persistants)
   → energy, socialNeed, calmNeed, stimulation,
     mentalLoad, recognitionNeed     (0-100, modifiables depuis l'admin live)
-  → décroissance lente : ~18-24h depuis v2.2.2
+  → décroissance lente : ~18-24h depuis v0.6.0
   → résidus 15-20% : une émotion vive ne disparaît jamais à 100%
 
 COUCHE 3 — ÉMOTIONS VIVES       (au moment, contextuelles)
@@ -587,16 +590,16 @@ Modifiables en direct depuis le dashboard (`POST /api/admin/state`) :
 
 Sans ça, n'importe qui connaissant le port pouvait déclencher des appels Claude payants en boucle.
 
-### Logs explicites (v2.2.6 — étendu v2.3.5)
-Tous les `.catch(() => {})` critiques → `pushLog('ERR', message, 'error')`. Depuis v2.3.5, les logs de démarrage (`server.listen`, `discord.login`, `clientReady`) passent aussi par `pushLog` — visibles dans le dashboard. Plus aucun message silencieux.
+### Logs explicites (v0.7.0 — étendu v0.8.1)
+Tous les `.catch(() => {})` critiques → `pushLog('ERR', message, 'error')`. Depuis v0.8.1, les logs de démarrage (`server.listen`, `discord.login`, `clientReady`) passent aussi par `pushLog` — visibles dans le dashboard. Plus aucun message silencieux.
 
-### Robustesse JSON (v2.3.5)
+### Robustesse JSON (v0.8.1)
 `extractJson()` dans `src/utils.js` nettoie les blocs markdown avant tout `JSON.parse`. `enrichChannelMemory` utilise `extractJson` + try/catch avec message d'erreur explicite incluant les 150 premiers caractères de la réponse. Plus de crash silencieux sur les réponses Claude mal formées.
 
-### Trust proxy (v2.3.5)
+### Trust proxy (v0.8.1)
 `app.set('trust proxy', 1)` ajouté dans `server.js` pour que `express-rate-limit` lise correctement l'IP réelle derrière un reverse proxy (Railway, etc.) — évite le blocage de toutes les requêtes sur le même bucket.
 
-### TikTok robustness (v2.2.9)
+### TikTok robustness (v0.7.3)
 - **timeout 15s** sur `connect()` via `Promise.race`
 - **nettoyage écouteurs** (`removeAllListeners` + `disconnect`) sur connexion ratée
 - **garde-fou liveActive** : reset forcé après 12 h coincé en `true`
@@ -608,7 +611,7 @@ Ring buffer 500 entrées, exposé via `GET /api/audit` et stream `auditUpdate` e
 ### Backups sécurisés
 `safeBackupName()` rejette tout nom n'ayant pas le préfixe `backup_` + extension `.json`, ou contenant `..`, `/`, `\` — pas de path traversal possible.
 
-### Vulnérabilités npm (v2.2.8)
+### Vulnérabilités npm (v0.7.2)
 12/14 corrigées. Les 2 résiduelles concernent la chaîne TikTok upstream et sont documentées.
 
 ---
@@ -617,7 +620,7 @@ Ring buffer 500 entrées, exposé via `GET /api/audit` et stream `auditUpdate` e
 
 URL : `http://localhost:3000` — frontend vanilla, pas de bundler.
 
-### Architecture frontend (depuis v2.3.1)
+### Architecture frontend (depuis v0.7.5)
 
 ```
 public/
@@ -817,7 +820,7 @@ public/
 npm test
 ```
 
-### CI GitHub Actions (`v2.3.3`)
+### CI GitHub Actions (`v0.7.7`)
 
 `.github/workflows/tests.yml` — déclenchée sur :
 - chaque `push` (toutes branches)
@@ -1012,12 +1015,12 @@ Sortie attendue :
 🔍 DISCORD_TOKEN: true | MONGODB_URI: true
 [HH:MM:SS] [SYS] 🌐 Serveur démarré sur le port 3000
 [HH:MM:SS] [SYS] ✅ Login Discord OK
-[HH:MM:SS] [SYS] 🧠 BRAINEXE v2.3.5 — Bot : Brainee#1234
+[HH:MM:SS] [SYS] 🧠 BRAINEXE v0.8.1 — Bot : Brainee#1234
 [HH:MM:SS] [SYS] ⏰ Slot : 🎮 Gaming | 🎭 Humeur : Chill | 🎨 Vibe : chatty
 [HH:MM:SS] [SYS] 🌐 Dashboard : http://localhost:3000
 ```
 
-> Depuis v2.3.5 les messages de démarrage passent par `pushLog` — ils apparaissent aussi dans l'onglet 📜 Logs du dashboard.
+> Depuis v0.8.1 les messages de démarrage passent par `pushLog` — ils apparaissent aussi dans l'onglet 📜 Logs du dashboard.
 
 ### Tests
 
@@ -1062,10 +1065,10 @@ npm test
 Le `claudeLimiter` te bloque. Attends 1 min ou fais moins d'actions IA.
 
 ### ❌ Salon soutien re-créé à chaque déploiement
-Résolu en **v2.2.4** : `channels.json` versionné + scan des 50 derniers messages au boot. Si ça se reproduit, supprimer `supportEmbedMessageId` dans `src/config/channels.json` et laisser Brainee re-scanner.
+Résolu en **v0.6.0** : `channels.json` versionné + scan des 50 derniers messages au boot. Si ça se reproduit, supprimer `supportEmbedMessageId` dans `src/config/channels.json` et laisser Brainee re-scanner.
 
 ### ❌ TikTok Live coincé en `online`
-Résolu en **v2.2.9** : garde-fou 12 h. Sinon `POST /api/admin/tiktok { live: false }`.
+Résolu en **v0.7.3** : garde-fou 12 h. Sinon `POST /api/admin/tiktok { live: false }`.
 
 ### ❌ Ma vibe est nulle aujourd'hui
 `POST /api/admin/mood/reroll` ou bouton "Re-tirer" dans la section 🎛️ Admin live.
@@ -1104,7 +1107,7 @@ Non — heuristiques + état persistant + injection dans le prompt. Mais le rés
 Volonté assumée : pas de bundler, pas de build, ouvre `index.html` et ça marche. Les 21 modules tiennent ensemble par le scope global.
 
 **Q. Pourquoi des routes éclatées ?**
-Avant v2.3.0, `routes.js` faisait 430 lignes. Naviguer/modifier devenait pénible. Découpé par thème pour qu'on trouve sans fouiller.
+Avant v0.7.4, `routes.js` faisait 430 lignes. Naviguer/modifier devenait pénible. Découpé par thème pour qu'on trouve sans fouiller.
 
 **Q. Combien ça coûte par mois ?**
 Affiché dans la section 💰 Soutien : ~4.6€ serveur + ~22€ Claude (peut varier).
@@ -1116,7 +1119,7 @@ Oui techniquement, mais ils partageraient `botConfig` et MongoDB — à adapter.
 
 ## ✨ Fin
 
-Tu as la **BIBLE COMPLÈTE** du projet à la version **2.3.7**.
+Tu as la **BIBLE COMPLÈTE** du projet à la version **0.9.17**.
 Tu sais :
 - ce que Brainee fait, et pourquoi elle le fait comme ça
 - comment les pièces s'assemblent (Discord, Claude, Mongo, dashboard)

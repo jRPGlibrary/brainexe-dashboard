@@ -308,7 +308,7 @@ function startConvCron() {
     scanForPinCandidates().catch(err => pushLog('ERR', `pinScan: ${err.message}`, 'error'));
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v2.6.0 — reply 45min + scan 20min + relances + émotions + bonds + narrative + outreach 35min (proba 8%) + hyperFocus 25min + vuln 1h + pin 90min`, 'success');
+  pushLog('SYS', `✅ Crons v0.9.17 — reply 45min + scan 20min + relances + émotions + bonds + narrative + outreach 35min (proba 8%) + hyperFocus 25min + vuln 1h + pin 90min`, 'success');
 }
 
 function slot_is_active(h) {

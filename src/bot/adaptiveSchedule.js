@@ -1,4 +1,4 @@
-// Adaptive scheduling v2.1.0
+// Adaptive scheduling v0.2.6
 // Chaque jour Brainee "génère" sa journée :
 // - une vibe globale (chatty / introvert / impulsive / lazy ...)
 // - des horaires flottants (morning ≠ 9h00 pile, varie ±25 min)

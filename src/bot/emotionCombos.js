@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🎭 EMOTION COMBOS v2.3.5
+ * 🎭 EMOTION COMBOS v0.8.1
  * ================================================
  * Détecte des combinaisons spécifiques d'états internes + émotions actives,
  * et produit des descriptions plus fines / nuancées que les états isolés.

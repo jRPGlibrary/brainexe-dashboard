@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 💬 DM OUTREACH v2.3.7
+ * 💬 DM OUTREACH v0.8.6
  * ================================================
  * Passage en DM entre Brainee et un membre, dans trois scénarios :
  *
