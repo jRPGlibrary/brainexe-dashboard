@@ -8,7 +8,58 @@ Toutes les versions notables du projet, **renumérotées** pour suivre [SemVer](
 
 ---
 
-## 🏆 v0.9.17 — TikTok live dynamique (état actuel)
+## 🎯 v0.10.0 — Brainee humanization & vision (état actuel)
+**Date :** 2026-05-03
+**Commit :** `7073397eb8ab0becdbcf2ac54cb982789314b4a9`
+**PR :** [#50](https://github.com/jRPGlibrary/brainexe-dashboard/pull/50)
+
+### 🖼️ Image Vision Support (NEW)
+- Brainee peut voir et commenter naturellement les images envoyées
+- Supports: PNG, JPEG, WebP, GIF (max 3 par message)
+- Commentaires conversationnels, jamais analytiques
+- `extractImageAttachments()` / `buildMultimodalUserContent()` / `getImageCommentInstruction()`
+
+### 💝 Bond System Integration
+- L'attachement émotionnel affecte désormais la personnalité et le ton
+- 4 tiers: Formel → Neutre → Décontracté → Libre (slang/taquinerie)
+- Injecté dans tous les prompts pour garantir la cohérence
+
+### 🤐 Anti-Monologue System
+- Détecte quand Brainee parle seule dans un canal (≥50% messages bot)
+- Bloque les relances dans les canaux morts (24h no-insist window)
+- `isMonologueChannel()` / `countConsecutiveBotPosts()` checks
+
+### 📏 Smart Token Allocation
+- `getContextualMaxTokens()` adapte la longueur au contenu
+- Détecte questions + keywords (aide, comment, problème, etc.)
+- Économie significative: contexte adapté au lieu de limites fixes
+
+### 🎯 Time-Based Greeting Variety (NEW)
+- `greetingVariants.js`: Seed bank pour morning, lunch, goodnight, night wakeup
+- Variations par heure (5-7h zombie, 7-9h coffee, 9-11h already-going, etc.)
+- Tracking du dernier seed = zéro répétition garantie
+- Tous: max 1-2 phrases, ~30 mots
+
+### 🔗 Bidirectional Context Linking
+- Messages DM enrichis avec contexte serveur récent
+- Messages serveur liés aux DMs récents
+- Timestamps humanisés (il y a Xmin/Xh/Xj) pour naturel
+- `enrichDMWithServerContext()` / `enrichServerWithDmContext()`
+
+### ✨ Occasional Emoji Support
+- ~10% messages serveur, ~15% DMs
+- Insertion probabiliste avec déduplications
+- Jamais 2 emojis, skip des URLs
+
+### 📊 Stats
+- **13 fichiers modifiés/créés** (2 nouveaux, 11 updates)
+- **100% backward compatible**
+- **Tous les fichiers validés** (`node --check`)
+- **Prêt production**
+
+---
+
+## 🏆 v0.9.17 — TikTok live dynamique
 **Date :** 2026-05
 **Commit racine :** `a3e0ab2`
 
