@@ -1,10 +1,10 @@
 # 📜 Changelog — BrainEXE Dashboard
 
-Toutes les versions notables du projet, **renumérotées** pour suivre [SemVer](https://semver.org/lang/fr/) et raconter une vraie histoire de release.
+Toutes les versions notables du projet, de la naissance (**v0.0.1**, 12 mars 2026) à aujourd'hui (**v0.10.1**), suivant [SemVer](https://semver.org/lang/fr/) en mode pre-1.0.
 
-> **À propos de la renumérotation :** L'historique avait dérivé sur des numéros incohérents (v2.x.x avec downgrades, bumps trop rapides). Cette renumérotation v0.2.5 → v0.9.17 reconstruit une chronologie propre. La **v1.0.0 est réservée** pour la future release stable finale (à figer plus tard).
+> **À propos de la numérotation :** Le projet a d'abord utilisé les noms `v1.x.x` puis `v2.x.x` (mars–avril 2026). En mai 2026, une renumérotation SemVer propre a tout réaligné sous `v0.x.y` avec `v0.0.1` comme vrai point de départ. Les versions `v0.0.1 → v0.2.4` correspondent à l'ère v1.x–v2.0.8 ; `v0.2.5` et au-delà étaient déjà dans la numérotation courante. La **v1.0.0 est réservée** pour la future release stable finale.
 >
-> Les anciens commentaires inline `// v2.X.X` dans le code source sont conservés à titre d'archive historique (annotations d'origine). Le tableau de correspondance ci-dessous permet de retrouver ce qui correspond à quoi.
+> Les anciens commentaires inline `// v2.X.X` dans le code source sont conservés à titre d'archive historique. Le tableau de correspondance en fin de fichier permet de retrouver ce qui correspond à quoi.
 
 ---
 
@@ -605,13 +605,307 @@ Toutes les versions notables du projet, **renumérotées** pour suivre [SemVer](
 
 ---
 
-## 🌱 v0.2.5 — Toute première mouture (humanize AI)
-**Commits :** `b3301e3` (et antérieurs hors fenêtre git visible)
+## 💜 v0.2.5 — Âme de Brainee (humanize AI)
+**Commits :** `b3301e3`
+**Ex-version :** v2.0.9
 
-### 🎯 Point de départ officiel
-- Première version embryonnaire du dashboard
-- Humanisation des réponses IA de base
-- Fondations : Express + WebSocket + Discord.js v14 + Claude
+### ✨ Ajouts
+- `emotions.js` : tempérament stable · états internes (energy, socialNeed, mentalLoad…) · stack d'émotions vives avec decay horaire
+- `memberBonds.js` : liens affectifs par membre (baseAttachment, baseTrust, trajectory 14j, keyMoments) · oubli naturel ~60j
+- `humanize.js` : filtre d'humanisation — relax_filter · accent_drop · slang_injection · activé selon état émotionnel + bond membre
+- Intégration dans `messaging.js` : `sendHuman()` applique le filtre contextuellement
+- `emotionHourlyCron` (decay) + `emotionDailyCron` (bonds journaliers)
+
+---
+
+## 🔧 v0.2.4 — Bump version + nettoyage inline
+**Date :** 2026-04-18
+**Ex-version :** — (entre v2.0.6 et v2.0.7)
+
+### 🔧 Maintenance
+- Synchronisation du numéro de version v2.0.6 dans tous les modules (`package.json`, `crons.js`, README)
+- Nettoyage des commentaires inline obsolètes
+
+---
+
+## 📰 v0.2.3 — GNews API
+**Date :** 2026-04-18
+**Ex-version :** v2.0.8
+
+### ✨ Ajouts
+- Intégration GNews API : vraies actus gaming (fenêtre 40j, français puis anglais en fallback)
+- Déduplication par URL en MongoDB (max 100 URLs stockées)
+- Claude reformate les news réelles dans le style Brainee
+- Fallback sur Claude pur si GNews ne retourne rien
+- Variable d'env `GNEWS_API_KEY` requise
+
+---
+
+## 🎭 v0.2.2 — Planning adaptatif + Agency
+**Date :** 2026-04-18
+**Ex-version :** v2.0.7
+
+### ✨ Ajouts
+- Adaptive Schedule : 8 types de vibes quotidiennes (chill, hyperactive, calm, social…)
+- Horaires flottants ±20-45 min — Brainee ne poste plus à heure pile robotique
+- Agency : peut skip, différer au lendemain (10-12h), ou répondre vite si urgence
+- Détection automatique de l'urgence (keywords + heuristique)
+- `NO_TAG_CLAUSE` / `LIGHT_TAG_CLAUSE` — max 1 tag par message
+- `resolveMentionsInText()` réécrit : Unicode + fuzzy matching + diacritiques
+
+---
+
+## 💰 v0.2.1 — Prompt caching Anthropic
+**Date :** 2026-04-18
+**Ex-version :** — (entre grand refacto et v2.0.7)
+
+### ✨ Optimisations
+- Caching des personas (`BOT_PERSONA`, `BOT_PERSONA_CONVERSATION`, `BOT_PERSONA_DM`)
+- Header `anthropic-beta: prompt-caching-2024-07-31`
+- ~90 % moins cher sur les tokens d'entrée quand le cache est chaud
+
+---
+
+## 🏗️ v0.2.0 — Grand refacto
+**Date :** 2026-04-18
+**Ex-version :** — (PR#1, split server.js)
+
+### 🧱 Refactor majeur
+- `server.js` 2021 lignes → **125 lignes** (point d'entrée minimal)
+- **34 modules** extraits dans `src/` : shared · config · utils · logger · db/ · ai/ · bot/ · features/ · discord/ · api/ · crons
+- Zéro comportement modifié — pure extraction de responsabilités
+- Rend possible de modifier une feature sans risquer de casser le reste
+
+---
+
+## 🏛️ v0.1.6 — Discipline Salon
+**Date :** 2026-04-15
+**Ex-version :** v2.0.6
+
+### ✨ Ajouts
+- `channelDirectory` : nouvelle collection MongoDB — description officielle de chaque salon
+- `initChannelDirectory()` : lit le premier message fondateur au boot (délai 30s), résume via Claude, persiste
+- **16 catégories** : general-social · tdah-neuro · humour-chaos · off-topic · creative · music-focus · focus · ia-tools · dev-tools · creative-visual · nostalgie · lore · jrpg · retro · indie · rpg · gaming-core
+- `getChannelIntentBlock()` : contrainte d'écriture absolue injectée dans toutes les fonctions IA
+- Humeur hyperfocus = "va loin dans le vrai thème du salon" (plus de biais gaming automatique)
+- Threads Discord : engagement humain requis + 11 salons autorisés uniquement
+- Fix embeds TikTok : valeurs numériques correctement castées en String
+
+---
+
+## 💌 v0.1.5 — DMs + résolution mentions
+**Date :** 2026-04-14
+**Ex-version :** v2.0.5
+
+### ✨ Ajouts
+- Intents `DIRECT_MESSAGES` activés
+- `dmHistory` MongoDB : historique DM persistant 30 messages max
+- `BOT_PERSONA_DM` : ton spécial DM (plus intime, posé, à l'écoute)
+- Fragmentation 15 % en DM (plus douce qu'en serveur)
+- `resolveMentionsInText()` : `@Pseudo → <@id>` et `#salon → <#id>` partout
+
+---
+
+## ⏰ v0.1.4 — Delayed Reply after emoji
+**Date :** 2026-04-13
+**Ex-version :** v2.0.4
+
+### ✨ Ajouts
+- 10 % de chance : Brainee met juste un emoji sans répondre
+- Elle revient 15-45 min plus tard avec une excuse contextuelle selon l'heure :
+  - *"j'étais sur un boss, IMPOSSIBLE de répondre à ce moment précis 😭"*
+  - *"j'avais la bouche pleine sérieusement 😂"*
+- Rend Brainee ultra-humaine (personne ne répond instantanément à 100 %)
+
+---
+
+## 🧠 v0.1.3 — Channel Memory + Thematic Drift
+**Date :** 2026-04-12
+**Ex-version :** v2.0.3
+
+### ✨ Ajouts
+- `channelMemory` MongoDB : mémoire vivante par salon (toneProfile, frequentThemes, insideJokes, heatLevel, offTopicTolerance)
+- `enrichChannelMemory()` : analyse Claude en background toutes les 6h
+- `detectThematicDrift()` : score de dérive 1-10 sur les 30 derniers messages
+- `handleDrift()` : 4 niveaux observe → suggest (70 %) → redirect (20 %) → moderate (10 %)
+- Drift check cron toutes les 3h sur les 5 salons les plus actifs
+
+---
+
+## ❤️ v0.1.2 — Full Human Update
+**Date :** 2026-04-13
+**Ex-version :** v2.0.2
+
+### ✨ Ajouts
+- Persona étendue : films (sci-fi/thriller/horreur), musique (K-pop/metal/OST), manga, bouffe
+- `simulateTyping()` avant chaque réponse — Discord affiche "Brainee est en train d'écrire…"
+- `sendHuman()` : 20 % de chance de fragmenter en 2 messages avec pause 1-3s
+- Réactions emoji autonomes : 10 % réaction seule / 25 % réaction + texte
+- `refreshDailyMood()` : humeur tirée chaque matin (énergique/chill/hyperfocus/zombie)
+- 5 % de chance d'ignorer une reply — comportement humain volontaire
+- Fix YouTube : `extractYoutubeQuery()` via Claude avant l'appel API
+
+---
+
+## 🧵 v0.1.1 — Threads automatiques
+**Date :** 2026-04-12
+**Ex-version :** v2.0.1
+
+### ✨ Ajouts
+- `shouldCreateThread()` + `THREAD_TRIGGERS` : 50+ jeux détectés (Castlevania, Persona, Hollow Knight…)
+- Thread auto sur anecdotes (nom généré par Claude)
+- Thread auto sur lance-convs si jeu précis détecté
+- `formatContext()` enrichi : `[↩ répond à X: "preview…"]` au lieu de `[↩ reply]`
+
+---
+
+## 📅 v0.1.0 — Human Planning
+**Date :** 2026-04-12
+**Ex-version :** v2.0.0
+
+### ✨ Ajouts
+- 3 grilles horaires : `WEEKDAY_SLOTS` / `SATURDAY_SLOTS` / `SUNDAY_SLOTS`
+- 8 tranches : dort 01h-09h · réveil mou · active · pause déj · productive · transition · gaming · hyperfocus
+- Délais de réponse adaptés à chaque tranche via `getCurrentSlot()`
+- `postMorningGreeting()` · `postLunchBack()` · `postGoodnight()` · `postNightWakeup()`
+- maxPerDay 5→16 / MIN_GAP 30→15 min
+
+---
+
+## 💾 v0.0.10 — MongoDB State Migration
+**Date :** 2026-04-11
+**Ex-version :** v1.9.0
+
+### ✨ Ajouts
+- `getBotState()` / `setBotState()` : état bot persistant entre redeploys Railway
+- Quotas conversations, anti-doublon anecdotes/actus — plus jamais perdus au redémarrage
+- `checkAnecdoteMissed()` / `checkActusMissed()` async : vérifient MongoDB avant rattrapage
+- Boot non-bloquant avec délai 25s
+- **Règle d'or apprise** : tout ce qui doit survivre sur Railway va dans MongoDB
+
+---
+
+## 🗃️ v0.0.9 — Brainee LevelUP — MongoDB profils membres
+**Date :** 2026-04-10
+**Ex-version :** v1.8.0
+
+### ✨ Ajouts
+- MongoDB Atlas : profils membres persistants (première base de données du projet)
+- `toneScore` 1-10 évolutif (+0.15 emoji rire · +0.10 msg long · -0.05 très court)
+- 3 niveaux de ton : 1-3 chaleureux / 4-6 ironie légère / 7-10 piques assumées
+- Garde-fou sujets sensibles : ton doux forcé quel que soit le score
+- `BOT_PERSONA_CONVERSATION` : persona dédiée aux interactions directes
+- `formatContext()` : identification précise des speakers + résolution @mentions
+- Route API `/api/members/profiles`
+
+---
+
+## ✨ v0.0.8 — Special Optimisation
+**Date :** 2026-04-09
+**Ex-version :** v1.7.0
+
+### ✨ Ajouts
+- **TikTok Live → Discord** : détection 2 min · embed démarrage (hook Claude, viewers, lien) · embed fin (durée, pic viewers, likes, top gifts)
+- **@Brainee mention directe** : YouTube Data API v3 · fetch 20 messages de contexte · typing indicator
+- Anecdotes multi-salon : routing thématique 7 salons
+- `canReply` enrichi : fetch 15 messages avant réponse spontanée
+- Renommage complet **Brainy.exe → Brainee** dans tout le codebase
+
+---
+
+## 🚀 v0.0.7 — Modes par catégorie
+**Date :** 2026-04-09
+**Ex-version :** v1.6.0
+
+### ✨ Ajouts
+- `CATEGORY_MODES` : 11 catégories d'injection spécifiques (general · tdah · humour · rpg · jrpg · retro · gaming · indie · creative · focus · dev)
+- Plus de mode "générique" : Brainee parle vraiment le langage du salon
+- Fix des chaînes JS avec apostrophes françaises dans les prompts Claude
+
+---
+
+## 🎭 v0.0.6 — Reaction Roles natifs
+**Date :** 2026-04-08
+**Ex-version :** v1.5.0
+
+### ✨ Ajouts
+- Reaction Roles géré **nativement** par BrainEXE — Carl-bot retraité
+- `GuildMessageReactions` + Partials activés (détection sur messages existants)
+- 10 emojis → 10 rôles configurés (📱🧠💜💻⚔️🕹️🌿🚀🔔👁️)
+- Page dashboard Reaction Roles entièrement refaite
+- Config persistante dans `brainexe-config.json`
+- Toggle ON/OFF + Message ID éditable depuis le dashboard
+
+---
+
+## 🦊 v0.0.5 — Persona Brainee
+**Date :** 2026-04-06
+**Ex-version :** v1.4.0
+
+### ✨ Ajouts
+- **Création du personnage Brainee** : fille 24 ans, internet native, gaming hardcore
+- `BOT_PERSONA` injectée dans tous les prompts IA
+- 4 modes de conversation : `débat` · `chaos` · `deep` · `simple` (tirés au sort)
+- Style naturel, oral, jamais corporate, toujours en tutoiement
+- Comportement adapté par salon et par sujet
+- Formée par Brain (Matthieu) — toute sa culture gaming + regard moderne
+
+---
+
+## ⚙️ v0.0.4 — Automatisations avancées
+**Date :** 2026-03-31
+**Ex-version :** v1.3.0
+
+### ✨ Ajouts
+- Actus bi-mensuelles : le 1er et le 15 de chaque mois, étalées sur 12h
+- `lastPostedSlots[]` : anti-doublon robuste par slot
+- Lance-conversations : cible le salon le plus calme en priorité
+- `canReply` : le bot répond aux conversations des membres
+- Rate limit global 30 min entre tout post du bot
+- Rattrapage automatique au boot si cron manqué pendant un redeploy
+- Fix timezone Paris partout
+
+---
+
+## 🖥️ v0.0.3 — Dashboard complet
+**Date :** 2026-03-19
+**Ex-version :** v1.2.0
+
+### ✨ Ajouts
+- Pages complètes : **Members** · **Channels** · **Roles** · **Auto-Role** · **Welcome** · **Logs** · **Backups** · **Settings**
+- Modération membres : modification rôles, timeout, kick, ban
+- Posts manuels avec raccourcis par catégorie de salon
+- Navigation mobile avec bottom nav bar + bouton ⋯ Plus
+- Dashboard responsive (mobile ET tablette)
+
+---
+
+## 🔄 v0.0.2 — Sync bidirectionnel
+**Date :** 2026-03-18
+**Ex-version :** v1.1.0
+
+### ✨ Ajouts
+- Sync temps réel Discord ↔ `discord-template.json` (debounce 2s)
+- Watcher chokidar : toute modif du fichier s'applique sur Discord
+- Events Discord → mise à jour automatique du fichier
+- Dashboard WebSocket : logs en direct
+- **Switch Perplexity → Claude Anthropic** pour la génération de contenu IA
+- WebSocket non-bloquant sur Railway
+
+---
+
+## 🌱 v0.0.1 — Les origines
+**Date :** 2026-03-12
+**Ex-version :** v1.0.0
+
+### ✨ C'est parti
+- Bot Discord connecté à Express + WebSocket
+- Première sync Discord → JSON (lecture seule)
+- Dashboard single-file ultra basique
+- Auto-role `👁️ Lurker` à l'arrivée
+- Message de bienvenue automatique
+- Anecdote gaming quotidienne via Claude (12h, délai aléatoire 0-30 min)
+- Fix WebSocket Railway (connexion stable)
 
 ---
 
@@ -619,7 +913,29 @@ Toutes les versions notables du projet, **renumérotées** pour suivre [SemVer](
 
 | Ancienne version | Nouvelle version | Sujet |
 |---|---|---|
-| _avant 2.1.0_ | **v0.2.5** | Humanize AI initial |
+| v1.0.0 | **v0.0.1** | Les origines |
+| v1.1.0 | **v0.0.2** | Sync bidirectionnel |
+| v1.2.0 | **v0.0.3** | Dashboard complet |
+| v1.3.0 | **v0.0.4** | Automatisations avancées |
+| v1.4.0 | **v0.0.5** | Persona Brainee |
+| v1.5.0 | **v0.0.6** | Reaction Roles natifs |
+| v1.6.0 | **v0.0.7** | Modes par catégorie |
+| v1.7.0 | **v0.0.8** | TikTok Live + YouTube |
+| v1.8.0 | **v0.0.9** | MongoDB profils membres |
+| v1.9.0 | **v0.0.10** | MongoDB State Migration |
+| v2.0.0 | **v0.1.0** | Human Planning |
+| v2.0.1 | **v0.1.1** | Threads automatiques |
+| v2.0.2 | **v0.1.2** | Full Human Update |
+| v2.0.3 | **v0.1.3** | Channel Memory + Drift |
+| v2.0.4 | **v0.1.4** | Delayed Reply after emoji |
+| v2.0.5 | **v0.1.5** | DMs + résolution mentions |
+| v2.0.6 | **v0.1.6** | Discipline Salon |
+| (grand refacto) | **v0.2.0** | server.js → 34 modules |
+| (prompt caching) | **v0.2.1** | Prompt caching Anthropic |
+| v2.0.7 | **v0.2.2** | Planning adaptatif + Agency |
+| v2.0.8 | **v0.2.3** | GNews API |
+| (bump v2.0.6) | **v0.2.4** | Cleanup inline |
+| v2.0.9 | **v0.2.5** | Âme de Brainee — humanize AI |
 | v2.1.0 | **v0.2.6** | Sidebar Discord |
 | (sidebar fix) | **v0.2.7** | Sidebar voice channels |
 | (3 themes) | **v0.2.8** | Redesign + 3 thèmes |
