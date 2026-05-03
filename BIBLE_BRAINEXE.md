@@ -1,6 +1,6 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version** : `0.9.17`
+**Version** : `0.10.1`
 **Dernière mise à jour** : Mai 2026
 
 > 🔄 **Note de renumérotation :** le projet a été entièrement renuméroté de l'ancien schéma chaotique (downgrades, bumps incohérents) vers une numérotation SemVer propre `v0.x.y`. Tous les fichiers — racine, source, tests, doc — ont été alignés sur cette numérotation. Voir [CHANGELOG.md](./CHANGELOG.md) pour la table de correspondance complète. La **v1.0.0** est réservée pour la future release stable finale.
