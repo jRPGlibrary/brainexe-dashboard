@@ -213,13 +213,27 @@ async function countConsecutiveBotPosts(channelId, guildChannelResolver) {
 }
 
 function getQuietestChannel() {
+  const ranked = getRankedChannels({ excludeGeneral: false });
+  return ranked[0] || null;
+}
+
+/**
+ * Retourne la liste des salons triés par priorité (plus prioritaire en premier).
+ * Permet de boucler dessus pour tenter plusieurs fallbacks.
+ * - Deep-topic stale (jamais visité ou > 2h) → boostés en tête
+ * - Sinon tri par ancienneté du dernier post (plus vieux en premier)
+ * Si excludeGeneral=true, retire le #général de la liste pour pouvoir l'utiliser
+ * comme ultime fallback séparé.
+ */
+function getRankedChannels({ excludeGeneral = false } = {}) {
   const active = shared.botConfig.conversations.channels.filter(c => c.enabled);
-  if (!active.length) return null;
+  if (!active.length) return [];
+  const filtered = excludeGeneral
+    ? active.filter(c => !/general|général/i.test(c.channelName))
+    : active;
   const last = shared.botConfig.conversations.lastPostByChannel || {};
-  // Sort : salons "topic profond" boostés si non visités récemment (jamais parlé OU > 2h),
-  // sinon tri classique par ancienneté du dernier post.
   const TWO_HOURS = 2 * 60 * 60 * 1000;
-  return [...active]
+  return [...filtered]
     .map(c => {
       const lastTs = last[c.channelId] || 0;
       const isStale = !lastTs || (Date.now() - lastTs) > TWO_HOURS;
@@ -227,12 +241,21 @@ function getQuietestChannel() {
       return { c, sortKey: lastTs + deepBonus };
     })
     .sort((a, b) => a.sortKey - b.sortKey)
-    .map(x => x.c)[0];
+    .map(x => x.c);
+}
+
+/**
+ * Retourne la config du salon #général (safety net pour les fallbacks).
+ */
+function getGeneralChannel() {
+  const active = shared.botConfig.conversations.channels.filter(c => c.enabled);
+  return active.find(c => /general|général/i.test(c.channelName)) || null;
 }
 
 module.exports = {
   getTodayStr, getConvDailyCount, getConvMaxPerDay,
   resetDailyCountIfNeeded, updateConvStats, getQuietestChannel,
+  getRankedChannels, getGeneralChannel,
   isDeepTopicChannel, hasUnansweredLastPost, DEEP_TOPIC_HINTS,
   isChannelDeadThisWeek, resetWeeklyPostCount,
   isMonologueChannel, countConsecutiveBotPosts,

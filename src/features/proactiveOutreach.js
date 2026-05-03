@@ -28,7 +28,7 @@ const { getCurrentSlot } = require('../bot/scheduling');
 const { getDailyVibe } = require('../bot/adaptiveSchedule');
 const { getInternalState, getEmotionalInjection, adjustMaxTokens } = require('../bot/emotions');
 const { sendHuman } = require('../bot/messaging');
-const { getConvDailyCount, getConvMaxPerDay, updateConvStats } = require('./convStats');
+const { getConvDailyCount, getConvMaxPerDay, updateConvStats, getGeneralChannel } = require('./convStats');
 const { detectMissedVips } = require('../db/vipSystem');
 const { getMemberStories, touchStory } = require('../db/memberStories');
 const { fireProactiveDmToVip } = require('./dmOutreach');
@@ -117,27 +117,42 @@ function pickType() {
 }
 
 // ─── SÉLECTION DE SALON ──────────────────────────────────────────
-function pickChannelForType(type) {
+const MAX_OUTREACH_ATTEMPTS = 5;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Retourne une liste rankée de salons candidats pour un type d'outreach,
+ * avec préférence (fun/general selon type) en tête puis le reste shuffle.
+ * Le général est exclu car gardé comme ultime fallback.
+ */
+function pickChannelsForType(type) {
   const cfg = shared.botConfig?.conversations;
-  if (!cfg?.channels?.length) return null;
+  if (!cfg?.channels?.length) return [];
   const active = cfg.channels.filter(c => c.enabled);
-  if (!active.length) return null;
+  if (!active.length) return [];
+  const nonGeneral = active.filter(c => !/general|général/i.test(c.channelName));
 
+  let preferred = [];
   if (type === 'challenge') {
-    // Préfère salons "fun" / "memes-et-chaos" / "off-topic"
-    const fun = active.filter(c =>
-      /general|memes|off-topic|chaos|cerveau|partage/i.test(c.channelName)
-    );
-    if (fun.length) return fun[Math.floor(Math.random() * fun.length)];
+    preferred = nonGeneral.filter(c => /memes|off-topic|chaos|cerveau|partage/i.test(c.channelName));
+  } else if (type === 'group_observation') {
+    preferred = nonGeneral.filter(c => /chaos|off-topic|cerveau/i.test(c.channelName));
   }
+  const rest = nonGeneral.filter(c => !preferred.includes(c));
+  return [...shuffle(preferred), ...shuffle(rest)];
+}
 
-  if (type === 'group_observation') {
-    // Préfère salons généralistes
-    const general = active.filter(c => /general|chaos|off-topic/i.test(c.channelName));
-    if (general.length) return general[Math.floor(Math.random() * general.length)];
-  }
-
-  return active[Math.floor(Math.random() * active.length)];
+// Compat : ancienne signature (premier élément de la liste rankée).
+function pickChannelForType(type) {
+  return pickChannelsForType(type)[0] || null;
 }
 
 // ─── BUILDERS DE PROMPT ─────────────────────────────────────────
@@ -194,14 +209,27 @@ async function fireOutreach(forcedType = null) {
     return ok;
   }
 
-  let channelCfg = pickChannelForType(type);
-  if (!channelCfg) return false;
-
-  // Vérifier que le salon a eu au moins 3 messages humains dans la dernière heure
-  const hasActivity = await hasChannelActivity(channelCfg.channelId, 3, 1);
-  if (!hasActivity) {
-    pushLog('SYS', `🤐 Outreach skip : activité insuffisante dans #${channelCfg.channelName}`);
-    return false;
+  // Boucle sur jusqu'à MAX_OUTREACH_ATTEMPTS salons candidats — si tous sont calmes,
+  // on tente le général en mode "tout et rien" comme safety net.
+  const candidates = pickChannelsForType(type).slice(0, MAX_OUTREACH_ATTEMPTS);
+  let channelCfg = null;
+  let isFallback = false;
+  let skippedCount = 0;
+  for (const c of candidates) {
+    if (await hasChannelActivity(c.channelId, 3, 1)) { channelCfg = c; break; }
+    pushLog('SYS', `🤐 Outreach skip #${c.channelName} : activité insuffisante`);
+    skippedCount++;
+  }
+  if (!channelCfg) {
+    const general = getGeneralChannel();
+    if (general && await hasChannelActivity(general.channelId, 2, 2)) {
+      channelCfg = general;
+      isFallback = true;
+      pushLog('SYS', `🔁 Outreach fallback général après ${skippedCount} skip(s)`);
+    } else {
+      pushLog('SYS', `🤐 Outreach abandonné : ${skippedCount} salons calmes + général idem`);
+      return false;
+    }
   }
 
   const mood = refreshDailyMood();
@@ -248,7 +276,11 @@ async function fireOutreach(forcedType = null) {
     const channel = guild.channels.cache.get(channelCfg.channelId);
     if (!channel) return false;
 
-    const prompt = buildPromptForType(type, {
+    // En fallback général, sauf pour vip_callback (qui reste pertinent partout),
+    // on bascule sur random_thought : parler de tout et rien naturellement.
+    const promptType = (isFallback && type !== 'vip_callback') ? 'random_thought' : type;
+
+    const prompt = buildPromptForType(promptType, {
       mood, vibe,
       channelName: channelCfg.channelName,
       channelTopic: channelCfg.topic,
@@ -270,7 +302,8 @@ async function fireOutreach(forcedType = null) {
       await touchStory(targetUserId, touchedStoryId);
     }
 
-    pushLog('SYS', `⚡ Outreach (${type}) → #${channelCfg.channelName}`, 'success');
+    const tag = isFallback ? '🔁 Outreach (fallback général)' : '⚡ Outreach';
+    pushLog('SYS', `${tag} (${type}) → #${channelCfg.channelName}`, 'success');
     return true;
   } catch (err) {
     pushLog('ERR', `proactiveOutreach: ${err.message}`, 'error');
