@@ -18,12 +18,26 @@ if (!shared.claudeHealth) {
   };
 }
 
+/**
+ * userPrompt accepte string ou array de blocs (multimodal).
+ * Ex multimodal :
+ *   [
+ *     { type: 'text', text: '...' },
+ *     { type: 'image', source: { type: 'url', url: 'https://...' } },
+ *   ]
+ */
 async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefix = null, model = 'claude-sonnet-4-6') {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante');
 
   const cleanSystemPrompt = sanitizeForJson(systemPrompt);
-  const cleanUserPrompt = sanitizeForJson(userPrompt);
   const cleanCachedPrefix = cachedPrefix ? sanitizeForJson(cachedPrefix) : null;
+
+  let userContent;
+  if (Array.isArray(userPrompt)) {
+    userContent = userPrompt.map(b => b?.type === 'text' ? { type: 'text', text: sanitizeForJson(b.text || '') } : b);
+  } else {
+    userContent = sanitizeForJson(userPrompt);
+  }
 
   const system = cleanCachedPrefix
     ? [
@@ -36,7 +50,7 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
     model,
     max_tokens: Math.min(Math.max(Math.floor(maxTokens), 50), 1024),
     system,
-    messages: [{ role: 'user', content: cleanUserPrompt }],
+    messages: [{ role: 'user', content: userContent }],
   };
 
   const body = JSON.stringify(payload);

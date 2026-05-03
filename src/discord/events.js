@@ -20,7 +20,7 @@ const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
   updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
 } = require('../bot/emotions');
-const { ensureMemberBond, applyInteractionToBond, describeBond } = require('../db/memberBonds');
+const { ensureMemberBond, applyInteractionToBond, describeBond, getBondToneInstruction } = require('../db/memberBonds');
 const {
   detectStoriesFromMessage, getMemberStories, addMemberStory, formatStoriesBlock,
 } = require('../db/memberStories');
@@ -39,7 +39,10 @@ const { scheduleDelayedReplyAfterEmoji } = require('../features/delayedReply');
 const { LIGHT_TAG_CLAUSE } = require('../features/greetings');
 const { scheduleDiscordToFile } = require('./sync');
 const { sendWelcomeMessage } = require('../features/welcome');
-const { enrichDMWithServerContext, logMessageForBridge } = require('../features/dmServerBridge');
+const { enrichDMWithServerContext, enrichServerWithDmContext, logMessageForBridge } = require('../features/dmServerBridge');
+const {
+  extractImageAttachments, buildMultimodalUserContent, getImageCommentInstruction,
+} = require('../features/imageAttachments');
 const { YOUTUBE_KEYWORDS, GAMING_KEYWORDS } = require('../bot/keywords');
 const { shouldRespond, recordMessageTopic } = require('../features/decisionLogic');
 const { getNarrativeContext } = require('../db/narrativeMemory');
@@ -137,6 +140,7 @@ async function handleMentionReply(message, userQuery) {
 
     const bond = await ensureMemberBond(message.author.id, message.author.username);
     const bondBlock = describeBond(bond, message.author.username);
+    const bondToneInstruction = getBondToneInstruction(bond, message.author.username);
     const emotionBlock = getEmotionalInjection();
     const temperamentBlock = getTemperamentInjection();
     const narrativeBlock = await getNarrativeContext();
@@ -183,7 +187,9 @@ async function handleMentionReply(message, userQuery) {
     }
 
     const temporalBlock = getTemporalBlock();
-    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
+    // 🔗 Contexte DM récents avec cette personne pour faire le lien serveur ↔ DM
+    const dmCrossContext = await enrichServerWithDmContext(message.author.id, message.author.username).catch(() => '');
+    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -195,7 +201,15 @@ async function handleMentionReply(message, userQuery) {
       scheduleDelayedReplyAfterEmoji(message, userQuery, emoji, slot, mood);
       return;
     }
-    const { text: reply, usage } = await callClaude(dynamicPrompt, `${message.author.username} dit : "${userQuery}"\nMax 3 phrases.`, adjustMaxTokens(250), BOT_PERSONA_CONVERSATION);
+    const { getContextualMaxTokens } = require('../utils');
+    // 🖼️ Captation images jointes par l'utilisateur
+    const userImages = extractImageAttachments(message);
+    const imgInstruction = userImages.length ? getImageCommentInstruction(userImages.length) : '';
+    const mentionMaxTokens = adjustMaxTokens(getContextualMaxTokens(userQuery, { defaultShort: 110, extended: 240 }));
+    const userTextPrompt = `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\nRéponds court (1-2 phrases) sauf si le sujet mérite vraiment plus.`;
+    const userContent = buildMultimodalUserContent(userTextPrompt, userImages);
+    const { text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION);
+    if (userImages.length) pushLog('SYS', `🖼️ ${userImages.length} image(s) lues (mention ${message.author.username})`);
     await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'mention_reply');
     const replyResolved = resolveMentionsInText(reply, message.guild);
     if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
@@ -217,6 +231,10 @@ async function handleMentionReply(message, userQuery) {
     await sendHuman(message.channel, replyResolved + youtubeBlock + steamBlock, message, { bond });
     await updateMemberProfile(message.author.id, message.author.username, userQuery);
     await applyInteractionToBond(message.author.id, message.author.username, userQuery);
+    // Log pour le bridge DM/Serveur (côté serveur)
+    try {
+      await logMessageForBridge(message.author.id, message.author.username, userQuery, message.channelId, message.channel.name, 'server');
+    } catch (_) {}
 
     // 💬 Proposal DM sortante (v0.8.6) : Brainee propose de continuer en DM (faible proba)
     await maybeProposeInDm(message, userQuery, bond).catch(() => {});
@@ -258,8 +276,11 @@ function registerMessageHandlers() {
     if (message.author.bot) return;
     if (message.channel.type !== 1) return;
     if (!ANTHROPIC_API_KEY) return;
-    const userContent = message.content?.trim();
-    if (!userContent) return;
+    const rawContent = message.content?.trim();
+    const dmImages = extractImageAttachments(message);
+    if (!rawContent && dmImages.length === 0) return;
+    // Si juste image sans texte, on remplace par un marqueur pour que le reste du code fonctionne
+    const userContent = rawContent || (dmImages.length ? `[image envoyée]` : '');
     try {
       const history = await getDmHistory(message.author.id);
       const historyBlock = formatDmHistory(history);
@@ -272,6 +293,7 @@ function registerMessageHandlers() {
       detectEmotionFromMessage(userContent, { userId: message.author.id });
       const bond = await ensureMemberBond(message.author.id, message.author.username);
       const bondBlock = describeBond(bond, message.author.username);
+      const bondToneInstruction = getBondToneInstruction(bond, message.author.username);
       const emotionBlock = getEmotionalInjection();
       const temperamentBlock = getTemperamentInjection();
 
@@ -301,10 +323,15 @@ function registerMessageHandlers() {
       const enrichedUserContent = await enrichDMWithServerContext(message.author.id, message.author.username, userContent);
 
       const dmTemporalBlock = getTemporalBlock();
-      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.`;
-      const userPrompt = `${message.author.username} : "${enrichedUserContent}"`;
+      const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
+      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.${dmImgInstruction}`;
+      const userTextOnlyPrompt = `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"`;
+      const userPrompt = buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);
-      const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, adjustMaxTokens(350), BOT_PERSONA_DM);
+      const { getContextualMaxTokens } = require('../utils');
+      const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
+      const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, BOT_PERSONA_DM);
+      if (dmImages.length) pushLog('SYS', `🖼️ ${dmImages.length} image(s) lues (DM ${message.author.username})`);
       await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'dm_reply');
 
       let dmSteamBlock = '';
@@ -323,17 +350,18 @@ function registerMessageHandlers() {
 
       // Logger le message pour la liaison DM/Serveur
       await logMessageForBridge(message.author.id, message.author.username, userContent, message.channelId, 'DM', 'dm');
-      if (Math.random() < 0.15 && reply.length > 80) { await sendHuman(message.channel, reply + dmSteamBlock, null, { bond }); }
+      if (Math.random() < 0.15 && reply.length > 80) { await sendHuman(message.channel, reply + dmSteamBlock, null, { bond, isDM: true }); }
       else {
-        const { humanize } = require('../bot/humanize');
+        const { humanize, maybeAddOccasionalEmoji } = require('../bot/humanize');
         const { getHumanizationSignal } = require('../bot/emotions');
         const { getBondSignal } = require('../db/memberBonds');
-        const humanized = humanize(reply, {
+        let humanized = humanize(reply, {
           emotionalSignal: getHumanizationSignal(),
           bondSignal: getBondSignal(bond),
           mood,
           slotStatus: slot.status,
         });
+        humanized = maybeAddOccasionalEmoji(humanized, { isDM: true });
         await message.reply(humanized + dmSteamBlock);
       }
       await appendDmMessage(message.author.id, message.author.username, 'user', userContent);
@@ -363,7 +391,9 @@ function registerMessageHandlers() {
     if (message.author.bot || !message.guild || message.guild.id !== GUILD_ID) return;
     if (!shared.discord.user || !message.mentions.has(shared.discord.user)) return;
     const userQuery = message.content.replace(/<@!?\d+>/g, '').trim();
-    if (!userQuery) return;
+    // Si pas de texte ET pas d'image jointe → on ignore. Sinon on continue (image seule = ok)
+    const hasImageAttachment = extractImageAttachments(message).length > 0;
+    if (!userQuery && !hasImageAttachment) return;
     const slot = getCurrentSlot();
     const urgent = isUrgentQuery(userQuery);
     const decision = decideMentionResponse(slot, urgent);

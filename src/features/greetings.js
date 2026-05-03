@@ -4,12 +4,15 @@ const { GUILD_ID, ANTHROPIC_API_KEY } = require('../config');
 const { callClaude } = require('../ai/claude');
 const { BOT_PERSONA } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
-const { getParisDay } = require('../bot/scheduling');
+const { getParisDay, getParisHour } = require('../bot/scheduling');
 const { getDailyVibe, shouldTagPerson } = require('../bot/adaptiveSchedule');
 const { simulateTyping, resolveMentionsInText } = require('../bot/messaging');
 const { updateConvStats, getQuietestChannel } = require('./convStats');
 const { sanitizeForJson } = require('../utils');
 const { formatContext } = require('./context');
+const {
+  getMorningSeed, getGoodnightSeed, getNightWakeupSeed, getLunchBackSeed,
+} = require('./greetingVariants');
 
 // Instructions injectées quand on ne veut pas de tag
 const NO_TAG_CLAUSE = `IMPORTANT : Ne tagge personne dans ce message — pas de @pseudo. Reste ambiant, personne n'a besoin d'être notifié.`;
@@ -47,10 +50,12 @@ async function postMorningGreeting() {
       if (ctx.length > 30) recentCtx = `\nDerniers échanges (pour capter l'ambiance) :\n${ctx}`;
     } catch (_) {}
 
+    const hourNow = getParisHour();
+    const morningSeed = getMorningSeed(hourNow);
     const { text: content } = await callClaude(
-      `\nHumeur : ${mood}. Vibe du jour : ${vibe.name} (${vibe.desc}). Tu viens de te lever, c'est ${dayCtx}.${recentCtx}\n${NO_TAG_CLAUSE}`,
-      `Message de bonjour matinal naturel et varié. Ne parle pas forcément de café. Demande ce que les gens ont de prévu aujourd'hui ou cette journée. Reste dans l'élan de la conversation récente si c'est pertinent. 2 phrases max. Jamais de @ à quelqu'un. Varie la façon de dire bonjour (pas toujours "bonjour", parfois "yo", "salut", "hey", "ça commence" ...).`,
-      140,
+      `\nHumeur : ${mood}. Vibe du jour : ${vibe.name} (${vibe.desc}). Heure actuelle : ${hourNow.toFixed(1)}h. C'est ${dayCtx}.\nAngle pour ce matin : ${morningSeed}.${recentCtx}\n${NO_TAG_CLAUSE}`,
+      `Message du matin, naturel, COURT (1-2 phrases max, ~30 mots). Pas forcément "bonjour" — varie ("yo", "salut", "hey", "ça commence", ou même direct sans formule). Pas de café automatique. Si la conversation récente s'y prête, rebondis dessus. Jamais de @. Pas plus d'un emoji et seulement si vraiment ça colle (~10% des cas).`,
+      110,
       BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
@@ -73,10 +78,11 @@ async function postLunchBack() {
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel) return;
     const vibe = getDailyVibe();
+    const lunchSeed = getLunchBackSeed();
     const { text: content } = await callClaude(
-      `\nTu reviens de ta pause. Vibe : ${vibe.name}.\n${NO_TAG_CLAUSE}`,
-      `Retour de pause dans ${sanitizeForJson(ch.topic)}. 1-2 phrases. Décontracté. Pas de @ à quelqu'un.`,
-      100,
+      `\nTu reviens de ta pause. Vibe : ${vibe.name}.\nAngle : ${lunchSeed}.\n${NO_TAG_CLAUSE}`,
+      `Retour de pause dans ${sanitizeForJson(ch.topic)}. UNE phrase courte, max deux. Décontracté. Pas de @. Pas d'emoji sauf si ça colle vraiment (~10%).`,
+      80,
       BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
@@ -99,10 +105,11 @@ async function postGoodnight() {
     const channel = guild.channels.cache.get(targetId);
     if (!channel) return;
     const vibe = getDailyVibe();
+    const goodnightSeed = getGoodnightSeed();
     const { text: content } = await callClaude(
-      `\nFin de soirée gaming. Vibe : ${vibe.name}.\n${NO_TAG_CLAUSE}`,
-      `Message fin de soirée naturel. Style "je finis cette quête et je dors... normalement". 1-2 phrases. Jamais "bonsoir". Pas de @ à quelqu'un.`,
-      100,
+      `\nFin de soirée gaming. Vibe : ${vibe.name}.\nAngle pour ce soir : ${goodnightSeed}.\n${NO_TAG_CLAUSE}`,
+      `Message fin de soirée naturel, COURT (1-2 phrases max, ~30 mots). Jamais "bonsoir" / "bonne nuit" tels quels. Pas de @. Pas d'emoji sauf si ça colle vraiment (~10%).`,
+      90,
       BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);
@@ -121,10 +128,12 @@ async function postNightWakeup() {
     await guild.channels.fetch();
     const channel = guild.channels.cache.get('1481028189680570421');
     if (!channel) return;
+    const wakeHour = getParisHour();
+    const wakeSeed = getNightWakeupSeed(wakeHour);
     const { text: content } = await callClaude(
-      `\nRéveil nocturne, mode zombie.\n${NO_TAG_CLAUSE}`,
-      `Message ultra court — "j'arrive pas à dormir et je pense encore à [jeu/boss]". 1 phrase MAX. Pas de @ à quelqu'un.`,
-      80,
+      `\nRéveil nocturne, mode zombie. Il est ${wakeHour.toFixed(1)}h.\nAngle : ${wakeSeed}.\n${NO_TAG_CLAUSE}`,
+      `UNE seule phrase courte, ~15-25 mots, vraie ambiance d'insomnie. Style "y'en a parmi vous qui dorment pas ? j'arrive pas à me rendormir". Pas de @. Pas d'emoji.`,
+      70,
       BOT_PERSONA
     );
     const contentResolved = resolveMentionsInText(content, guild);

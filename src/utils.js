@@ -118,4 +118,42 @@ function extractJson(text) {
   return '';
 }
 
-module.exports = { sleep, sanitizeString, sanitizeForJson, sanitizeDiscordContent, extractJson };
+// Mots-clés qui indiquent qu'un sujet mérite une réponse plus longue (utile/important)
+const IMPORTANT_TOPIC_HINTS = [
+  'comment', 'pourquoi', 'explique', 'expliquer', 'explication',
+  'aide', 'aider', 'help', 'besoin', 'galère', 'galere',
+  'différence', 'difference', 'avis', 'conseil', 'conseille',
+  'recommande', 'recommander', 'recommandation', 'meilleur', 'compar',
+  'tuto', 'tutoriel', 'guide', 'apprendre', 'comprendre',
+  'problème', 'probleme', 'bug', 'erreur', 'marche pas',
+  'ressens', 'sentiment', 'triste', 'anxieu', 'stress',
+];
+
+/**
+ * Estime si un message mérite une réponse étendue (sujet utile/important)
+ * vs. une réponse courte (échange casual).
+ * Retourne maxTokens adapté.
+ */
+function getContextualMaxTokens(userMessage = '', { defaultShort = 90, extended = 220, isDM = false } = {}) {
+  const text = (userMessage || '').toLowerCase();
+  const len = text.length;
+  const hasQuestionMark = /\?/.test(text);
+  const hasImportantKeyword = IMPORTANT_TOPIC_HINTS.some(k => text.includes(k));
+  const isLongMessage = len > 140;
+  const isMultiSentence = (text.match(/[.!?]\s+/g) || []).length >= 2;
+
+  // Si question + mot-clé important OU message long et structuré → réponse étendue
+  if ((hasQuestionMark && hasImportantKeyword) || (isLongMessage && isMultiSentence)) {
+    return extended;
+  }
+  // Question simple → moyen
+  if (hasQuestionMark || hasImportantKeyword) {
+    return Math.round((defaultShort + extended) / 2);
+  }
+  // DM = un peu plus de souffle par défaut, mais on reste raisonnable
+  if (isDM) return Math.round(defaultShort * 1.3);
+  // Casual / court par défaut
+  return defaultShort;
+}
+
+module.exports = { sleep, sanitizeString, sanitizeForJson, sanitizeDiscordContent, extractJson, getContextualMaxTokens, IMPORTANT_TOPIC_HINTS };

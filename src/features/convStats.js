@@ -43,7 +43,10 @@ function resetWeeklyPostCount(channelId) {
   map[channelId] = 0;
 }
 
-const WEEKLY_DEAD_LIMIT = 2;
+const WEEKLY_DEAD_LIMIT = 1;
+const MONOLOGUE_BOT_RATIO_THRESHOLD = 0.5;
+const MONOLOGUE_LOOKBACK = 15;
+const NO_INSIST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function getConvDailyCount() {
   return shared.botConfig.conversations.dailyCount || 0;
@@ -136,27 +139,76 @@ function isDeepTopicChannel(channelName = '') {
  * Détermine si Brainee doit s'abstenir de reposter dans un salon où elle a parlé
  * la dernière fois sans qu'aucun humain n'ait répondu après elle.
  * Évite le "50× la même chose" et le monologue.
+ * Fenêtre élargie à 24h pour vraiment couper l'insistance.
  */
 async function hasUnansweredLastPost(channelId, guildChannelResolver) {
   try {
     const last = shared.botConfig.conversations.lastPostByChannel || {};
     const lastTs = last[channelId] || 0;
     if (!lastTs) return false;
-    // On ne regarde que si Brainee a posté récemment (moins de 4h)
-    if (Date.now() - lastTs > 4 * 60 * 60 * 1000) return false;
+    if (Date.now() - lastTs > NO_INSIST_WINDOW_MS) return false;
     const channel = await guildChannelResolver(channelId);
     if (!channel?.messages) return false;
     const msgs = await channel.messages.fetch({ limit: 20 });
     const arr = [...msgs.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp);
-    // Trouve le dernier message du bot
     const botId = shared.discord?.user?.id;
     const lastBotIdx = arr.findIndex(m => m.author?.id === botId);
     if (lastBotIdx === -1) return false;
-    // Est-ce que quelqu'un d'humain a parlé APRÈS ?
     const humanAfter = arr.slice(0, lastBotIdx).some(m => !m.author?.bot);
     return !humanAfter;
   } catch (_) {
     return false;
+  }
+}
+
+/**
+ * Détecte un salon "monologue" : Brainee y parle dans le vide.
+ * Regarde les MONOLOGUE_LOOKBACK derniers messages et calcule le ratio bot/humain.
+ * Si ratio bot >= MONOLOGUE_BOT_RATIO_THRESHOLD ET aucun humain depuis le dernier post du bot,
+ * on considère que c'est un salon mort où elle parle seule.
+ */
+async function isMonologueChannel(channelId, guildChannelResolver) {
+  try {
+    const channel = await guildChannelResolver(channelId);
+    if (!channel?.messages) return false;
+    const msgs = await channel.messages.fetch({ limit: MONOLOGUE_LOOKBACK });
+    const arr = [...msgs.values()];
+    if (arr.length < 4) return false;
+    const botId = shared.discord?.user?.id;
+    const botCount = arr.filter(m => m.author?.id === botId).length;
+    const humanCount = arr.filter(m => !m.author?.bot && m.author?.id !== botId).length;
+    if (botCount === 0) return false;
+    const ratio = botCount / Math.max(1, botCount + humanCount);
+    if (ratio < MONOLOGUE_BOT_RATIO_THRESHOLD) return false;
+    const sorted = arr.sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+    const lastBotIdx = sorted.findIndex(m => m.author?.id === botId);
+    if (lastBotIdx === -1) return false;
+    const humanAfter = sorted.slice(0, lastBotIdx).some(m => !m.author?.bot);
+    return !humanAfter;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * Compte combien de posts consécutifs Brainee a faits en haut du salon
+ * sans qu'un humain ne réponde entre.
+ */
+async function countConsecutiveBotPosts(channelId, guildChannelResolver) {
+  try {
+    const channel = await guildChannelResolver(channelId);
+    if (!channel?.messages) return 0;
+    const msgs = await channel.messages.fetch({ limit: 20 });
+    const arr = [...msgs.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+    const botId = shared.discord?.user?.id;
+    let count = 0;
+    for (const m of arr) {
+      if (m.author?.id === botId) count++;
+      else if (!m.author?.bot) break;
+    }
+    return count;
+  } catch (_) {
+    return 0;
   }
 }
 
@@ -183,4 +235,5 @@ module.exports = {
   resetDailyCountIfNeeded, updateConvStats, getQuietestChannel,
   isDeepTopicChannel, hasUnansweredLastPost, DEEP_TOPIC_HINTS,
   isChannelDeadThisWeek, resetWeeklyPostCount,
+  isMonologueChannel, countConsecutiveBotPosts,
 };
