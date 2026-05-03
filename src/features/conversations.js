@@ -23,7 +23,8 @@ const { formatContext } = require('./context');
 const { scheduleDelayedSpontaneousReply } = require('./delayedReply');
 const {
   getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded,
-  updateConvStats, getQuietestChannel, hasUnansweredLastPost, isDeepTopicChannel,
+  updateConvStats, getRankedChannels, getGeneralChannel,
+  hasUnansweredLastPost, isDeepTopicChannel,
   isChannelDeadThisWeek, resetWeeklyPostCount,
   isMonologueChannel, countConsecutiveBotPosts,
 } = require('./convStats');
@@ -33,6 +34,121 @@ const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { logMessageForBridge } = require('./dmServerBridge');
 const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
 
+const MAX_CONV_ATTEMPTS = 5;
+const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Évalue si un salon est postable maintenant (no-insist, monologue, posts consécutifs, dead).
+ * Mode "relaxed" pour le fallback général : assouplit la fenêtre no-insist (6h au lieu de 24h)
+ * et ignore le check "calme plat" (le général a toujours du trafic).
+ * Retourne { ok: bool, reason: string|null }.
+ */
+async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } = {}) {
+  if (!relaxed) {
+    if (await hasUnansweredLastPost(ch.channelId, channelResolver)) {
+      return { ok: false, reason: 'dernier post sans réponse humaine (no-insist 24h)' };
+    }
+  } else {
+    const last = shared.botConfig.conversations.lastPostByChannel || {};
+    const lastTs = last[ch.channelId] || 0;
+    if (lastTs && Date.now() - lastTs < FALLBACK_NO_INSIST_MS) {
+      const channel = await channelResolver(ch.channelId);
+      if (channel?.messages) {
+        try {
+          const msgs = await channel.messages.fetch({ limit: 20 });
+          const arr = [...msgs.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+          const botId = shared.discord?.user?.id;
+          const lastBotIdx = arr.findIndex(m => m.author?.id === botId);
+          if (lastBotIdx !== -1) {
+            const humanAfter = arr.slice(0, lastBotIdx).some(m => !m.author?.bot);
+            if (!humanAfter) return { ok: false, reason: 'dernier post sans réponse (fallback 6h)' };
+          }
+        } catch (_) {}
+      }
+    }
+  }
+  if (await isMonologueChannel(ch.channelId, channelResolver)) {
+    return { ok: false, reason: 'salon monologue (Brainee parle seule)' };
+  }
+  const consecutive = await countConsecutiveBotPosts(ch.channelId, channelResolver);
+  if (consecutive >= 2) {
+    return { ok: false, reason: `${consecutive} posts consécutifs sans humain` };
+  }
+  if (!relaxed && await isChannelDeadThisWeek(ch.channelId, channelResolver)) {
+    return { ok: false, reason: 'calme plat (limite atteinte)' };
+  }
+  return { ok: true, reason: null };
+}
+
+/**
+ * Effectue le post réel dans un salon validé : prompt AI + envoi + stats.
+ * Retourne true si posté, false sinon.
+ */
+async function postConvInChannel(ch, channel, guild, slot, { fallback = false } = {}) {
+  const isDeep = isDeepTopicChannel(ch.channelName);
+  const mode = getRandomMode(slot);
+  const mood = refreshDailyMood();
+  updateInternalStatesForSlot(slot);
+  applyNaturalDecay();
+  const vibe = getDailyVibe();
+  const channelMemory = await getChannelMemory(ch.channelId);
+  const memoryBlock = formatChannelMemoryBlock(channelMemory);
+  const dirEntryC = await getChannelDirectory(ch.channelId);
+  const intentBlockC = getChannelIntentBlock(channel.name, ch.topic, dirEntryC?.officialDescription || '');
+  const modeBlock = getModeInjectionForChannel(mode, channel.name, ch.topic);
+  let emotionBlock, temperamentBlock, narrativeBlock;
+  const cached = getCachedBlocks();
+  if (cached) {
+    emotionBlock = cached.emotionalBlock;
+    temperamentBlock = cached.temperamentBlock;
+    narrativeBlock = cached.narrativeBlock;
+  } else {
+    emotionBlock = getEmotionalInjection();
+    temperamentBlock = getTemperamentInjection();
+    narrativeBlock = await getNarrativeContext();
+    setCacheBlocks(emotionBlock, temperamentBlock, narrativeBlock);
+  }
+  let contextBlock = '';
+  try {
+    const msgs = await channel.messages.fetch({ limit: 40 });
+    const ctx = formatContext(msgs, null, 40);
+    if (ctx.length > 20) contextBlock = `\nContexte récent:\n${ctx}`;
+  } catch (_) {}
+  const verbosity = await getChannelVerbosity(ch.channelId);
+  const verbosityInstruct = verbosity.shouldBePavé
+    ? `\nCe salon aime les messages détaillés (engagement: ${verbosity.avgEngagement}/5). Va-y, sois bavarde si tu veux.`
+    : `\nCe salon préfère les messages courts et directs. Concis > pavé. Max 3 phrases vraiment courtes.`;
+
+  const deepInject = isDeep
+    ? `\nCONTEXTE SALON : c'est un salon de thématique profonde (${channel.name}). Lance un angle vraiment fouillé, qui donne envie de creuser. Pas de question générique. Tu peux être plus précise, citer un détail, un souvenir, un mécanisme, une référence. Laisse l'entrée ouverte mais pas vague. Si personne ne rebondit, c'est ok — tu n'insistes pas.`
+    : '';
+
+  const fallbackInject = fallback
+    ? `\nCONTEXTE : tu reviens au général parce que les autres salons étaient calmes. Parle naturellement de tout et rien — un truc qui te traverse, une remarque sur ta journée, une mini-question légère. Pas de "j'ai rien trouvé à dire ailleurs", reste fluide.`
+    : '';
+
+  const maxTokens = verbosity.shouldBePavé
+    ? adjustMaxTokens(isDeep ? 220 : 160)
+    : adjustMaxTokens(isDeep ? 130 : 85);
+
+  const { text: content } = await callClaude(
+    `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${fallbackInject}${verbosityInstruct}\n${NO_TAG_CLAUSE}` + contextBlock,
+    `Direct. Adapte-toi au salon. Pas de @ — c'est un lance-conv ambiant.`,
+    maxTokens,
+    BOT_PERSONA
+  );
+  const contentResolved = resolveMentionsInText(content, guild);
+  await simulateTyping(channel, 1000 + Math.random() * 2000);
+  const sentMsg = await channel.send(contentResolved);
+  shared.lastAnyBotPostTime = Date.now();
+  await updateConvStats(ch.channelId);
+  recordBotMessage(sentMsg.id, ch.channelId, mode.name, contentResolved.length).catch(() => {});
+  const tag = fallback ? '🔁 Conv (fallback général)' : '💬 Conv';
+  pushLog('SYS', `${tag} [${mode.name}] ${ch.channelName} [${slot.label}] (${getConvDailyCount()}/${getConvMaxPerDay()})`, 'success');
+  broadcast('conversation', { channel: ch.channelName, time: new Date().toLocaleTimeString('fr-FR'), mode: mode.name, slot: slot.label, dayCount: getConvDailyCount(), fallback });
+  return true;
+}
+
 async function postRandomConversation() {
   const cfg = shared.botConfig.conversations;
   if (!cfg.enabled) return;
@@ -41,102 +157,63 @@ async function postRandomConversation() {
   await resetDailyCountIfNeeded();
   if (getConvDailyCount() >= getConvMaxPerDay()) return;
   if (Date.now() - shared.lastAnyBotPostTime < getSlotIntervalMs(slot)) return;
-  const ch = getQuietestChannel();
-  if (!ch) return;
+  if (!ANTHROPIC_API_KEY) return;
+
   try {
     const guild = await shared.discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
-    const channel = guild.channels.cache.get(ch.channelId);
-    if (!channel || !ANTHROPIC_API_KEY) return;
-
-    // No-insist : si Brainee a posté dans ce salon et que personne n'a répondu depuis,
-    // on ne relance PAS dessus (évite le monologue).
     const channelResolver = async (id) => {
       const g = await shared.discord.guilds.fetch(GUILD_ID);
       await g.channels.fetch();
       return g.channels.cache.get(id);
     };
-    const alone = await hasUnansweredLastPost(ch.channelId, channelResolver);
-    if (alone) {
-      pushLog('SYS', `🔇 Skip ${ch.channelName} — dernier post sans réponse humaine (no-insist 24h)`);
+
+    // 1. Boucler sur les candidats classiques (général exclu, gardé pour fallback)
+    const candidates = getRankedChannels({ excludeGeneral: true }).slice(0, MAX_CONV_ATTEMPTS);
+    let skipped = 0;
+    for (const ch of candidates) {
+      const channel = guild.channels.cache.get(ch.channelId);
+      if (!channel) continue;
+      const evalRes = await evaluateChannelForConv(ch, channelResolver, { relaxed: false });
+      if (!evalRes.ok) {
+        pushLog('SYS', `🔇 Skip ${ch.channelName} — ${evalRes.reason}`);
+        skipped++;
+        continue;
+      }
+      try {
+        await postConvInChannel(ch, channel, guild, slot, { fallback: false });
+        return;
+      } catch (err) {
+        pushLog('ERR', `Lance-conv échouée sur ${ch.channelName} : ${err.message}`, 'error');
+        return;
+      }
+    }
+
+    // 2. Fallback : tenter le général en mode assoupli pour parler de tout et rien
+    const general = getGeneralChannel();
+    if (!general) {
+      pushLog('SYS', `🤐 Aucun salon postable (${skipped} skips) — pas de général configuré`);
       return;
     }
-    // Détection monologue : Brainee parle seule, ratio bot/humain trop élevé
-    if (await isMonologueChannel(ch.channelId, channelResolver)) {
-      pushLog('SYS', `🔇 Skip ${ch.channelName} — salon monologue (Brainee parle seule)`);
+    const generalChannel = guild.channels.cache.get(general.channelId);
+    if (!generalChannel) {
+      pushLog('SYS', `🤐 Général introuvable côté Discord (${skipped} skips)`);
       return;
     }
-    // Posts consécutifs : si Brainee a déjà 2+ posts d'affilée sans humain → stop
-    const consecutive = await countConsecutiveBotPosts(ch.channelId, channelResolver);
-    if (consecutive >= 2) {
-      pushLog('SYS', `🔇 Skip ${ch.channelName} — ${consecutive} posts consécutifs sans humain`);
+    const fallbackEval = await evaluateChannelForConv(general, channelResolver, { relaxed: true });
+    if (!fallbackEval.ok) {
+      pushLog('SYS', `🤐 Fallback général skip — ${fallbackEval.reason} (${skipped} skips avant)`);
       return;
     }
-    // Calme plat : si aucune activité humaine depuis 72h et 1 post cette semaine sans réponse → pause
-    if (await isChannelDeadThisWeek(ch.channelId, channelResolver)) {
-      pushLog('SYS', `🔇 Skip ${ch.channelName} — calme plat (limite atteinte)`);
-      return;
-    }
-    const isDeep = isDeepTopicChannel(ch.channelName);
-    const mode = getRandomMode(slot);
-    const mood = refreshDailyMood();
-    updateInternalStatesForSlot(slot);
-    applyNaturalDecay();
-    const vibe = getDailyVibe();
-    const channelMemory = await getChannelMemory(ch.channelId);
-    const memoryBlock = formatChannelMemoryBlock(channelMemory);
-    const dirEntryC = await getChannelDirectory(ch.channelId);
-    const intentBlockC = getChannelIntentBlock(channel.name, ch.topic, dirEntryC?.officialDescription || '');
-    const modeBlock = getModeInjectionForChannel(mode, channel.name, ch.topic);
-    // Utiliser le cache pour émotions/narratives (change rarement pendant la journée)
-    let emotionBlock, temperamentBlock, narrativeBlock;
-    const cached = getCachedBlocks();
-    if (cached) {
-      emotionBlock = cached.emotionalBlock;
-      temperamentBlock = cached.temperamentBlock;
-      narrativeBlock = cached.narrativeBlock;
-    } else {
-      emotionBlock = getEmotionalInjection();
-      temperamentBlock = getTemperamentInjection();
-      narrativeBlock = await getNarrativeContext();
-      setCacheBlocks(emotionBlock, temperamentBlock, narrativeBlock);
-    }
-    let contextBlock = '';
+    pushLog('SYS', `🔁 Fallback général après ${skipped} skip(s)`);
     try {
-      const msgs = await channel.messages.fetch({ limit: 40 });
-      const ctx = formatContext(msgs, null, 40);
-      if (ctx.length > 20) contextBlock = `\nContexte récent:\n${ctx}`;
-    } catch (_) {}
-    // Adapter la verbosité en fonction du salon
-    const verbosity = await getChannelVerbosity(ch.channelId);
-    const verbosityInstruct = verbosity.shouldBePavé
-      ? `\nCe salon aime les messages détaillés (engagement: ${verbosity.avgEngagement}/5). Va-y, sois bavarde si tu veux.`
-      : `\nCe salon préfère les messages courts et directs. Concis > pavé. Max 3 phrases vraiment courtes.`;
-
-    const deepInject = isDeep
-      ? `\nCONTEXTE SALON : c'est un salon de thématique profonde (${channel.name}). Lance un angle vraiment fouillé, qui donne envie de creuser. Pas de question générique. Tu peux être plus précise, citer un détail, un souvenir, un mécanisme, une référence. Laisse l'entrée ouverte mais pas vague. Si personne ne rebondit, c'est ok — tu n'insistes pas.`
-      : '';
-
-    // Adapter les tokens en fonction de la verbosité ET du salon (deep = plus de souffle)
-    const maxTokens = verbosity.shouldBePavé
-      ? adjustMaxTokens(isDeep ? 220 : 160)
-      : adjustMaxTokens(isDeep ? 130 : 85);
-
-    const { text: content } = await callClaude(
-      `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${verbosityInstruct}\n${NO_TAG_CLAUSE}` + contextBlock,
-      `Direct. Adapte-toi au salon. Pas de @ — c'est un lance-conv ambiant.`,
-      maxTokens,
-      BOT_PERSONA
-    );
-    const contentResolved = resolveMentionsInText(content, guild);
-    await simulateTyping(channel, 1000 + Math.random() * 2000);
-    const sentMsg = await channel.send(contentResolved);
-    shared.lastAnyBotPostTime = Date.now();
-    await updateConvStats(ch.channelId);
-    recordBotMessage(sentMsg.id, ch.channelId, mode.name, contentResolved.length).catch(() => {});
-    pushLog('SYS', `💬 Conv [${mode.name}] ${ch.channelName} [${slot.label}] (${getConvDailyCount()}/${getConvMaxPerDay()})`, 'success');
-    broadcast('conversation', { channel: ch.channelName, time: new Date().toLocaleTimeString('fr-FR'), mode: mode.name, slot: slot.label, dayCount: getConvDailyCount() });
-  } catch (err) { pushLog('ERR', `Lance-conv échouée : ${err.message}`, 'error'); }
+      await postConvInChannel(general, generalChannel, guild, slot, { fallback: true });
+    } catch (err) {
+      pushLog('ERR', `Lance-conv fallback échouée : ${err.message}`, 'error');
+    }
+  } catch (err) {
+    pushLog('ERR', `Lance-conv échouée : ${err.message}`, 'error');
+  }
 }
 
 async function replyToConversations() {
