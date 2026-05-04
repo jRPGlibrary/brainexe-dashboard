@@ -5,6 +5,7 @@
 
 const shared = require('../shared');
 const { callClaude } = require('../ai/claude');
+const { pushLog } = require('../logger');
 
 class Consciousness {
   constructor(db) {
@@ -65,7 +66,7 @@ Pense à tes préoccupations, ton état, ce que tu as observé.`;
         await this.recordMetaAwareness();
       }
     } catch (err) {
-      await shared.logger.pushLog('ERR', `Stream of thought failed: ${err.message}`, 'error');
+      pushLog('ERR', `Stream of thought failed: ${err.message}`, 'error');
     } finally {
       this.isThinking = false;
     }
@@ -107,7 +108,7 @@ Réponds comme si tu parlais à toi-même. Sois intime.`,
         );
       }
     } catch (err) {
-      await shared.logger.pushLog('ERR', `Reflection failed: ${err.message}`, 'error');
+      pushLog('ERR', `Reflection failed: ${err.message}`, 'error');
     }
   }
 
