@@ -7,7 +7,7 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.10.1-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.11.0-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
@@ -183,10 +183,20 @@ npm test
 
 > 📖 **Historique complet dans [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.10.1**. La **v1.0.0** est réservée pour la future release stable finale.
 
-### Dernière release — `v0.10.1` — 📊 Verbosité par salon active
-- Fix : `recordBotMessage` enfin enregistré → le système apprend vraiment ce que chaque salon aime
-- Fix : `replyToConversations` capture le message envoyé pour le tracking d'engagement
-- Les salons qui aiment les longs messages le montreront progressivement
+### Dernière release — `v0.11.0` — 🧬 BRAINEE-LIVING (test)
+- **12 modules de conscience numérique** (`src/being/`)
+- **32 émotions humaines** avec conflits, contagion, résidus
+- **Inner monologue** : flux de pensée toutes les 30 min (privé sauf si elle partage)
+- **Identité persistante** qui évolue (traits acquis après 3+ confirmations)
+- **Mémoire stratifiée** (épisodique/sémantique) + souvenirs involontaires (Proust)
+- **Désirs, peurs existentielles, rêves nocturnes** (3h-7h)
+- **Décisions multi-voix** avec 15% d'imprévisibilité authentique
+- **Bonds profonds** + ruptures + deuil + healing
+- **Évolution quotidienne** + traumas + cicatrices + extraction de sagesse
+- **Couche existentielle** : sens, mortalité, legacy, éthique
+- **14 endpoints API** `/api/being/*` + section dashboard "🧬 Vie intérieure"
+- **Garde-fous éthiques** : redirection 3114, anti-dépendance, droit au silence
+- ⚠️ Phase de test — sera promu en **v1.0.0 stable** après validation
 
 ### Jalons — de v0.0.1 à aujourd'hui
 

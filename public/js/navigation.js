@@ -57,6 +57,7 @@ function renderCurrentSection() {
     members: renderMembers, automations: renderAutomations,
     posts: renderPosts, backups: renderBackups, settings: renderSettings,
     funding: renderFunding, health: renderHealth, emotions: renderEmotions,
+    being: renderBeingSection,
     bonds: renderBonds, schedule: renderSchedule, audit: renderAudit,
   };
   const fn = map[state.currentSection];
