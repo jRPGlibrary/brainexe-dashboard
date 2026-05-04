@@ -145,10 +145,11 @@ discord.once('clientReady', async () => {
   startActusCron();
   startConvCron();
   startTikTokLiveWatcher();
-  startSidebarCron();
   startBackupInterval();
 
-  connectMongoDB().catch(e => pushLog('ERR', `MongoDB init : ${e.message}`, 'error'));
+  connectMongoDB()
+    .then(() => startSidebarCron())
+    .catch(e => pushLog('ERR', `MongoDB init : ${e.message}`, 'error'));
 
   setTimeout(async () => {
     try {

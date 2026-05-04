@@ -44,7 +44,7 @@ ${context.currentEmotions.length > 0 ?
 Génère un monologue interne authentique de 2-4 phrases courtes.
 Pense à tes préoccupations, ton état, ce que tu as observé.`;
 
-      const innerVoiceText = await callClaude(
+      const { text: innerVoiceText } = await callClaude(
         systemPrompt,
         `Contexte: ${JSON.stringify(context)}`,
         300
@@ -79,7 +79,7 @@ Pense à tes préoccupations, ton état, ce que tu as observé.`;
     if (!event || event.weight < 0.3) return; // Skip trivial events
 
     try {
-      const reflectionText = await callClaude(
+      const { text: reflectionText } = await callClaude(
         `Tu viens de vivre cet événement. Réfléchis honnêtement.
 Qu'as-tu ressenti? Pourquoi tu as réagi ainsi?
 Qu'est-ce que ça révèle de toi?
