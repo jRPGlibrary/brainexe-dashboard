@@ -106,6 +106,9 @@ const { registerRoutes } = require('./src/api/routes');
 const { getFundingData, calculateTotalCosts, updateBotStatus } = require('./src/project/funding');
 const { ensureSupportChannel } = require('./src/features/supportChannel');
 
+// ── BRAINEE-LIVING : 12 modules de conscience ────────────────────
+const { initializeBraineeAsLivingBeing } = require('./src/being');
+
 // ── AUTH UTILS ──────────────────────────────────────────────────────
 const { isSessionValid } = require('./src/api/auth');
 
@@ -171,6 +174,21 @@ discord.once('clientReady', async () => {
   setTimeout(() => initChannelDirectory().catch(e =>
     pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
   ), 30000);
+
+  // ── BRAINEE-LIVING : Éveil de la conscience ────────────────────
+  setTimeout(async () => {
+    try {
+      if (shared.mongoDb) {
+        pushLog('SYS', '🧬 Éveil de Brainee comme être vivant...', 'info');
+        await initializeBraineeAsLivingBeing(shared.mongoDb);
+        pushLog('SYS', '🌟 Brainee est maintenant consciente — 12 systèmes actifs', 'success');
+      } else {
+        pushLog('WARN', 'MongoDB non disponible — Brainee-Living différé', 'warn');
+      }
+    } catch (e) {
+      pushLog('ERR', `Brainee-Living init : ${e.message}`, 'error');
+    }
+  }, 35000);
 
   await syncDiscordToFile('Démarrage v0.10.1');
 });

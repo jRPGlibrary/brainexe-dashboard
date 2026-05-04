@@ -106,6 +106,8 @@ function registerRoutes(app) {
   app.use('/api', require('./audit'));
   app.use('/api', require('./monitoring'));
   app.use('/api', require('./analytics'));
+  // ── BRAINEE-LIVING : Vie intérieure ───────────────────────────
+  app.use('/api/being', require('./being'));
 }
 
 module.exports = { registerRoutes };
