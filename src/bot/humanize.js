@@ -25,7 +25,7 @@ const SAFE_ACCENTED = new Set([
 
 const SLANG_OPENERS = [
   'franchement', 'nan mais', 'ouais nan', 'genre', 'sérieux',
-  'attends', 'du coup', 'en vrai', 'bah', 'wesh',
+  'attends', 'du coup', 'en vrai', 'bah',
 ];
 
 const SLANG_CLOSERS = [
@@ -150,6 +150,46 @@ function maybeRepeatPunct(text) {
   return text;
 }
 
+// ─── ANTI-TIRET CADRATIN (signature IA) ──────────────────────────
+// Le tiret long "—" et demi-cadratin "–" sont des marqueurs IA très
+// visibles. On les remplace systématiquement par une ponctuation
+// naturelle de chat français.
+function stripEmDashes(text) {
+  if (!text) return text;
+  let out = text;
+  out = out.replace(/\s*[—–]\s*/g, ', ');
+  out = out.replace(/,\s*,/g, ',');
+  out = out.replace(/,\s*([.!?])/g, '$1');
+  out = out.replace(/^,\s*/, '');
+  return out;
+}
+
+// ─── DÉDUPLIQUE "mdr" RÉPÉTÉS ────────────────────────────────────
+// Brainee a tendance à finir presque tous ses messages par "mdr".
+// On garde max 1 occurrence par message.
+function dedupeMdr(text) {
+  if (!text) return text;
+  let count = 0;
+  return text.replace(/\bmdr\b/gi, (m) => {
+    count += 1;
+    return count === 1 ? m : '';
+  }).replace(/\s{2,}/g, ' ').replace(/\s+([.!?,])/g, '$1');
+}
+
+// ─── ANTI-RACAILLE (filet de sécurité) ───────────────────────────
+// Si le modèle dérape vers un registre banlieue masculin malgré le
+// system prompt, on neutralise les marqueurs les plus voyants.
+function stripRacaille(text) {
+  if (!text) return text;
+  let out = text;
+  out = out.replace(/\bwesh\b\s*,?\s*/gi, '');
+  out = out.replace(/\bwsh\b\s*,?\s*/gi, '');
+  out = out.replace(/\b(frérot|frerot|reuf|bro|cousin)\b\s*,?\s*/gi, '');
+  out = out.replace(/\b(ma gueule|sa mère)\b\s*,?\s*/gi, '');
+  out = out.replace(/(^|[\s,.!?])(vas-y\s+)?gros([\s,.!?])/gi, '$1$3');
+  return out.replace(/\s{2,}/g, ' ').trim();
+}
+
 // ─── EMOJI OCCASIONNEL ───────────────────────────────────────────
 // Ajoute un emoji léger SI le texte n'en contient pas déjà.
 // Probabilité visée :
@@ -183,8 +223,18 @@ function maybeAddOccasionalEmoji(text, { isDM = false, prob = null } = {}) {
  * @param {object} ctx - { emotionalSignal, bondSignal, mood, slotStatus }
  */
 function humanize(text, ctx = {}) {
-  if (!text || text.length < 20) return text;
+  if (!text) return text;
   if (/^https?:\/\//.test(text.trim())) return text;
+
+  // Filtres systématiques (toujours appliqués, pas probabilistes) :
+  // ils nettoient des marqueurs IA / hors-perso indépendamment de l'état
+  // et tournent aussi sur les messages courts.
+  text = stripEmDashes(text);
+  text = stripRacaille(text);
+  text = dedupeMdr(text);
+
+  // En dessous de 20 caractères, on s'arrête après le nettoyage de base.
+  if (text.length < 20) return text;
 
   const sig = ctx.emotionalSignal || {};
   const bond = ctx.bondSignal || {};
@@ -246,4 +296,5 @@ module.exports = {
   humanize,
   applyRelaxFilter, maybeDropAccents, injectSlang,
   maybeAddOccasionalEmoji, hasAnyEmoji,
+  stripEmDashes, dedupeMdr, stripRacaille,
 };

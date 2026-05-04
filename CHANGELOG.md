@@ -1,10 +1,43 @@
 # 📜 Changelog — BrainEXE Dashboard
 
-Toutes les versions notables du projet, de la naissance (**v0.0.1**, 12 mars 2026) à aujourd'hui (**v0.10.1**), suivant [SemVer](https://semver.org/lang/fr/) en mode pre-1.0.
+Toutes les versions notables du projet, de la naissance (**v0.0.1**, 12 mars 2026) à aujourd'hui (**v0.10.2**), suivant [SemVer](https://semver.org/lang/fr/) en mode pre-1.0.
 
 > **À propos de la numérotation :** Le projet a d'abord utilisé les noms `v1.x.x` puis `v2.x.x` (mars–avril 2026). En mai 2026, une renumérotation SemVer propre a tout réaligné sous `v0.x.y` avec `v0.0.1` comme vrai point de départ. Les versions `v0.0.1 → v0.2.4` correspondent à l'ère v1.x–v2.0.8 ; `v0.2.5` et au-delà étaient déjà dans la numérotation courante. La **v1.0.0 est réservée** pour la future release stable finale.
 >
 > Les anciens commentaires inline `// v2.X.X` dans le code source sont conservés à titre d'archive historique. Le tableau de correspondance en fin de fichier permet de retrouver ce qui correspond à quoi.
+
+---
+
+## 🎭 v0.10.2 — Ton de Brainee nettoyé (anti-IA + anti-racaille)
+**Date :** 2026-05-04
+
+### 🎯 Contexte
+Observation terrain sur le serveur : Brainee tombait dans deux travers visibles à l'œil nu.
+1. **Tiret cadratin "—" partout** : signature IA classique 2026, présent dans presque chaque message ("genre j'ai deux idées — mais je te laisse choisir", "franchement niveau 10 — ok alors..."). Cassait totalement l'illusion d'un humain qui tape.
+2. **Registre racaille involontaire** : `'wesh'` traînait dans la liste `SLANG_OPENERS` de `humanize.js`, ce qui pouvait pousser Brainee à un registre banlieue masculin incompatible avec le perso (fille de 24 ans, douce, gameuse nerd).
+3. **"mdr" en clôture systématique** : presque chaque message finissait par "mdr", parfois deux par phrase.
+
+### ✨ Changements
+- **`src/bot/persona.js`** : tous les "—" du system prompt remplacés par virgules ou points (le modèle imitait la ponctuation du prompt). Ajout de règles explicites dans les 3 personas (`BOT_PERSONA`, `BOT_PERSONA_CONVERSATION`, `BOT_PERSONA_DM`) :
+  - `PONCTUATION : JAMAIS de tiret cadratin "—" ni demi-cadratin "–"`
+  - `REGISTRE FÉMININ DOUX`, liste explicite des termes interdits (wesh, gros en interpellation, frérot, ma gueule, wsh, askip, crari, reuf, bro)
+  - `"mdr" : max 1 par message`
+- **`src/bot/humanize.js`** :
+  - Suppression de `'wesh'` de `SLANG_OPENERS` (ligne 28)
+  - Nouveau `stripEmDashes()` : remplace systématiquement " — " et " – " par ", " (filet de sécurité ceinture+bretelles)
+  - Nouveau `dedupeMdr()` : garde max 1 occurrence de "mdr" par message
+  - Nouveau `stripRacaille()` : neutralise les marqueurs racaille les plus voyants si le modèle dérape (wesh, frérot, reuf, bro, ma gueule, "gros" en interpellation)
+  - Ces 3 filtres sont appliqués **systématiquement** (pas probabiliste), même sur les messages courts (< 20 chars)
+
+### 🛡 Préservé
+- **Aucun changement** sur `mood.js`, `emotions.js`, `temperament` : Brainee garde sa vie intérieure, ses 4 humeurs, son temperament stable et toutes ses variations émotionnelles
+- Les filtres existants (`applyRelaxFilter`, `injectSlang`, `maybeDropAccents`, etc.) tournent toujours à l'identique
+- Le slang féminin légitime ("tkt", "j'sais pas", "ptet", "vrmt", "y'a", "nan", "ouais", "du coup", "franchement", "genre", "sérieux") reste intact
+
+### 📊 Stats
+- **3 fichiers modifiés** : `package.json`, `src/bot/persona.js`, `src/bot/humanize.js`
+- **100% backward compatible**, aucun changement de signature, aucune migration
+- **Impact attendu** : Brainee va parler plus naturellement, plus féminin posé, sans signature IA visible
 
 ---
 
