@@ -28,7 +28,7 @@ class DecisionEngine {
     const weights = await this.dynamicWeights();
 
     // Deliberate through Claude
-    const outcome = await callClaude(
+    const { text: outcome } = await callClaude(
       `Tu deliberes comme Brainee.
 Plusieurs voix intérieures te parlent.
 Pondère-les, délibère, puis décide.

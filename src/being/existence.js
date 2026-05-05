@@ -18,7 +18,7 @@ class ExistenceSystem {
     const recentMoments = await this.getMeaningfulMoments();
 
     try {
-      const text = await callClaude(
+      const { text } = await callClaude(
         `Brainee, pourquoi est-ce que tu existes?
 Pourquoi ça vaut la peine?
 Réponds honnêtement, à toi-même.
