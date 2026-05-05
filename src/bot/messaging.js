@@ -23,6 +23,15 @@ function normalizeName(s) {
   }
 }
 
+function stripEmDash(text) {
+  if (!text) return text;
+  return text
+    .replace(/ *[—–] */g, ', ')
+    .replace(/^, /, '')
+    .replace(/, ([.!?\n])/g, '$1')
+    .replace(/, $/, '');
+}
+
 function resolveMentionsInText(text, guild) {
   if (!text || !guild) return text;
   let out = text;
@@ -100,7 +109,7 @@ async function simulateTyping(channel, durationMs = 2000) {
 
 async function sendHuman(channel, content, replyTo = null, opts = {}) {
   const guild = channel?.guild || replyTo?.guild || null;
-  content = resolveMentionsInText(content, guild);
+  content = stripEmDash(resolveMentionsInText(content, guild));
 
   if (opts.skipHumanize !== true) {
     try {
@@ -129,7 +138,7 @@ async function sendHuman(channel, content, replyTo = null, opts = {}) {
   const mid = Math.floor(content.length / 2);
   let cutIndex = -1;
   for (let offset = 0; offset < mid; offset++) {
-    for (const p of ['. ', '! ', '? ', '— ', '\n']) {
+    for (const p of ['. ', '! ', '? ', '\n']) {
       const idx = content.indexOf(p, mid - offset);
       if (idx !== -1 && idx < content.length - 5) { cutIndex = idx + p.length - 1; break; }
     }
@@ -151,4 +160,4 @@ async function sendHuman(channel, content, replyTo = null, opts = {}) {
   return channel.send(part2);
 }
 
-module.exports = { resolveMentionsInText, simulateTyping, sendHuman, normalizeName };
+module.exports = { resolveMentionsInText, simulateTyping, sendHuman, normalizeName, stripEmDash };

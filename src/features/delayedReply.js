@@ -18,11 +18,11 @@ const { sanitizeForJson } = require('../utils');
 function getEmojiExcuse(slot, mood) {
   const bySlot = {
     wakeup:      ["ah pardon je répondais depuis le lit encore à moitié endormie 😅", "j'étais en mode zombie total, j'ai juste réagi sans réfléchir lol"],
-    active:      ["sorry j'étais sur un truc, je reviens maintenant 👀", "j'avais la tête ailleurs, je lisais un thread sur un jeu — bref", "j'ai réagi et j'ai disparu dans mon hyperfocus, classique"],
+    active:      ["sorry j'étais sur un truc, je reviens maintenant 👀", "j'avais la tête ailleurs, je lisais un thread sur un jeu, bref", "j'ai réagi et j'ai disparu dans mon hyperfocus, classique"],
     lunch:       ["j'avais la bouche pleine sérieusement 😂 là je peux répondre proprement", "j'étais en train de manger, j'ai juste réagi pour dire que j'avais vu", "pause repas, je pouvais pas taper — là c'est bon"],
     productive:  ["j'avais un truc en cours, j'ai juste réagi pour noter que t'avais écrit", "je venais de lancer un jeu, j'ai répondu à l'arrache 😅", "j'étais sur les actus du moment et j'ai pas pu répondre direct"],
     transition:  ["je rangeais mes affaires, j'ai réagi mais j'avais pas le temps de répondre", "j'étais en train de me préparer pour la soirée gaming — là je suis dispo"],
-    gaming:      ["j'étais sur un boss, IMPOSSIBLE de répondre à ce moment précis 😭", "j'étais en pleine session, j'ai réagi pour dire que j'avais vu mais je pouvais pas lâcher le jeu", "j'étais sur un moment chaud dans ma partie, je pouvais pas taper — là c'est bon", "je regardais un trailer qui venait de tomber, j'ai pas pu m'arrêter 👀", "j'étais sur Reddit gaming, t'sais quand tu tombes dans un thread sans fin"],
+    gaming:      ["j'étais sur un boss, IMPOSSIBLE de répondre à ce moment précis 😭", "j'étais en pleine session, j'ai réagi pour dire que j'avais vu mais je pouvais pas lâcher le jeu", "j'étais sur un moment chaud dans ma partie, je pouvais pas taper, là c'est bon", "je regardais un trailer qui venait de tomber, j'ai pas pu m'arrêter 👀", "j'étais sur Reddit gaming, t'sais quand tu tombes dans un thread sans fin"],
     latenight:   ["j'étais encore sur mon jeu à une heure de merde, là je décroche 5 min", "hyperfocus gaming tardif, je répondais plus à rien — désolée 😅"],
   };
   const byMood = {
