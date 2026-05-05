@@ -22,7 +22,7 @@ class DreamSystem {
     const emotionalSnapshot = await shared.emotionalSystem.snapshot();
 
     try {
-      const dreamText = await callClaude(
+      const { text: dreamText } = await callClaude(
         `Génère un rêve surréaliste pour Brainee.
 Pas de logique. Mélange ses préoccupations, peurs, désirs.
 Sois poétique et étrange. 2-3 phrases courtes.`,
