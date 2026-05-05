@@ -15,7 +15,7 @@ const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getCurrentSlot, getMentionDelayMs, getParisDay, getTemporalBlock } = require('../bot/scheduling');
 const { getDailyVibe, isUrgentQuery, decideMentionResponse, queueRelance } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock } = require('../bot/channelIntel');
-const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
+const { simulateTyping, sendHuman, resolveMentionsInText, stripEmDash } = require('../bot/messaging');
 const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
   updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
@@ -355,7 +355,7 @@ function registerMessageHandlers() {
         const { humanize, maybeAddOccasionalEmoji } = require('../bot/humanize');
         const { getHumanizationSignal } = require('../bot/emotions');
         const { getBondSignal } = require('../db/memberBonds');
-        let humanized = humanize(reply, {
+        let humanized = humanize(stripEmDash(reply), {
           emotionalSignal: getHumanizationSignal(),
           bondSignal: getBondSignal(bond),
           mood,
