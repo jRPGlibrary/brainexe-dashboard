@@ -235,8 +235,8 @@ function startConvCron() {
   narrativeCron = cron.schedule('0 2 * * *', async () => {
     try {
       if (!shared.discord?.isReady()) return;
-      const guild = await shared.discord.guilds.fetch(shared.botConfig.guildId);
-      if (!guild) return;
+      const guild = await shared.discord.guilds.fetch(GUILD_ID);
+      if (!guild?.channels) return;
       await guild.channels.fetch();
 
       const allMessages = [];
