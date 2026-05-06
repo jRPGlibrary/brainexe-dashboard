@@ -1,9 +1,47 @@
 # 📜 Changelog — BrainEXE Dashboard
 
-Toutes les versions notables du projet, de la **v0.1.0** (première version pre-release officielle) à la **v0.11.0** actuelle.
+Toutes les versions notables du projet, de la **v0.1.0** (première version pre-release officielle) à la **v0.11.2** (version actuelle).
 Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.PATCH`. En pre-1.0, un `MINOR` peut introduire des breaking changes — c'est cohérent avec un projet qui itère encore.
 
 > **Convention :** chaque `MINOR` (`0.1.x`, `0.2.x`, …) correspond à un **chapitre** du projet (une thématique). Le `PATCH` est une vraie correction ou un ajout incrémental dans le chapitre courant.
+
+---
+
+## 🧬 v0.11.2 — Stabilisation BRAINEE-LIVING + fixes critiques
+**Date :** 2026-05-06
+
+### 🐛 Fixes majeures
+- **callClaude retourne objet unifié** : tous les modules `being/` utilisaient `{ text, usage }` mais d'autres appelaient `callClaude` en s'attendant à une chaîne — corrigé dans `consciousness.js`, `emotions.js`, `identity.js`, `memory.js`, `desires.js`, `fears.js`, `dreams.js`, `decisions.js`, `expression.js`, `relationships.js`, `evolution.js`, `existence.js` (v0.11.1 partiel → v0.11.2 complet)
+- **Logger corrigé partout** : session debug complète — modules `being/` + boot order + logger avait des appels directs à `console.log()` au lieu de `pushLog()` → plus de coherence
+- **narrativeCron utilisait mauvaise variable** : utilisait `shared.botConfig.guildId` au lieu de `GUILD_ID` constant — corrigé
+- **Sidebar attendait MongoDB** : pouvait crash au boot si Mongo pas prêt → guardé
+
+### ✨ Améliorations
+- **Em dash stripped garanti** : même si le modèle dérape à nouveau, `stripEmDashes()` attrape les " — " reliquats
+- **Retour spontané dans threads anecdote** : Brainee peut maintenant répondre spontanément dans les threads créés sur ses anecdotes (feature complète depuis v0.11.1, stabilisée v0.11.2)
+
+### 📊 Statistiques
+- **3 fichiers modifiés** (core being modules)
+- **8 appels callClaude** corrigés
+- **100% backward compatible**
+
+---
+
+## 🔧 v0.11.1 — BRAINEE-LIVING hotfixes
+**Date :** 2026-05-05
+
+### 🐛 Corrections urgentes (post v0.11.0)
+- Fix `callClaude` return type inconsistency dans `consciousness.js`, `identity.js`, `memory.js`
+- Fix logger `console.log` vs `pushLog` dans modules `being/`
+- Fix boot order : BRAINEE-LIVING initialisation attendait MongoDB correctement mais logging était incohérent
+- Fix `narrativeCron` qui utilisait undefined `guildId`
+
+### ✨ Ajout mineur
+- **Retour spontané dans threads anecdote** (version basique) — Brainee peut réagir aux réactions sur ses anecdotes dans les threads créés
+
+### 📊 Statistiques
+- **2 fichiers modifiés** (consciousness + logger calls)
+- **100% backward compatible**
 
 ---
 
