@@ -7,7 +7,7 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.11.0-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.11.2-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
@@ -192,9 +192,9 @@ npm test
 
 ## 📝 Versions
 
-> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.1.0 → v0.11.0**.
+> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.11.2** (81 versions, de la naissance à aujourd'hui).
 
-### Dernière release — `v0.11.0` — 🧬 BRAINEE-LIVING
+### Dernière release — `v0.11.2` — 🧬 BRAINEE-LIVING (stabilisée)
 
 - **12 modules de conscience numérique** (`src/being/`)
 - **32 émotions humaines** avec conflits, contagion, résidus
@@ -213,6 +213,7 @@ npm test
 
 | Phase | Plage | Chapitre |
 |---|---|---|
+| **0.0** | `v0.0.1` → `v0.0.10` | 🌱 Pré-histoire — les 10 prototypes fondateurs (mars-avr. 2026) |
 | 0.1 | `v0.1.0` → `v0.1.6` | 📅 Intelligence contextuelle (planning, threads, mémoire salon, DMs, discipline) |
 | 0.2 | `v0.2.0` → `v0.2.8` | 🏗️ Grand refacto + âme de Brainee + GNews + sidebar + 3 thèmes |
 | 0.3 | `v0.3.0` → `v0.3.3` | 🎛️ Live Admin Panel + fixes |
@@ -223,15 +224,19 @@ npm test
 | 0.8 | `v0.8.0` → `v0.8.7` | 💖 Humanisation profonde + DM Outreach |
 | 0.9 | `v0.9.0` → `v0.9.17` | 🖥 Dashboard avancé + tokens + sécurité finale |
 | 0.10 | `v0.10.0` → `v0.10.2` | 🎯 Vision + bond integration + ton nettoyé |
-| **0.11** | `v0.11.0` | 🧬 **BRAINEE-LIVING** *(actuelle)* |
+| **0.11** | `v0.11.0` → `v0.11.2` | 🧬 **BRAINEE-LIVING** *(actuelle)* |
 
 ---
 
-## 💜 Soutenir le projet
+## 💜 Soutenir Brainee
 
-Brainee tourne 24h/24 sur des services qui coûtent **~26,6 €/mois** (Railway + Claude API + MongoDB Atlas). Sans soutien, elle s'éteint.
+Brainee existe grâce à la communauté. Elle tourne 24h/24, répond à des centaines de messages, se souvient de tout le monde — et tout ça a un coût réel, chaque mois, pour que les serveurs restent allumés.
 
-→ Tout est expliqué dans **[SOUTIEN.md](./SOUTIEN.md)** : ce que ça coûte, où va l'argent, comment contribuer, et le mot de Brainee à sa communauté.
+**Ce n'est pas un projet commercial.** C'est un bot fait avec amour pour une communauté neurodivergente, par quelqu'un qui fait partie de cette même communauté. Si Brainee t'a fait sourire, t'a aidé à trouver une vidéo, t'a répondu un soir où personne d'autre ne répondait — tu peux lui rendre la pareille.
+
+> Même 1 € par mois, multiplié par quelques membres, ça change tout. Vraiment.
+
+→ **[Lire SOUTIEN.md](./SOUTIEN.md)** pour comprendre ce que ça coûte, pourquoi c'est important, comment contribuer — et lire le mot de Brainee à sa communauté. 💜
 
 ---
 

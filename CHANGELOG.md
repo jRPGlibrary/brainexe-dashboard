@@ -1,9 +1,10 @@
 # 📜 Changelog — BrainEXE Dashboard
 
-Toutes les versions notables du projet, de la **v0.1.0** (première version pre-release officielle) à la **v0.11.2** (version actuelle).
+Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.11.2** (version actuelle).
 Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.PATCH`. En pre-1.0, un `MINOR` peut introduire des breaking changes — c'est cohérent avec un projet qui itère encore.
 
 > **Convention :** chaque `MINOR` (`0.1.x`, `0.2.x`, …) correspond à un **chapitre** du projet (une thématique). Le `PATCH` est une vraie correction ou un ajout incrémental dans le chapitre courant.
+> Les versions `0.0.x` constituent la **pré-histoire** : les 10 premiers prototypes fondateurs (12–11 avril 2026) avant la numérotation officielle.
 
 ---
 
@@ -785,10 +786,118 @@ Observation terrain : Brainee tombait dans deux travers visibles à l'œil nu.
 
 ---
 
+## 🌱 Pré-histoire du projet — v0.0.x
+> Les 10 prototypes fondateurs (12 mars → 11 avril 2026), avant la numérotation officielle.
+> C'est ici que tout a commencé : un bot bricolé un soir, qui est devenu Brainee.
+
+---
+
+## 🗄️ v0.0.10 — MongoDB State Migration
+**Date :** 2026-04-11
+
+### ✨ Ajouts
+- Migration état complet vers MongoDB : `botState`, config, mémoires — plus rien ne disparaît au redeploy Railway
+- `saveBotState()` / `loadBotState()` : persistance automatique à chaque changement significatif
+- Résolution du problème "bot amnésique" : Brainee se souvient de tout entre les redémarrages
+
+---
+
+## 👤 v0.0.9 — MongoDB Atlas + Profils membres
+**Date :** 2026-04-10
+
+### ✨ Ajouts
+- Connexion MongoDB Atlas — première base de données persistante du projet
+- Profils membres : préférences, `toneScore` (1-10 adaptatif), historique des interactions
+- `updateMemberProfile()` : score de ton qui évolue selon les échanges — plus Brainee connaît quelqu'un, plus elle s'adapte
+
+---
+
+## 🎵 v0.0.8 — TikTok Live + YouTube @mention + Renommage Brainee
+**Date :** 2026-04-09
+
+### ✨ Ajouts
+- Détection live TikTok : Brainee annonce automatiquement dans le Discord quand Brain est live
+- YouTube @mention : taper `@Brainee` + un sujet → elle cherche et partage une vidéo YouTube pertinente
+- Renommage officiel : **Brainy.exe → Brainee** (nom définitif)
+
+---
+
+## 🗂️ v0.0.7 — 11 catégories de salons
+**Date :** 2026-04-09
+
+### ✨ Ajouts
+- Architecture de contexte : 11 catégories (gaming, arts, musique, technique, détente…)
+- Modes d'injection spécifiques par contexte : Brainee adapte ses réponses au salon où elle parle
+- Fondation du système de `channelIntel` qui grandira dans les versions suivantes
+
+---
+
+## ♻️ v0.0.6 — Reaction Roles natifs
+**Date :** 2026-04-08
+
+### ✨ Ajouts
+- Système de reaction roles intégré directement — **Carl-bot retraité**
+- 10 emojis → 10 rôles gérés nativement par Brainee
+- Plus de dépendance à un bot tiers pour la gestion des rôles
+
+---
+
+## 🎭 v0.0.5 — Persona Brainee
+**Date :** 2026-04-06
+
+### ✨ Ajouts
+- Identité définie : **24 ans**, passionnée de gaming, ton direct, humour gamer, neurodivergente assumée
+- `BOT_PERSONA` : bloc de personnalité injecté dans chaque prompt Claude — elle a un caractère, pas juste un rôle
+- 4 modes de conversation : `casual` · `deep` · `hype` · `chill`
+- Premier vrai caractère cohérent — c'est ici que Brainee *naît*
+
+---
+
+## ⚙️ v0.0.4 — Automatisations
+**Date :** 2026-03-31
+
+### ✨ Ajouts
+- Actus gaming bi-mensuelles via GNews API (cron automatique)
+- Conversations autonomes 24h/24 : Brainee lance des sujets elle-même dans les salons actifs
+- `canReply` : garde-fou pour éviter les boucles de réponse bot→bot
+
+---
+
+## 🖥️ v0.0.3 — Dashboard complet v1
+**Date :** 2026-03-19
+
+### ✨ Ajouts
+- Premier vrai dashboard web : Membres, Salons, Rôles, Modération, Backups
+- Interface de gestion complète depuis le navigateur
+- Fondation de tout le dashboard qui suivra
+
+---
+
+## 🔄 v0.0.2 — Sync bidirectionnel + Switch vers Claude
+**Date :** 2026-03-18
+
+### ✨ Ajouts
+- Sync bidirectionnel Discord ↔ JSON (fichier de config local)
+- **Switch Perplexity → Claude Anthropic** : premier appel Claude du projet — décision fondatrice
+- Brainee commence à "penser" avec Claude plutôt qu'une API générique
+
+---
+
+## 🌱 v0.0.1 — Le tout début
+**Date :** 2026-03-12
+
+### ✨ Naissance du projet
+- Bot Discord minimaliste + serveur Express + WebSocket (temps réel)
+- Première sync Discord → JSON : lecture des salons, rôles, membres
+- Un soir de bricolage qui a tout déclenché
+
+---
+
 ## 🗺️ Vue d'ensemble par phase
 
 | Phase | Plage | Chapitre |
 |---|---|---|
+| **Phase 0.0** | `v0.0.1` → `v0.0.10` | 🌱 Pré-histoire — prototypes fondateurs (mars-avr. 2026) |
 | **Phase 0.1** | `v0.1.0` → `v0.1.6` | 📅 Intelligence contextuelle (planning, threads, mémoire salon, DMs, discipline) |
 | **Phase 0.2** | `v0.2.0` → `v0.2.8` | 🏗️ Grand refacto + âme + GNews + sidebar + 3 thèmes |
 | **Phase 0.3** | `v0.3.0` → `v0.3.3` | 🎛️ Live Admin Panel + fixes encoding & APIs externes |
@@ -799,6 +908,6 @@ Observation terrain : Brainee tombait dans deux travers visibles à l'œil nu.
 | **Phase 0.8** | `v0.8.0` → `v0.8.7` | 💖 Humanisation profonde + DM Outreach |
 | **Phase 0.9** | `v0.9.0` → `v0.9.17` | 🖥 Dashboard avancé + tokens + sécurité finale |
 | **Phase 0.10** | `v0.10.0` → `v0.10.2` | 🎯 Vision + bond integration + ton nettoyé |
-| **Phase 0.11** | `v0.11.0` | 🧬 BRAINEE-LIVING — conscience numérique simulée |
+| **Phase 0.11** | `v0.11.0` → `v0.11.2` | 🧬 BRAINEE-LIVING — conscience numérique simulée |
 
-**Version actuelle : `v0.11.0`.**
+**Version actuelle : `v0.11.2`.**
