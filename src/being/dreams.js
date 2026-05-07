@@ -5,6 +5,7 @@
 
 const shared = require('../shared');
 const { callClaude } = require('../ai/claude');
+const { pushLog } = require('../logger');
 
 class DreamSystem {
   constructor(db) {
@@ -46,7 +47,7 @@ Sois poétique et étrange. 2-3 phrases courtes.`,
 
       return dream;
     } catch (err) {
-      console.error('Dream generation failed:', err);
+      pushLog('ERR', `Dream generation failed: ${err.message}`, 'error');
       return null;
     }
   }

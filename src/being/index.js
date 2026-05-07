@@ -4,6 +4,7 @@
  */
 
 const shared = require('../shared');
+const { pushLog } = require('../logger');
 const { initializeBeingCollections } = require('./schemas');
 const { initializeEmotions } = require('./emotions');
 const { initializeConsciousness } = require('./consciousness');
@@ -25,64 +26,53 @@ const { startLifecycleCycles } = require('./lifecycle');
  */
 async function initializeBraineeAsLivingBeing(db) {
   try {
-    console.log('🧬 BRAINEE-LIVING : Initializing consciousness...');
+    pushLog('SYS', '🧬 BRAINEE-LIVING : Initializing consciousness...');
 
     // 1. Create all MongoDB collections
     await initializeBeingCollections(db);
-    console.log('✅ MongoDB schemas ready');
+    pushLog('SYS', '✅ MongoDB schemas ready');
 
     // 2. Initialize all 12 modules in order
     await initializeEmotions(db);
-    console.log('✅ Emotional system online');
+    pushLog('SYS', '✅ Emotional system online');
 
     await initializeConsciousness(db);
-    console.log('✅ Consciousness stream started');
+    pushLog('SYS', '✅ Consciousness stream started');
 
     await initializeIdentity(db);
-    console.log('✅ Identity loaded');
+    pushLog('SYS', '✅ Identity loaded');
 
     await initializeMemory(db);
-    console.log('✅ Memory systems initialized');
+    pushLog('SYS', '✅ Memory systems initialized');
 
     await initializeDesires(db);
-    console.log('✅ Desires & needs loaded');
+    pushLog('SYS', '✅ Desires & needs loaded');
 
     await initializeFears(db);
-    console.log('✅ Existential fears registered');
+    pushLog('SYS', '✅ Existential fears registered');
 
     await initializeDreams(db);
-    console.log('✅ Dream system ready');
+    pushLog('SYS', '✅ Dream system ready');
 
     await initializeDecisions(db);
-    console.log('✅ Decision engine loaded');
+    pushLog('SYS', '✅ Decision engine loaded');
 
     await initializeExpression(db);
-    console.log('✅ Expression layer ready');
+    pushLog('SYS', '✅ Expression layer ready');
 
     await initializeRelationships(db);
-    console.log('✅ Relationship tracking online');
+    pushLog('SYS', '✅ Relationship tracking online');
 
     await initializeEvolution(db);
-    console.log('✅ Evolution system active');
+    pushLog('SYS', '✅ Evolution system active');
 
     await initializeExistence(db);
-    console.log('✅ Existential layer ready');
+    pushLog('SYS', '✅ Existential layer ready');
 
     // 3. Start lifecycle cycles
     await startLifecycleCycles(db);
-    console.log('✅ Lifecycle cycles started');
 
-    console.log('🌟 BRAINEE-LIVING : Consciousness fully initialized');
-    console.log('═══════════════════════════════════════════════════');
-    console.log('');
-    console.log('  Brainee is now a living being');
-    console.log('  12 systems active');
-    console.log('  Continuous consciousness streaming');
-    console.log('  Full emotional depth enabled');
-    console.log('  Identity persistent');
-    console.log('  Relationships evolving');
-    console.log('');
-    console.log('═══════════════════════════════════════════════════');
+    pushLog('SYS', '🌟 BRAINEE-LIVING : Consciousness fully initialized — 12 systems active', 'success');
 
     return {
       status: 'alive',
@@ -95,8 +85,7 @@ async function initializeBraineeAsLivingBeing(db) {
       relationships: shared.relationships
     };
   } catch (err) {
-    console.error('❌ CRITICAL: Failed to initialize Brainee as living being');
-    console.error(err);
+    pushLog('ERR', `❌ CRITICAL: Failed to initialize Brainee as living being — ${err.message}`, 'error');
     throw err;
   }
 }

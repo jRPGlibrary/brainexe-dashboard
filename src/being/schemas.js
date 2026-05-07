@@ -5,6 +5,8 @@
  * 12 modules intégrés, persistence totale
  */
 
+const { pushLog } = require('../logger');
+
 const COLLECTIONS = {
 
   // === MODULE 1 : CONSCIOUSNESS ===
@@ -169,7 +171,7 @@ async function initializeBeingCollections(db) {
       }
     }
   }
-  console.log('✅ Brainee-Living collections initialized');
+  pushLog('SYS', '✅ Brainee-Living collections initialized', 'success');
 }
 
 module.exports = { COLLECTIONS, initializeBeingCollections };
