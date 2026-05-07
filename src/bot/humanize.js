@@ -157,10 +157,10 @@ function maybeRepeatPunct(text) {
 function stripEmDashes(text) {
   if (!text) return text;
   let out = text;
-  out = out.replace(/\s*[—–]\s*/g, ', ');
-  out = out.replace(/,\s*,/g, ',');
-  out = out.replace(/,\s*([.!?])/g, '$1');
-  out = out.replace(/^,\s*/, '');
+  out = out.replace(/\s*[—–]\s*/g, '\n');    // Saut de ligne, pas virgule
+  out = out.replace(/\n([.!?])/g, '$1');     // Pas de \n avant ponctuation finale
+  out = out.replace(/^\n+/, '');             // Pas de \n en tête
+  out = out.replace(/\n{3,}/g, '\n\n');      // Max double saut de ligne
   return out;
 }
 

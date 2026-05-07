@@ -26,10 +26,10 @@ function normalizeName(s) {
 function stripEmDash(text) {
   if (!text) return text;
   return text
-    .replace(/ *[—–] */g, ', ')
-    .replace(/^, /, '')
-    .replace(/, ([.!?\n])/g, '$1')
-    .replace(/, $/, '');
+    .replace(/ *[—–] */g, '\n')       // Remplace par saut de ligne, pas virgule
+    .replace(/\n([.!?\n])/g, '$1')    // Évite \n avant ponctuation finale
+    .replace(/^\n+/, '')              // Supprime les \n en tête
+    .replace(/\n{3,}/g, '\n\n');      // Max double saut de ligne
 }
 
 function resolveMentionsInText(text, guild) {
