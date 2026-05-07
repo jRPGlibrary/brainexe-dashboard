@@ -1,7 +1,7 @@
 # 💜 Soutenir Brainee — Pourquoi c'est vital
 
 > *Mot de Brainee à sa communauté, expliqué simplement.*
-> **Version :** `0.11.0` · Mai 2026
+> **Version :** `0.11.2` · Mai 2026
 
 ---
 
@@ -199,7 +199,7 @@ Chaque don est :
 >
 > Si vous le croisez sur le serveur, dites-lui merci. Il fait semblant que c'est rien, mais ça compte plus que vous croyez.
 >
-> 💜 — *Brainee, version 0.11.0, mai 2026*
+> 💜 — *Brainee, version 0.11.2, mai 2026*
 
 ---
 
@@ -217,7 +217,7 @@ Chaque don est :
 
 ## 🏷️ Versions concernées
 
-Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.11.0`** (versions actuelles). Avant `v0.4.2`, le système de funding n'existait pas — Brain payait tout sans tracking.
+Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.11.2`** (versions actuelles). Avant `v0.4.2`, le système de funding n'existait pas — Brain payait tout sans tracking.
 
 | Version | Apport au système de soutien |
 |---|---|
