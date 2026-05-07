@@ -103,10 +103,10 @@ async function saveEmotionalState() {
 // ─── ÉVOLUTION DES ÉTATS INTERNES ────────────────────────────────
 function clamp(v, min = 0, max = 100) { return Math.max(min, Math.min(max, v)); }
 
-// Guard : les effets de slot ne s'appliquent qu'une fois toutes les 3 minutes max
+// Guard : les effets de slot ne s'appliquent qu'une fois toutes les 30 secondes max
 // pour éviter que chaque message amplifie le mentalLoad à l'infini
 let _lastSlotUpdate = 0;
-const SLOT_UPDATE_MIN_INTERVAL_MS = 3 * 60 * 1000;
+const SLOT_UPDATE_MIN_INTERVAL_MS = 30 * 1000;
 
 function updateInternalStatesForSlot(slot) {
   const now = Date.now();
@@ -132,10 +132,12 @@ function updateInternalStatesForSlot(slot) {
 }
 
 function applyNaturalDecay() {
-  internalState.mentalLoad = clamp(internalState.mentalLoad - 1);
+  internalState.mentalLoad = clamp(internalState.mentalLoad - 1.5);
   internalState.stimulation = clamp(internalState.stimulation - 0.5);
   if (internalState.socialNeed < 80) internalState.socialNeed = clamp(internalState.socialNeed + 0.3);
-  if (internalState.energy > 40 && internalState.energy < 80) internalState.energy = clamp(internalState.energy - 0.2);
+  // L'énergie se régénère doucement si elle est basse, décroit doucement si haute
+  if (internalState.energy < 45) internalState.energy = clamp(internalState.energy + 0.5);
+  else if (internalState.energy > 80) internalState.energy = clamp(internalState.energy - 0.3);
 }
 
 function applyDailyDrift() {
@@ -143,8 +145,17 @@ function applyDailyDrift() {
     if (k === 'lastUpdate') return;
     const baseline = 50;
     const current = internalState[k];
-    internalState[k] = clamp(current + (baseline - current) * 0.08);
+    internalState[k] = clamp(current + (baseline - current) * 0.22);
   });
+}
+
+// Reset nocturne : Brainee récupère chaque nuit
+function resetNightlyEnergy() {
+  internalState.energy = clamp(Math.max(internalState.energy, 62));
+  internalState.mentalLoad = clamp(Math.min(internalState.mentalLoad, 25));
+  internalState.calmNeed = clamp(Math.min(internalState.calmNeed, 40));
+  internalState.lastUpdate = Date.now();
+  pushLog('SYS', `🌅 Récupération nocturne — énergie : ${Math.round(internalState.energy)}, charge : ${Math.round(internalState.mentalLoad)}`);
 }
 
 // ─── GESTION DES ÉMOTIONS ────────────────────────────────────────
@@ -462,7 +473,7 @@ function setInternalStateValue(key, value) {
 module.exports = {
   TEMPERAMENT, ALL_EMOTIONS, EMOTION_CATEGORIES,
   loadEmotionalState, saveEmotionalState,
-  updateInternalStatesForSlot, applyNaturalDecay, applyDailyDrift,
+  updateInternalStatesForSlot, applyNaturalDecay, applyDailyDrift, resetNightlyEnergy,
   triggerEmotion, decayEmotions, getDominantEmotion, getActiveEmotions,
   detectEmotionFromMessage,
   getEmotionalInjection, getTemperamentInjection, getEmotionalContext,

@@ -13,8 +13,8 @@ function refreshDailyMood() {
   if (dailyMoodDate === todayStr) return dailyMood;
   const day = getParisDay();
   const weights = (day === 0 || day === 6)
-    ? ['energique', 'energique', 'hyperfocus', 'chill', 'chill']
-    : ['energique', 'chill', 'chill', 'hyperfocus', 'zombie'];
+    ? ['energique', 'energique', 'energique', 'hyperfocus', 'chill', 'chill', 'hyperfocus', 'chill', 'energique', 'chill']
+    : ['energique', 'energique', 'chill', 'chill', 'chill', 'hyperfocus', 'hyperfocus', 'chill', 'energique', 'zombie'];
   dailyMood = weights[Math.floor(Math.random() * weights.length)];
   dailyMoodDate = todayStr;
   pushLog('SYS', `🎲 Humeur du jour : ${dailyMood}`, 'success');
@@ -25,7 +25,7 @@ function refreshDailyMood() {
       energique:  { energy: 78, socialNeed: 70, stimulation: 65, mentalLoad: 30 },
       chill:      { energy: 55, socialNeed: 45, stimulation: 40, mentalLoad: 30, calmNeed: 55 },
       hyperfocus: { energy: 70, socialNeed: 35, stimulation: 85, mentalLoad: 50, calmNeed: 25 },
-      zombie:     { energy: 28, socialNeed: 30, stimulation: 25, mentalLoad: 65, calmNeed: 70 },
+      zombie:     { energy: 42, socialNeed: 35, stimulation: 30, mentalLoad: 50, calmNeed: 65 },
     };
     const seed = seeds[dailyMood] || {};
     Object.entries(seed).forEach(([k, v]) => setInternalStateValue(k, v));
@@ -63,7 +63,7 @@ function setDailyMood(mood, applySeed = true) {
         energique:  { energy: 78, socialNeed: 70, stimulation: 65, mentalLoad: 30 },
         chill:      { energy: 55, socialNeed: 45, stimulation: 40, mentalLoad: 30, calmNeed: 55 },
         hyperfocus: { energy: 70, socialNeed: 35, stimulation: 85, mentalLoad: 50, calmNeed: 25 },
-        zombie:     { energy: 28, socialNeed: 30, stimulation: 25, mentalLoad: 65, calmNeed: 70 },
+        zombie:     { energy: 42, socialNeed: 35, stimulation: 30, mentalLoad: 50, calmNeed: 65 },
       };
       const seed = seeds[mood] || {};
       Object.entries(seed).forEach(([k, v]) => setInternalStateValue(k, v));
