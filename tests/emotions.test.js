@@ -165,6 +165,14 @@ describe('getEmotionStack', () => {
 
 // ── updateInternalStatesForSlot ───────────────────────────────────
 describe('updateInternalStatesForSlot', () => {
+  // Le throttle interne est de 3 min — on avance Date.now de 10 min entre chaque test
+  let tick = 0;
+  beforeEach(() => {
+    tick += 10 * 60 * 1000;
+    jest.spyOn(Date, 'now').mockReturnValue(tick);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
   test('slot sleep diminue l\'énergie', () => {
     setInternalStateValue('energy', 65);
     updateInternalStatesForSlot({ status: 'sleep' });
