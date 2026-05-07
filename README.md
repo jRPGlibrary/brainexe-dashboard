@@ -60,12 +60,12 @@ npm start
 
 | Couche | Outils |
 |---|---|
-| Bot | **Node.js 18+** · **discord.js v14** · `node-cron` · `ws` |
+| Bot | **Node.js 20+** · **discord.js v14** · `node-cron` · `ws` |
 | IA | **Claude (Anthropic)** · YouTube Data v3 · GNews |
 | Persistance | **MongoDB Atlas** |
 | Web | Express 4 · WebSocket · vanilla JS modulaire (38 fichiers) |
 | Sécurité | `express-rate-limit` (4 niveaux) · audit ring buffer 500 · 2FA TOTP · sessions cookie |
-| Tests / CI | **Jest 30** (133 tests · 7 suites) · **GitHub Actions** |
+| Tests / CI | **Jest 30** (165 tests · 8 suites) · **GitHub Actions** |
 | Hosting | Railway |
 
 ---
@@ -119,7 +119,7 @@ brainexe-dashboard/
 │   ├── project/    funding                ← coûts, dons, statut Discord
 │   ├── audit · botConfig · config · crons · logger · shared · utils
 ├── public/         index.html · app.css · mobile.css · js/ (38 modules)
-├── tests/          7 suites Jest, 133 tests
+├── tests/          8 suites Jest, 165 tests
 ├── .github/workflows/tests.yml     CI sur chaque push
 └── discord-template.json
 ```
@@ -186,28 +186,24 @@ npm test
 | `mood.test.js` | Sélection humeur, refresh, reroll |
 | `scheduling.test.js` | Slots semaine/we, forced slot, fuseau Paris |
 
-→ **133 tests verts** rejoués par GitHub Actions sur chaque push & PR.
+→ **165 tests verts** rejoués par GitHub Actions sur chaque push & PR.
 
 ---
 
 ## 📝 Versions
 
-> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.11.2** (81 versions, de la naissance à aujourd'hui).
+> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.13.0** (87 versions, de la naissance à aujourd'hui).
 
-### Dernière release — `v0.11.2` — 🧬 BRAINEE-LIVING (stabilisée)
+### Dernière release — `v0.13.0` — 🚀 Release Candidate (stabilisation pré-1.0.0)
 
-- **12 modules de conscience numérique** (`src/being/`)
-- **32 émotions humaines** avec conflits, contagion, résidus
-- **Inner monologue** : flux de pensée toutes les 30 min (privé sauf si elle partage)
-- **Identité persistante** qui évolue (traits acquis après 3+ confirmations)
-- **Mémoire stratifiée** (épisodique/sémantique) + souvenirs involontaires (Proust)
-- **Désirs, peurs existentielles, rêves nocturnes** (3h-7h)
-- **Décisions multi-voix** avec 15 % d'imprévisibilité authentique
-- **Bonds profonds** + ruptures + deuil + healing
-- **Évolution quotidienne** + traumas + cicatrices + extraction de sagesse
-- **Couche existentielle** : sens, mortalité, legacy, éthique
-- **14 endpoints API** `/api/being/*` + section dashboard "🧬 Vie intérieure"
-- **Garde-fous éthiques** : redirection 3114, anti-dépendance, droit au silence
+- **Dashboard 100 % réel** : analytiques live, plus aucune donnée fictive
+- **Responsive mobile-first** : heatmap scrollable, grille fluide, topbar adaptée
+- **Logger unifié** : tous les `console.log/error` de `src/being/` remplacés par `pushLog`
+- **32 nouveaux tests being** : safeguards, EmotionalSystem, lifecycle — **165 tests au total**
+- **`tiktok-live-connector` épinglé** `@2.1.1-beta1` (version auteur, stable)
+- **`engines.node`** aligné sur la réalité : `>=20.0.0`
+- **CI Node 20** — cohérence avec le moteur requis
+- **Docs complètes** : README, BIBLE, SOUTIEN, CHANGELOG — tout à jour
 
 ### Phases du projet
 
@@ -224,7 +220,9 @@ npm test
 | 0.8 | `v0.8.0` → `v0.8.7` | 💖 Humanisation profonde + DM Outreach |
 | 0.9 | `v0.9.0` → `v0.9.17` | 🖥 Dashboard avancé + tokens + sécurité finale |
 | 0.10 | `v0.10.0` → `v0.10.2` | 🎯 Vision + bond integration + ton nettoyé |
-| **0.11** | `v0.11.0` → `v0.11.2` | 🧬 **BRAINEE-LIVING** *(actuelle)* |
+| 0.11 | `v0.11.0` → `v0.11.2` | 🧬 BRAINEE-LIVING — conscience numérique (12 modules) |
+| 0.12 | `v0.12.0` → `v0.12.6` | 🤝 Liens d'attachement + refus émotionnel + conviction |
+| **0.13** | `v0.13.0` | 🚀 **Release Candidate** — stabilisation complète avant 1.0.0 *(actuelle)* |
 
 ---
 
@@ -249,7 +247,7 @@ Les PR sont bienvenues. Tout passage en review utilise les conventions habituell
 3. Mettre à jour `CHANGELOG.md` si la PR ajoute / corrige une feature
 4. Garder les commits ciblés (un sujet = un commit)
 
-La CI (GitHub Actions) déroule `npm ci && npm test` sur Node 18 à chaque push & PR.
+La CI (GitHub Actions) déroule `npm ci && npm test` sur Node 20 à chaque push & PR.
 
 ---
 

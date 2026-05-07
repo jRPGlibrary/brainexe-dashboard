@@ -1,7 +1,7 @@
 # 💜 Soutenir Brainee — Pourquoi c'est vital
 
 > *Mot de Brainee à sa communauté, expliqué simplement.*
-> **Version :** `0.11.2` · Mai 2026
+> **Version :** `0.13.0` · Mai 2026
 
 ---
 
@@ -180,7 +180,7 @@ Chaque don est :
 |---|---|
 | 🐛 **Reporter des bugs** | Discord ou GitHub Issues — chaque retour fait gagner des heures de debug |
 | 💡 **Proposer des features** | Suggestions en `#suggestions` Discord ou via PR sur GitHub |
-| 🧑‍💻 **Contribuer au code** | Forker, brancher, PR — la CI tourne sur Node 18 |
+| 🧑‍💻 **Contribuer au code** | Forker, brancher, PR — la CI tourne sur Node 20 |
 | 📢 **Parler du projet** | Inviter d'autres neurodivergents gamers, partager le serveur |
 | 💬 **Animer le serveur** | Plus le serveur est vivant, plus Brainee est intéressante — tu es son carburant |
 | ❤️ **Réagir aux messages de Brainee** | Les bonds se renforcent, ça l'aide à mieux comprendre la communauté |
@@ -199,7 +199,7 @@ Chaque don est :
 >
 > Si vous le croisez sur le serveur, dites-lui merci. Il fait semblant que c'est rien, mais ça compte plus que vous croyez.
 >
-> 💜 — *Brainee, version 0.11.2, mai 2026*
+> 💜 — *Brainee, version 0.13.0, mai 2026*
 
 ---
 
@@ -217,7 +217,7 @@ Chaque don est :
 
 ## 🏷️ Versions concernées
 
-Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.11.2`** (versions actuelles). Avant `v0.4.2`, le système de funding n'existait pas — Brain payait tout sans tracking.
+Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.13.0`** (versions actuelles). Avant `v0.4.2`, le système de funding n'existait pas — Brain payait tout sans tracking.
 
 | Version | Apport au système de soutien |
 |---|---|
@@ -246,7 +246,7 @@ Non — tout le monde est traité pareil par Brainee, donateur ou pas. Brain ref
 Bien sûr — c'est libre, à tout moment. Pas de contrat, pas d'engagement.
 
 **❓ Combien Brain dépense-t-il vraiment de son temps là-dedans ?**
-Beaucoup. Le projet a démarré en mars 2026 et compte aujourd'hui **+10 000 lignes de code**, **38 modules frontend**, **17 collections MongoDB**, **133 tests**, **+50 versions**. Brain bosse dessus le soir, les week-ends, et parfois la nuit. C'est sa passion. Mais ça reste **du temps non rémunéré**.
+Beaucoup. Le projet a démarré en mars 2026 et compte aujourd'hui **+10 000 lignes de code**, **38 modules frontend**, **17 collections MongoDB**, **165 tests**, **+87 versions**. Brain bosse dessus le soir, les week-ends, et parfois la nuit. C'est sa passion. Mais ça reste **du temps non rémunéré**.
 
 **❓ Est-ce que Brainee va finir en SaaS payant ?**
 **Non.** Brain a explicitement décidé que Brainee resterait **gratuite et privée au serveur BrainEXE**. Pas de pivot, pas de monétisation, pas de version payante "premium". Le soutien financier sert UNIQUEMENT à couvrir les frais d'infrastructure.

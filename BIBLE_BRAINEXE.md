@@ -161,7 +161,7 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
 | `src/features/*` | Anecdotes, actus, conversations, drift, TikTok, sidebar, soutien… |
 | `src/project/funding.js` | Coûts, dons, statut Discord |
 | `public/js/*` | Frontend modulaire (38 fichiers) |
-| `tests/*` | 133 tests Jest (7 suites) |
+| `tests/*` | 165 tests Jest (8 suites) |
 | `.github/workflows/tests.yml` | CI |
 
 → On rentre dans le détail au [chapitre 13](#13-les-fichiers-et-leur-rôle).
@@ -1243,8 +1243,9 @@ brainexe-dashboard/
 │   ├── mobile.css                  📱 Responsive + tiroir
 │   └── js/                         🧱 Frontend en 38 modules (cf §10)
 │
-├── tests/                          ✅ 7 suites Jest, 133 tests
+├── tests/                          ✅ 8 suites Jest, 165 tests
 │   ├── audit.test.js
+│   ├── being.test.js
 │   ├── emotions.test.js
 │   ├── funding.test.js
 │   ├── humanize-v234.test.js
@@ -1254,7 +1255,7 @@ brainexe-dashboard/
 │
 ├── .github/
 │   └── workflows/
-│       └── tests.yml               🤖 CI Node 18 — npm ci + npm test
+│       └── tests.yml               🤖 CI Node 20 — npm ci + npm test
 │
 ├── discord-template.json           📋 Template de structure du serveur
 ├── brainexe-config.json            ⚙️ Config bot persistée (créée au boot)
@@ -1262,7 +1263,7 @@ brainexe-dashboard/
 ├── package-lock.json
 ├── README.md                       📄 Présentation projet
 ├── BIBLE_BRAINEXE.md               📚 Cette bible
-├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v0.11.2
+├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v0.13.0
 └── SOUTIEN.md                      💜 Coûts + soutien + mot de Brainee
 ```
 
@@ -1282,7 +1283,7 @@ brainexe-dashboard/
 
 ### Prérequis
 
-1. **Node.js 18+** (`node --version`)
+1. **Node.js 20+** (`node --version`)
 2. **npm** (livré avec Node)
 3. **Un serveur Discord** + droits admin du bot
 4. **Un token Discord** — Discord Developer Portal
@@ -1325,7 +1326,7 @@ npm start
 
 ```bash
 npm test
-# → 133 tests, 7 suites
+# → 165 tests, 8 suites
 ```
 
 ---
@@ -1430,7 +1431,7 @@ Le projet est encore en **pre-1.0** (`0.MINOR.PATCH`) — il itère trop pour fi
 Pour lire cette bible : ~30-45 min. Pour vraiment comprendre le code : ~3-4h en suivant l'ordre conseillé au [§13](#13-les-fichiers-et-leur-rôle).
 
 **❓ Je peux contribuer ?**
-Oui ! Forke, branche, fais ta PR. La CI tourne sur chaque push (Node 18). Penser à mettre à jour `CHANGELOG.md` si tu ajoutes/corriges une feature.
+Oui ! Forke, branche, fais ta PR. La CI tourne sur chaque push (Node 20). Penser à mettre à jour `CHANGELOG.md` si tu ajoutes/corriges une feature.
 
 **❓ Brainee peut-elle être méchante ?**
 Elle peut être **sèche, fatiguée, grumpy** selon son humeur du jour, mais jamais cruelle. Les garde-fous éthiques BRAINEE-LIVING bloquent la manipulation et la dépendance.
@@ -1442,7 +1443,7 @@ Parce que Brain (Matthieu) en est un, et parce que les communautés de gamers ne
 
 <div align="center">
 
-🧠✨ **Bible BrainEXE — v0.11.2 — Mai 2026** ✨🧠
+🧠✨ **Bible BrainEXE — v0.13.0 — Mai 2026** ✨🧠
 
 *Pour la communauté, par la communauté.*
 *Si tu lis ces lignes, t'es déjà des nôtres.*
