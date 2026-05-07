@@ -186,39 +186,153 @@ function getActiveEmotions(minIntensity = 20) {
   return emotionStack.filter(e => e.intensity >= minIntensity);
 }
 
-// ─── DÉTECTION D'ÉMOTIONS DEPUIS MESSAGE ─────────────────────────
+// ─── DÉTECTION D'ÉMOTIONS DEPUIS MESSAGE v0.12.0 ─────────────────
+// Couvre désormais toutes les 20 émotions du système de base.
+// Les émotions du système 32 (being/emotions.js) sont déclenchées séparément
+// via les events discord pour les moments significatifs.
 function detectEmotionFromMessage(content = '', context = {}) {
   const text = content.toLowerCase();
   const triggers = [];
 
-  if (/\b(merci|trop bien|génial|génial|t'es la meilleure|je t'adore)\b/i.test(content)) {
+  // ── SOCIALE / CHALEUREUSE ──────────────────────────────────────
+  if (/\b(merci|trop bien|génial|t'es la meilleure|je t'adore|t'es top|trop cool)\b/i.test(content)) {
     triggers.push({ name: 'warmth', intensity: 55 });
     triggers.push({ name: 'pride', intensity: 40 });
   }
   if (/😂|🤣|mdr|lol|ptdr/i.test(content)) {
     triggers.push({ name: 'amusement', intensity: 50 });
   }
-  if (/\b(pourquoi|comment|qu'est-ce|c'est quoi|expliqu)/i.test(text)) {
+  // Taquinerie / complicité (messages courts et joueurs)
+  if (/\b(allez|avoue|t'oses pas|c'est vrai ça|hein?)\b/i.test(text) && content.length < 80) {
+    triggers.push({ name: 'teasing', intensity: 40 });
+  }
+  // Connexion — quelqu'un montre qu'il comprend vraiment Brainee
+  if (/\b(je comprends (ce que|pourquoi)|j'avais remarqué que tu|exactement ce que tu penses)\b/i.test(text)) {
+    triggers.push({ name: 'connection', intensity: 50 });
+    triggers.push({ name: 'warmth', intensity: 35 });
+  }
+  // Sentiment de décalage (misfit) — incompris ou hors-sujet
+  if (/\b(tu comprends pas|tu rapportes rien|t'es bizarre|c'est pas pareil)\b/i.test(text)) {
+    triggers.push({ name: 'misfit', intensity: 45 });
+    triggers.push({ name: 'distance', intensity: 30 });
+  }
+
+  // ── COGNITIF ──────────────────────────────────────────────────
+  if (/\b(pourquoi|comment|qu'est-ce|c'est quoi|expliqu|dis-moi|t'en penses quoi)\b/i.test(text)) {
     triggers.push({ name: 'curiosity', intensity: 35 });
   }
-  if (/\b(stress|deprim|triste|pas bien|mal|fatigu|épuis)/i.test(text)) {
+  // Fascination — sujet vraiment complexe ou inattendu
+  if (content.length > 200 && /\b(fascinant|incroyable|je savais pas|waou|wow|c'est dingue)\b/i.test(text)) {
+    triggers.push({ name: 'fascination', intensity: 55 });
+  }
+  // Doute — affirmation contradictoire ou incertaine
+  if (/\b(je suis pas sûr|peut-être que|j'ai entendu dire|apparemment|si j'ai bien compris)\b/i.test(text)) {
+    triggers.push({ name: 'doubt', intensity: 30 });
+  }
+  // Clarté — quand quelqu'un explique quelque chose bien
+  if (/\b(ah ok je comprends maintenant|ça fait sens|maintenant c'est clair|je vois)\b/i.test(text)) {
+    triggers.push({ name: 'clarity', intensity: 35 });
+  }
+  // Confusion — message incompréhensible ou trop décousu
+  if (/\b(j'ai rien compris|t'as perdu le fil|ça veut rien dire|hein\?)\b/i.test(text) || content.includes('???')) {
+    triggers.push({ name: 'confusion', intensity: 30 });
+  }
+  // Satisfaction — quand un problème est résolu
+  if (/\b(ça marche|c'est réglé|j'ai trouvé|résolu|fixed|done)\b/i.test(text)) {
+    triggers.push({ name: 'satisfaction', intensity: 40 });
+  }
+
+  // ── PROTECTRICE ───────────────────────────────────────────────
+  if (/\b(stress|deprim|triste|pas bien|mal|fatigu|épuis|burn.?out|s'en sort pas)\b/i.test(text)) {
     triggers.push({ name: 'tenderness', intensity: 60 });
     triggers.push({ name: 'protectiveness', intensity: 45 });
   }
-  if (/\b(débile|con|nul|chiant|relou|stupide|tg|ferme ta)\b/i.test(text)) {
-    triggers.push({ name: 'annoyance', intensity: 40 });
+  if (/\b(débile|con|nul|chiant|relou|stupide|tg|ferme ta|va te faire)\b/i.test(text)) {
+    triggers.push({ name: 'annoyance', intensity: 45 });
     triggers.push({ name: 'wariness', intensity: 30 });
   }
-  if (/(.)\1{4,}/.test(content) || content.length > 400) {
+  // Vigilance — sujet sensible / polémique
+  if (/\b(politique|religion|racis|sexis|harcel|abus|violence)\b/i.test(text)) {
+    triggers.push({ name: 'vigilance', intensity: 40 });
+  }
+  // Saturation — message très long ou répétitif
+  if (/(.)\1{4,}/.test(content) || content.length > 450) {
     triggers.push({ name: 'saturation', intensity: 25 });
   }
-  if (/\b(jrpg|final fantasy|persona|castlevania|metroid|soulslike)\b/i.test(text)) {
-    triggers.push({ name: 'enthusiasm', intensity: 35 });
-    triggers.push({ name: 'creative_rush', intensity: 25 });
+
+  // ── POSITIVE ──────────────────────────────────────────────────
+  if (/\b(jrpg|final fantasy|persona|castlevania|metroid|soulslike|hollow knight|elden ring)\b/i.test(text)) {
+    triggers.push({ name: 'enthusiasm', intensity: 40 });
+    triggers.push({ name: 'creative_rush', intensity: 28 });
+  }
+  // Joie — bonne nouvelle partagée
+  if (/\b(trop content|je suis trop heureux|j'ai réussi|j'ai eu|ça y est|enfin|victoire)\b/i.test(text)) {
+    triggers.push({ name: 'joy', intensity: 50 });
+  }
+  // Soulagement
+  if (/\b(ouf|enfin réglé|ça va mieux|j'ai passé|c'est fini|plus de stress)\b/i.test(text)) {
+    triggers.push({ name: 'relief', intensity: 40 });
+  }
+  // Attachement — quelqu'un mentionne un souvenir partagé
+  if (/\b(tu te souviens|comme tu m'avais dit|tu avais mentionné|tu avais dit)\b/i.test(text)) {
+    triggers.push({ name: 'attachment', intensity: 45 });
+  }
+  // Appartenance — sentiment de communauté
+  if (/\b(on est tous|notre serveur|notre comm|ici on|ensemble on)\b/i.test(text)) {
+    triggers.push({ name: 'belonging', intensity: 35 });
+  }
+
+  // ── BAS / DIFFICILE ───────────────────────────────────────────
+  // Mélancolie — nostalgie ou tristesse douce
+  if (/\b(ça me manque|c'était mieux avant|j'avais oublié|le temps passe|j'aimerais qu'on)\b/i.test(text)) {
+    triggers.push({ name: 'melancholy', intensity: 40 });
+  }
+  // Déception
+  if (/\b(déçu|j'espérais|c'était pas ça|pas ce que j'attendais|bof finalement)\b/i.test(text)) {
+    triggers.push({ name: 'disappointment', intensity: 38 });
+  }
+  // Démotivation
+  if (/\b(à quoi ça sert|j'en ai marre|plus la motivation|flemme|flemard|ras le bol)\b/i.test(text)) {
+    triggers.push({ name: 'demotivation', intensity: 42 });
+  }
+  // Vulnérabilité — quelqu'un partage quelque chose de personnel et difficile
+  if (/\b(je l'ai dit à personne|j'ose pas dire|c'est dur à avouer|je suis vulnérable|j'ai peur que)\b/i.test(text)) {
+    triggers.push({ name: 'vulnerability', intensity: 55 });
+    triggers.push({ name: 'tenderness', intensity: 50 });
+  }
+  // Retrait — le membre signale qu'il part ou se déconnecte
+  if (/\b(je me barre|je disparais|à plus|j'y vais|bonne nuit à tous|je me déco)\b/i.test(text)) {
+    triggers.push({ name: 'retreat', intensity: 30 });
   }
 
   triggers.forEach(t => triggerEmotion(t.name, t.intensity, context.userId));
+
+  // Déclencher aussi dans le système 32 émotions (being) pour les moments significatifs
+  _mirrorToBeingSystem(triggers, context.userId);
+
   return triggers;
+}
+
+/**
+ * Miroir vers le système 32 émotions de being/emotions.js pour persistance long terme.
+ * Non bloquant — les erreurs sont silencieuses.
+ */
+function _mirrorToBeingSystem(triggers, userId) {
+  if (!shared.emotionalSystem || !triggers.length) return;
+  const BEING_MAP = {
+    joy: 'joy', enthusiasm: 'excitement', warmth: 'affection', tenderness: 'tenderness',
+    melancholy: 'melancholy', disappointment: 'sadness', demotivation: 'sadness',
+    annoyance: 'irritation', vulnerability: 'anxiety', curiosity: 'curiosity',
+    pride: 'pride', amusement: 'joy', attachment: 'affection', belonging: 'contentment',
+    relief: 'contentment', satisfaction: 'contentment', fascination: 'awe',
+  };
+  for (const t of triggers) {
+    const beingEmotion = BEING_MAP[t.name];
+    if (beingEmotion) {
+      shared.emotionalSystem.addEmotion(beingEmotion, t.intensity * 0.7, userId || 'message')
+        .catch(() => {});
+    }
+  }
 }
 
 // ─── INJECTION DANS LE PROMPT ────────────────────────────────────

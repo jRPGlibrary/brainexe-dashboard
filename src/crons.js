@@ -28,12 +28,18 @@ const { scanForPinCandidates } = require('./features/extendedPermissions');
 const { readGuildState } = require('./discord/sync');
 const { callClaude } = require('./ai/claude');
 const fs = require('fs');
+// v0.12.0
+const { runChannelWatch } = require('./features/channelWatcher');
+const { resetConvictionTracker } = require('./features/conviction');
+const { tryPromoteSingularBond } = require('./features/attachmentStages');
 
 let convCron = null, replyCron = null, floatingEventsCron = null;
 let moodResetCron = null, driftCron = null, relanceCron = null;
 let emotionHourlyCron = null, emotionDailyCron = null, narrativeCron = null;
 let reactionScanCron = null, outreachCron = null, hyperFocusCron = null;
 let vulnerabilityCron = null, pinScanCron = null;
+// v0.12.0
+let channelWatchCron = null, attachmentEvolutionCron = null;
 
 // Flags "déjà tiré aujourd'hui" pour les events flottants (reset à minuit)
 const firedToday = { morning: '', lunch: '', goodnight: '', nightWakeup: '', relance: '' };
@@ -43,7 +49,7 @@ function parisDateISO() {
 }
 
 function startConvCron() {
-  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron, narrativeCron, reactionScanCron, outreachCron, hyperFocusCron, vulnerabilityCron, pinScanCron]
+  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron, narrativeCron, reactionScanCron, outreachCron, hyperFocusCron, vulnerabilityCron, pinScanCron, channelWatchCron, attachmentEvolutionCron]
     .forEach(c => { if (c) { try { c.stop(); } catch {} } });
 
   // Initialise la vibe et le planning flottant dès le boot
@@ -179,7 +185,9 @@ function startConvCron() {
     refreshDailyMood();
     resetDailyVibe();
     Object.keys(firedToday).forEach(k => { firedToday[k] = ''; });
-    pushLog('SYS', `🌅 Nouvelle journée — vibe & planning régénérés`, 'success');
+    // v0.12.0 : Reset du tracker de conviction (nouvelle journée = ardoise propre)
+    resetConvictionTracker();
+    pushLog('SYS', `🌅 Nouvelle journée — vibe & planning & conviction tracker régénérés`, 'success');
   }, { timezone: 'Europe/Paris' });
 
   // Drift check toutes les 3h (inchangé)
@@ -208,13 +216,16 @@ function startConvCron() {
   }, { timezone: 'Europe/Paris' });
 
   // Decay des émotions + update des états internes selon le slot toutes les heures
-  emotionHourlyCron = cron.schedule('30 * * * *', () => {
+  emotionHourlyCron = cron.schedule('30 * * * *', async () => {
     try {
       const slot = getCurrentSlot();
       updateInternalStatesForSlot(slot);
       applyNaturalDecay();
       decayEmotions();
       saveEmotionalState().catch(err => pushLog('ERR', `Sauvegarde état émotionnel: ${err.message}`, 'error'));
+      // v0.12.0 : Mettre à jour les besoins sociaux (desires) + decay du système 32 émotions (being)
+      if (shared.desires) shared.desires.updateNeeds().catch(() => {});
+      if (shared.emotionalSystem) shared.emotionalSystem.decay(60).catch(() => {});
       pushLog('SYS', `💗 Évolution émotionnelle horaire [${slot.label}]`);
     } catch (err) { pushLog('ERR', `emotionHourlyCron: ${err.message}`, 'error'); }
   }, { timezone: 'Europe/Paris' });
@@ -308,7 +319,30 @@ function startConvCron() {
     scanForPinCandidates().catch(err => pushLog('ERR', `pinScan: ${err.message}`, 'error'));
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v0.10.1 — reply 45min + scan 20min + relances + émotions + bonds + narrative + outreach 35min (proba 8%) + hyperFocus 25min + vuln 1h + pin 90min`, 'success');
+  // v0.12.0 — Channel Watcher : observation passive de tous les salons + threads (~4 min)
+  channelWatchCron = cron.schedule('*/4 * * * *', () => {
+    if (!slot_is_active(getParisHour())) return;
+    runChannelWatch().catch(err => pushLog('ERR', `channelWatch: ${err.message}`, 'error'));
+  }, { timezone: 'Europe/Paris' });
+
+  // v0.12.0 — Attachment Evolution : vérification des promotions au lien singulier (4h)
+  attachmentEvolutionCron = cron.schedule('0 */4 * * *', async () => {
+    if (!slot_is_active(getParisHour())) return;
+    if (!shared.mongoDb) return;
+    try {
+      const bonds = await shared.mongoDb.collection('memberBonds')
+        .find({ baseAttachment: { $gt: 83 } })
+        .toArray();
+      for (const bond of bonds) {
+        await tryPromoteSingularBond(bond.userId, bond);
+      }
+      if (bonds.length > 0) pushLog('SYS', `💗 Attachment evolution : ${bonds.length} bond(s) > 83 vérifiés`);
+    } catch (err) {
+      pushLog('ERR', `attachmentEvolution: ${err.message}`, 'error');
+    }
+  }, { timezone: 'Europe/Paris' });
+
+  pushLog('SYS', `✅ Crons v0.12.0 — reply 45min + scan 20min + relances + émotions + bonds + narrative + outreach 35min + hyperFocus 25min + vuln 1h + pin 90min + channelWatch 4min + attachmentEvol 4h`, 'success');
 }
 
 function slot_is_active(h) {
