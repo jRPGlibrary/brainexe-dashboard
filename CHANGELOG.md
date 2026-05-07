@@ -8,6 +8,19 @@ Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.P
 
 ---
 
+## 🐛 v0.12.3 — Correction refus émotionnel en boucle
+**Date :** 2026-05-07
+
+### 🐛 Fixes
+
+- **Brainee répétait "j'ai la tête qui tourne" en boucle** : la fonction qui ajuste sa charge mentale selon l'heure de la journée était appelée à chaque message reçu. En période "productive", ça ajoutait +5 à chaque fois. Après une vingtaine de messages, sa charge mentale atteignait le maximum et elle entrait en mode saturation indéfiniment. Cette fonction ne peut maintenant s'appliquer qu'une fois toutes les 3 minutes, peu importe le trafic. (`src/bot/emotions.js`)
+
+### 📊 Statistiques
+- **1 fichier modifié** (`emotions.js`)
+- **100% backward compatible**
+
+---
+
 ## 🐛 v0.12.2 — Corrections compréhension des conversations + live TikTok
 **Date :** 2026-05-07
 

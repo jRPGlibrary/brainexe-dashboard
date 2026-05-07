@@ -103,7 +103,16 @@ async function saveEmotionalState() {
 // ─── ÉVOLUTION DES ÉTATS INTERNES ────────────────────────────────
 function clamp(v, min = 0, max = 100) { return Math.max(min, Math.min(max, v)); }
 
+// Guard : les effets de slot ne s'appliquent qu'une fois toutes les 3 minutes max
+// pour éviter que chaque message amplifie le mentalLoad à l'infini
+let _lastSlotUpdate = 0;
+const SLOT_UPDATE_MIN_INTERVAL_MS = 3 * 60 * 1000;
+
 function updateInternalStatesForSlot(slot) {
+  const now = Date.now();
+  if (now - _lastSlotUpdate < SLOT_UPDATE_MIN_INTERVAL_MS) return;
+  _lastSlotUpdate = now;
+
   const s = slot?.status || 'active';
   const map = {
     sleep:      { energy: -25, socialNeed: +15, mentalLoad: -30, calmNeed: +20 },
