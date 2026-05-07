@@ -8,6 +8,22 @@ Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.P
 
 ---
 
+## 🐛 v0.12.5 — Correction saturation émotionnelle trop fréquente
+**Date :** 2026-05-07
+
+### 🐛 Fixes
+
+- **"surchargée mentalement, j'ai besoin de silence" en boucle** : le fix v0.12.3 ralentissait la montée mais ne suffisait pas. Avec l'humeur zombie (mentalLoad déjà à 65) et un seuil à 86, quelques heures d'activité suffisaient à déclencher le refus en continu. Après le cooldown, mentalLoad restait au-dessus du seuil et le cycle recommençait. Trois corrections combinées :
+  1. Les incréments de mentalLoad des slots actifs sont réduits (`active` : +3→+1, `productive` : +5→+2, `latenight` : +4→+2)
+  2. Les seuils de déclenchement sont relevés (86→93 hors-mention, 92→97 mention directe)
+  3. Quand le refus se déclenche, mentalLoad est immédiatement baissé de 35 points pour permettre une vraie récupération pendant le cooldown
+
+### 📊 Statistiques
+- **2 fichiers modifiés** (`emotions.js`, `emotionalRefusal.js`)
+- **100% backward compatible**
+
+---
+
 ## 🐛 v0.12.4 — Correction doublons salons vocaux sidebar
 **Date :** 2026-05-07
 

@@ -117,12 +117,12 @@ function updateInternalStatesForSlot(slot) {
   const map = {
     sleep:      { energy: -25, socialNeed: +15, mentalLoad: -30, calmNeed: +20 },
     wakeup:     { energy: +8,  socialNeed: +5,  mentalLoad: -5,  calmNeed: -5 },
-    active:     { energy: +3,  socialNeed: +2,  mentalLoad: +3,  stimulation: +2 },
+    active:     { energy: +3,  socialNeed: +2,  mentalLoad: +1,  stimulation: +2 },
     lunch:      { energy: +5,  calmNeed: +4,    mentalLoad: -6 },
-    productive: { energy: +2,  stimulation: +3, mentalLoad: +5,  recognitionNeed: +1 },
-    transition: { energy: -2,  calmNeed: +3,    mentalLoad: -2 },
-    gaming:     { energy: +5,  socialNeed: +3,  stimulation: +4, mentalLoad: +2 },
-    latenight:  { energy: -6,  mentalLoad: +4,  stimulation: +2, calmNeed: -2 },
+    productive: { energy: +2,  stimulation: +3, mentalLoad: +2,  recognitionNeed: +1 },
+    transition: { energy: -2,  calmNeed: +3,    mentalLoad: -3 },
+    gaming:     { energy: +5,  socialNeed: +3,  stimulation: +4, mentalLoad: +1 },
+    latenight:  { energy: -6,  mentalLoad: +2,  stimulation: +2, calmNeed: -2 },
   };
   const delta = map[s] || {};
   Object.keys(delta).forEach(k => {
