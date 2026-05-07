@@ -185,7 +185,8 @@ async function performWatchJump(channel, messages, isThread = false) {
     const dirEntry = await getChannelDirectory(isThread ? (channel.parentId || channel.id) : channel.id);
     const intentBlock = getChannelIntentBlock(parentName, parentName, dirEntry?.officialDescription || '');
 
-    const context = formatContext({ values: () => messages }, null, 25);
+    const msgMap = new Map(messages.map(m => [m.id, m]));
+    const context = formatContext(msgMap, null, 25);
 
     const threadNote = isThread
       ? `\nTu rejoins un fil de discussion intitulé "${channel.name}" dans #${parentName}. Adapte-toi au sujet du fil.`
