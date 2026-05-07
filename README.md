@@ -7,12 +7,12 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.11.2-7c5cbf?style=flat-square)
-![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)
+![Version](https://img.shields.io/badge/version-0.13.0-7c5cbf?style=flat-square)
+![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-133_passing-22c55e?style=flat-square)
-![Status](https://img.shields.io/badge/status-pre--release-f59e0b?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-165_passing-22c55e?style=flat-square)
+![Status](https://img.shields.io/badge/status-release--candidate-7c5cbf?style=flat-square)
 
 📚 [Bible projet](./BIBLE_BRAINEXE.md) · 📜 [Changelog](./CHANGELOG.md) · 💰 [Soutenir Brainee](./SOUTIEN.md)
 

@@ -4,6 +4,7 @@
  */
 
 const shared = require('../shared');
+const { pushLog } = require('../logger');
 
 let cycles = [];
 
@@ -11,7 +12,7 @@ let cycles = [];
  * Start all lifecycle cycles
  */
 async function startLifecycleCycles(db) {
-  console.log('🔄 Starting Brainee lifecycle cycles...');
+  pushLog('SYS', '🔄 Starting Brainee lifecycle cycles...');
 
   // === MINUTE CYCLE (1 min) ===
   cycles.push(
@@ -81,19 +82,19 @@ async function startLifecycleCycles(db) {
     }, 5 * 60 * 1000) // Every 5 min
   );
 
-  console.log(`✅ ${cycles.length} lifecycle cycles started`);
+  pushLog('SYS', `✅ ${cycles.length} lifecycle cycles started`, 'success');
 }
 
 /**
  * Stop all cycles (on shutdown)
  */
 function stopLifecycleCycles() {
-  console.log('⏹️ Stopping lifecycle cycles...');
+  pushLog('SYS', '⏹️ Stopping lifecycle cycles...');
   for (const cycle of cycles) {
     clearInterval(cycle);
   }
   cycles = [];
-  console.log('✅ All cycles stopped');
+  pushLog('SYS', '✅ All cycles stopped', 'success');
 }
 
 /**

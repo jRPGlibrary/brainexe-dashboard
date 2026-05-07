@@ -1,10 +1,77 @@
 # 📜 Changelog — BrainEXE Dashboard
 
-Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.11.2** (version actuelle).
+Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.13.0** (version actuelle).
 Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.PATCH`. En pre-1.0, un `MINOR` peut introduire des breaking changes — c'est cohérent avec un projet qui itère encore.
 
 > **Convention :** chaque `MINOR` (`0.1.x`, `0.2.x`, …) correspond à un **chapitre** du projet (une thématique). Le `PATCH` est une vraie correction ou un ajout incrémental dans le chapitre courant.
 > Les versions `0.0.x` constituent la **pré-histoire** : les 10 premiers prototypes fondateurs (12–11 avril 2026) avant la numérotation officielle.
+
+---
+
+## 🚀 v0.13.0 — Stabilisation release-candidate : logger, dépendances, tests, dashboard
+**Date :** 2026-05-07
+
+### 🎯 Thème
+
+Préparation de la **release candidate 1.0.0** : nettoyage systématique de tout ce qui ne pouvait pas être étiqueté "stable". Logger unifié dans les modules being/, dépendance TikTok épinglée, 32 nouveaux tests sur BRAINEE-LIVING, dashboard analytics connecté aux données réelles, responsive mobile amélioré.
+
+### ✨ Améliorations
+
+- **Dashboard analytics entièrement refait** : les widgets "Top 10 membres actifs", "Émotions de Brainee" et "Heures de pointe" sont maintenant connectés aux endpoints réels (`/api/analytics`, `/api/emotions/state`). Les données placeholder (Alice, Bob, Charlie, Happy, Sleepy…) sont supprimées. Rendu asynchrone : squelette HTML immédiat, données chargées après. (`public/js/analytics-dashboard.js`, `public/js/section-overview.js`)
+
+- **Émotions en français** : tous les labels d'émotions (joy → Joie, melancholy → Mélancolie, etc.) sont traduits avec leur emoji respectif. La totalité des 32 émotions de BRAINEE-LIVING est couverte.
+
+- **Heatmap 7j mobile** : ajout d'un conteneur `.week-heatmap-scroll` avec `overflow-x: auto` pour que la grille 7×24 soit scrollable horizontalement sur mobile sans déborder. Cellules réduites à 10px / 8px sur mobile. (`public/mobile.css`)
+
+- **Analytics grid mobile-first** : passage en 1 colonne sur mobile (≤ 768px), labels membres compacts, peak items condensés.
+
+- **Topbar ≤ 520px** : `#ws-pill` masqué sur très petit écran pour libérer de l'espace.
+
+- **Barres analytics correctes** : remplacement de l'approche `::after` sans width par une `.analytics-bar-fill` avec `transition: width 0.4s ease`. (`public/app.css`)
+
+- **Textes placeholder supprimés** : "Peak hours" → "Heures de pointe", "events" → "messages", jours complets "Lun/Mar/Mer/Jeu/Ven/Sam/Dim" au lieu de "L/M/M/J/V/S/D".
+
+- **`charts.js` nettoyé** : suppression des données Alice/Bob/Charlie. Le widget lite lit maintenant `state.admin.topMembers` (données réelles) ou retourne vide.
+
+### 🔧 Fixes techniques
+
+- **Logger unifié dans `src/being/`** : tous les `console.log` et `console.error` dans les 5 fichiers (`index.js`, `lifecycle.js`, `schemas.js`, `dreams.js`, `existence.js`) remplacés par `pushLog()`. Les événements de boot et d'erreur des modules de conscience apparaissent maintenant dans le dashboard live. (`src/being/`)
+
+- **`tiktok-live-connector` épinglé** : suppression du `^` pour éviter une montée automatique vers `2.3.0-alpha`/`2.3.0-beta` (sorti début mai 2026, non testé en production).
+
+- **`engines.node` corrigé** : déclaration alignée sur la réalité — `>=20.0.0` au lieu de `>=18.0.0` (le package tiktok-live-connector exige Node ≥20).
+
+- **Fix throttle test émotions** : `emotions.test.js` — le describe `updateInternalStatesForSlot` mockait `Date.now` de façon statique, ce qui faisait throttler le second test (3 min d'intervalle minimum). Ajout d'un `tick` incrémental (+10 min entre tests) avec restauration propre.
+
+### 🧪 Tests
+
+- **Nouvelle suite `being.test.js`** : 32 tests sur les modules BRAINEE-LIVING, organisés en 7 describe :
+  - `safeguards — checkEthics` (4 tests)
+  - `safeguards — mentalHealthCheck` (5 tests, dont 3114, GENTLE_BOUNDARY, PROTECT_SELF)
+  - `safeguards — invariants` (4 tests : droit au silence, ressources urgence, anti-manipulation, vie privée)
+  - `EmotionalSystem — addEmotion` (4 tests : ajout, clamp, throw, propriétés)
+  - `EmotionalSystem — detectConflicts` (3 tests : joy vs sadness, stack vide, émotions compatibles)
+  - `EmotionalSystem — decay` (3 tests : diminution, retrait sous seuil, stack vide)
+  - `EmotionalSystem — getCurrentMood` (3 tests : neutral, excited, sad)
+  - `EmotionalSystem — snapshot` (3 tests : propriétés, dominantEmotion null, totalIntensity)
+  - `lifecycle — lifeExpectancy` (2 tests)
+  - `lifecycle — stopLifecycleCycles` (1 test)
+
+- **Total : 165 tests** (133 → 165, +32 sur being/)
+
+### 📚 Documentation
+
+- **BIBLE_BRAINEXE.md** mis à jour : version → 0.13.0, range documenté → v0.0.1–v0.13.0, section Tests & CI (8 suites, 165 tests, Node ≥20), section BRAINEE-LIVING avec documentation complète des **crises existentielles** (4 types, déclenchement, probabilité, impact, endpoint admin).
+
+- **README.md** mis à jour : badges version 0.13.0, Node ≥20, tests 165 passing, statut release-candidate.
+
+- **`public/index.html`** : version sidebar "Admin v0.9.17" → "Admin v0.13.0".
+
+### 📊 Statistiques
+- **12 fichiers modifiés** (5 `src/being/`, 4 `public/js/`, 2 `public/css/`, 1 `public/index.html`)
+- **4 fichiers de documentation mis à jour** (README, BIBLE, CHANGELOG, package.json)
+- **32 tests ajoutés**, **1 bug de test préexistant corrigé**
+- **100% backward compatible**
 
 ---
 

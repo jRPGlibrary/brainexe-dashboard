@@ -1660,7 +1660,7 @@ a:hover { text-decoration: underline; }
 /* ─── ANALYTICS DASHBOARD ─── */
 .analytics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -1733,17 +1733,37 @@ a:hover { text-decoration: underline; }
   background: var(--accent-bg);
   border-radius: 4px;
   overflow: hidden;
-  position: relative;
 }
 
-.analytics-bar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
+.analytics-bar-fill {
   height: 100%;
   background: var(--accent);
   border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.analytics-loading {
+  color: var(--text-3);
+  font-size: 12px;
+  padding: 20px 0;
+  text-align: center;
+}
+
+.analytics-empty {
+  color: var(--text-3);
+  font-size: 12px;
+  padding: 16px 0;
+  text-align: center;
+  font-style: italic;
+}
+
+.week-heatmap-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.week-heatmap-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .analytics-value {

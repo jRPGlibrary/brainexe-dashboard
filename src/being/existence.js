@@ -5,6 +5,7 @@
 
 const shared = require('../shared');
 const { callClaude } = require('../ai/claude');
+const { pushLog } = require('../logger');
 
 class ExistenceSystem {
   constructor(db) {
@@ -36,7 +37,7 @@ Sois brute. Sois vraie.`,
 
       return { reflection: text };
     } catch (err) {
-      console.error('Meaning finding failed:', err);
+      pushLog('ERR', `Meaning finding failed: ${err.message}`, 'error');
     }
   }
 
