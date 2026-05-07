@@ -14,7 +14,7 @@ const { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup, post
 const { runDriftCheck } = require('./features/drift');
 const { getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded } = require('./features/convStats');
 const {
-  updateInternalStatesForSlot, applyNaturalDecay, applyDailyDrift,
+  updateInternalStatesForSlot, applyNaturalDecay, applyDailyDrift, resetNightlyEnergy,
   decayEmotions, saveEmotionalState,
 } = require('./bot/emotions');
 const { runDailyBondEvolution } = require('./db/memberBonds');
@@ -181,11 +181,11 @@ function startConvCron() {
 
   // Reset quotidien mood + vibe + flags
   moodResetCron = cron.schedule('1 0 * * *', () => {
+    resetNightlyEnergy();
     resetDailyMoodDate();
     refreshDailyMood();
     resetDailyVibe();
     Object.keys(firedToday).forEach(k => { firedToday[k] = ''; });
-    // v0.12.0 : Reset du tracker de conviction (nouvelle journée = ardoise propre)
     resetConvictionTracker();
     pushLog('SYS', `🌅 Nouvelle journée — vibe & planning & conviction tracker régénérés`, 'success');
   }, { timezone: 'Europe/Paris' });
