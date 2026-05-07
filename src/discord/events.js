@@ -253,7 +253,19 @@ async function handleMentionReply(message, userQuery) {
     const userImages = extractImageAttachments(message);
     const imgInstruction = userImages.length ? getImageCommentInstruction(userImages.length) : '';
     const mentionMaxTokens = adjustMaxTokens(getContextualMaxTokens(userQuery, { defaultShort: 110, extended: 240 }));
-    const userTextPrompt = `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\nRéponds court (1-2 phrases) sauf si le sujet mérite vraiment plus.`;
+
+    // Contexte du message auquel répond l'utilisateur (reply Discord)
+    let replyRefContext = '';
+    if (message.reference?.messageId) {
+      const refMsg = fetched.get(message.reference.messageId);
+      if (refMsg) {
+        const refAuthor = refMsg.author.bot ? 'Brainee' : refMsg.author.username;
+        const refContent = (refMsg.content || '').slice(0, 150).replace(/\n/g, ' ');
+        replyRefContext = `\n[Ce message est une réponse à ce que ${refAuthor} a dit : "${refContent}${refContent.length >= 150 ? '...' : ''}"]`;
+      }
+    }
+
+    const userTextPrompt = `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\nRéponds court (1-2 phrases) sauf si le sujet mérite vraiment plus.${replyRefContext}`;
     const userContent = buildMultimodalUserContent(userTextPrompt, userImages);
     const { text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION);
     if (userImages.length) pushLog('SYS', `🖼️ ${userImages.length} image(s) lues (mention ${message.author.username})`);
