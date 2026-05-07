@@ -15,6 +15,19 @@ let sidebarCategoryId = null;
 let sidebarChannelIds = {};
 let sidebarCron = null;
 
+// Mutex : empêche deux updateSidebarChannels de tourner en même temps
+// (race condition qui créait des salons en doublon)
+let _sidebarRunning = false;
+
+const SIDEBAR_PREFIX = {
+  members:  '👥',
+  status:   '🧠',
+  mood:     '⚡',
+  activity: '🔥',
+  tiktok:   '📱',
+  funding:  '💰',
+};
+
 function getEnergyLabel(energy) {
   if (energy >= 70) return 'Bouillant';
   if (energy >= 50) return 'Énergique';
@@ -79,16 +92,6 @@ async function ensureSidebarCategory(guild) {
   return cat;
 }
 
-// Emoji de préfixe par clé — sert à retrouver un canal existant sans dépendre de l'ordre
-const SIDEBAR_PREFIX = {
-  members:  '👥',
-  status:   '🧠',
-  mood:     '⚡',
-  activity: '🔥',
-  tiktok:   '📱',
-  funding:  '💰',
-};
-
 async function ensureSidebarVoiceChannels(guild, category) {
   const channels = await guild.channels.fetch();
 
@@ -96,27 +99,36 @@ async function ensureSidebarVoiceChannels(guild, category) {
     .filter(c => c.parentId === category.id && c.type === ChannelType.GuildVoice)
     .toJSON();
 
-  // 1. Associer les canaux existants à leurs clés par ID stocké, puis par préfixe emoji
-  for (const key of SIDEBAR_KEYS) {
-    if (sidebarChannelIds[key] && existingVoice.find(c => c.id === sidebarChannelIds[key])) continue;
-    const prefix = SIDEBAR_PREFIX[key];
-    const match = existingVoice.find(c => c.name.startsWith(prefix));
-    sidebarChannelIds[key] = match ? match.id : null;
-  }
+  // 1. Associer chaque canal à sa clé — d'abord par ID stocké, puis par préfixe emoji
+  // On garde une trace des IDs déjà assignés pour éviter les doubles attributions
+  const assignedIds = new Set();
 
-  // 2. Supprimer les doublons (même préfixe emoji mais ID différent de celui retenu)
   for (const key of SIDEBAR_KEYS) {
+    const storedId = sidebarChannelIds[key];
+    if (storedId && existingVoice.find(c => c.id === storedId)) {
+      assignedIds.add(storedId);
+      continue;
+    }
+    // Chercher par préfixe parmi les canaux pas encore assignés
     const prefix = SIDEBAR_PREFIX[key];
-    const duplicates = existingVoice.filter(
-      c => c.name.startsWith(prefix) && c.id !== sidebarChannelIds[key]
-    );
-    for (const dup of duplicates) {
-      await dup.delete('Sidebar BRAINEXE — doublon').catch(() => {});
-      pushLog('SYS', `📊 Sidebar : doublon supprimé (${dup.name})`);
+    const match = existingVoice.find(c => !assignedIds.has(c.id) && c.name.startsWith(prefix));
+    if (match) {
+      sidebarChannelIds[key] = match.id;
+      assignedIds.add(match.id);
+    } else {
+      sidebarChannelIds[key] = null;
     }
   }
 
-  // 3. Créer uniquement les canaux manquants
+  // 2. Supprimer TOUS les canaux non assignés à une clé (doublons + orphelins)
+  for (const ch of existingVoice) {
+    if (!assignedIds.has(ch.id)) {
+      await ch.delete('Sidebar BRAINEXE — doublon/orphelin').catch(() => {});
+      pushLog('SYS', `📊 Sidebar : supprimé doublon/orphelin (${ch.name})`);
+    }
+  }
+
+  // 3. Créer uniquement les canaux vraiment manquants
   const lines = await getSidebarLines(guild);
   for (const key of SIDEBAR_KEYS) {
     if (sidebarChannelIds[key]) continue;
@@ -139,6 +151,13 @@ async function ensureSidebarVoiceChannels(guild, category) {
 }
 
 async function updateSidebarChannels() {
+  // Mutex : si une exécution est déjà en cours, on ignore l'appel
+  if (_sidebarRunning) {
+    pushLog('SYS', '📊 Sidebar : update ignorée (déjà en cours)');
+    return;
+  }
+  _sidebarRunning = true;
+
   try {
     if (!shared.discord || !shared.discord.isReady()) return;
 
@@ -154,13 +173,19 @@ async function updateSidebarChannels() {
       const id = sidebarChannelIds[key];
       if (!id) continue;
       const ch = await guild.channels.fetch(id).catch(() => null);
-      if (!ch) { sidebarChannelIds[key] = null; continue; }
+      if (!ch) {
+        // Canal disparu entre-temps — on le recrée au prochain tick
+        sidebarChannelIds[key] = null;
+        continue;
+      }
       if (ch.name !== lines[key]) {
         await ch.setName(lines[key]).catch(err => pushLog('ERR', `Sidebar setName #${key}: ${err.message}`, 'error'));
       }
     }
   } catch (err) {
     pushLog('ERR', `updateSidebarChannels: ${err.message}`, 'error');
+  } finally {
+    _sidebarRunning = false;
   }
 }
 
