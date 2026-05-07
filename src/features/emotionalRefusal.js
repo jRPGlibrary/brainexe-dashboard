@@ -92,7 +92,7 @@ function checkEmotionalRefusal(isDirectMention = false) {
   }
 
   // ── Saturation mentale ────────────────────────────────────
-  const loadThreshold = isDirectMention ? 92 : 86;
+  const loadThreshold = isDirectMention ? 97 : 93;
   if (state.mentalLoad > loadThreshold) {
     const cooldownMs = (15 + Math.random() * 10) * 60 * 1000;
     return _buildRefusal('saturation', cooldownMs);
@@ -129,6 +129,16 @@ function _buildRefusal(type, cooldownMs) {
 
   refusalCooldownUntil = Date.now() + cooldownMs;
   lastRefusalType = type;
+
+  // Pour la saturation : baisser activement le mentalLoad pour qu'il récupère
+  // pendant le cooldown au lieu de rester bloqué en haut
+  if (type === 'saturation') {
+    try {
+      const { setInternalStateValue, getInternalState } = require('../bot/emotions');
+      const current = getInternalState().mentalLoad;
+      setInternalStateValue('mentalLoad', Math.max(current - 35, 45));
+    } catch (_) {}
+  }
 
   pushLog('SYS', `🚫 Refus émotionnel [${type}] — cooldown ${Math.round(cooldownMs / 60000)} min`);
 
