@@ -8,6 +8,22 @@ Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.P
 
 ---
 
+## 🐛 v0.12.6 — Correction définitive doublons salons vocaux
+**Date :** 2026-05-07
+
+### 🐛 Fixes
+
+- **Doublons de salons vocaux persistants (correction définitive)** : la vraie cause était une race condition. `updateSidebarChannels` est appelée depuis 5 endroits différents (admin, cron, démarrage...). Quand deux appels s'exécutaient en même temps, les deux entraient dans l'étape "créer les canaux manquants" avant que le premier ait pu enregistrer l'ID du canal qu'il venait de créer — deux salons "Humeur" se retrouvaient créés simultanément. Corrections :
+  1. **Mutex** : si une exécution est déjà en cours, les appels suivants sont ignorés jusqu'à la fin
+  2. **Assignation sans doublon** : les IDs déjà mappés à une clé ne peuvent pas être assignés à une autre
+  3. **Nettoyage total** : tout canal vocal de la catégorie non assigné à une clé est supprimé (doublons ET orphelins de races précédentes)
+
+### 📊 Statistiques
+- **1 fichier modifié** (`sidebar.js`)
+- **100% backward compatible** — les doublons existants seront supprimés au prochain tick
+
+---
+
 ## 🐛 v0.12.5 — Correction saturation émotionnelle trop fréquente
 **Date :** 2026-05-07
 
