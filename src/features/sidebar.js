@@ -79,29 +79,47 @@ async function ensureSidebarCategory(guild) {
   return cat;
 }
 
+// Emoji de préfixe par clé — sert à retrouver un canal existant sans dépendre de l'ordre
+const SIDEBAR_PREFIX = {
+  members:  '👥',
+  status:   '🧠',
+  mood:     '⚡',
+  activity: '🔥',
+  tiktok:   '📱',
+  funding:  '💰',
+};
+
 async function ensureSidebarVoiceChannels(guild, category) {
   const channels = await guild.channels.fetch();
 
   const existingVoice = channels
     .filter(c => c.parentId === category.id && c.type === ChannelType.GuildVoice)
-    .sort((a, b) => a.position - b.position)
     .toJSON();
 
-  if (existingVoice.length >= SIDEBAR_KEYS.length) {
-    SIDEBAR_KEYS.forEach((key, i) => {
-      sidebarChannelIds[key] = existingVoice[i].id;
-    });
-    return;
-  }
-
-  // Supprimer les éventuels canaux partiels
-  for (const ch of existingVoice) {
-    await ch.delete('Sidebar BRAINEXE reset').catch(() => {});
-  }
-
-  // Créer les 5 canaux vocaux verrouillés
-  const lines = getSidebarLines(guild);
+  // 1. Associer les canaux existants à leurs clés par ID stocké, puis par préfixe emoji
   for (const key of SIDEBAR_KEYS) {
+    if (sidebarChannelIds[key] && existingVoice.find(c => c.id === sidebarChannelIds[key])) continue;
+    const prefix = SIDEBAR_PREFIX[key];
+    const match = existingVoice.find(c => c.name.startsWith(prefix));
+    sidebarChannelIds[key] = match ? match.id : null;
+  }
+
+  // 2. Supprimer les doublons (même préfixe emoji mais ID différent de celui retenu)
+  for (const key of SIDEBAR_KEYS) {
+    const prefix = SIDEBAR_PREFIX[key];
+    const duplicates = existingVoice.filter(
+      c => c.name.startsWith(prefix) && c.id !== sidebarChannelIds[key]
+    );
+    for (const dup of duplicates) {
+      await dup.delete('Sidebar BRAINEXE — doublon').catch(() => {});
+      pushLog('SYS', `📊 Sidebar : doublon supprimé (${dup.name})`);
+    }
+  }
+
+  // 3. Créer uniquement les canaux manquants
+  const lines = await getSidebarLines(guild);
+  for (const key of SIDEBAR_KEYS) {
+    if (sidebarChannelIds[key]) continue;
     const ch = await guild.channels.create({
       name: lines[key],
       type: ChannelType.GuildVoice,
@@ -116,8 +134,8 @@ async function ensureSidebarVoiceChannels(guild, category) {
       reason: 'Sidebar BRAINEXE',
     });
     sidebarChannelIds[key] = ch.id;
+    pushLog('SYS', `📊 Sidebar : canal créé (${key})`, 'success');
   }
-  pushLog('SYS', `📊 Sidebar : ${SIDEBAR_KEYS.length} canaux vocaux créés`, 'success');
 }
 
 async function updateSidebarChannels() {

@@ -8,6 +8,19 @@ Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.P
 
 ---
 
+## 🐛 v0.12.4 — Correction doublons salons vocaux sidebar
+**Date :** 2026-05-07
+
+### 🐛 Fixes
+
+- **Salons vocaux recréés en doublon** : quand un seul salon de la sidebar manquait (supprimé manuellement, redémarrage, bug Discord), le bot supprimait les 5 restants et en recréait 6. Si les suppressions échouaient silencieusement, on se retrouvait avec les anciens + les nouveaux (ex: deux "Humeur"). Le bot retrouve maintenant chaque salon par son emoji de préfixe, supprime automatiquement les doublons existants, et crée uniquement ce qui manque vraiment. (`src/features/sidebar.js`)
+
+### 📊 Statistiques
+- **1 fichier modifié** (`sidebar.js`)
+- **100% backward compatible** — les doublons déjà présents seront nettoyés au prochain redémarrage
+
+---
+
 ## 🐛 v0.12.3 — Correction refus émotionnel en boucle
 **Date :** 2026-05-07
 
