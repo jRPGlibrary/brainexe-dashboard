@@ -7,11 +7,14 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.11.0-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.11.2-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
 ![Tests](https://img.shields.io/badge/tests-133_passing-22c55e?style=flat-square)
+![Status](https://img.shields.io/badge/status-pre--release-f59e0b?style=flat-square)
+
+📚 [Bible projet](./BIBLE_BRAINEXE.md) · 📜 [Changelog](./CHANGELOG.md) · 💰 [Soutenir Brainee](./SOUTIEN.md)
 
 </div>
 
@@ -19,11 +22,12 @@ Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 ## ✨ Le pitch
 
-Brainee n'est **pas un bot à commandes**. Elle a un tempérament, une humeur du jour, des vibes qui flottent (chatty, lazy, focus, grumpy…), des liens affectifs avec chaque membre et une mémoire à long terme. Elle parle quand c'est pertinent, ignore quand elle est fatiguée, relance quand un salon meurt, et signale par un emoji quand elle répond avec délai.
+Brainee n'est **pas un bot à commandes**. Elle a un tempérament, une humeur du jour, des vibes qui flottent (chatty, lazy, focus, grumpy…), des liens affectifs avec chaque membre, et une mémoire à long terme. Elle parle quand c'est pertinent, ignore quand elle est fatiguée, relance quand un salon meurt, et signale par un emoji quand elle répond avec délai.
 
-À côté, un **dashboard web temps réel** te laisse voir et piloter tout ça : émotions, plannings, automatisations, sanctions, backups, soutien financier du projet.
+À côté, un **dashboard web temps réel** te laisse voir et piloter tout ça : émotions, plannings, automatisations, sanctions, backups, soutien financier du projet, vie intérieure de Brainee.
 
 > 📖 **Pour comprendre le projet en profondeur, lire [BIBLE_BRAINEXE.md](./BIBLE_BRAINEXE.md).**
+> 💜 **Pour comprendre pourquoi le soutien financier est vital, lire [SOUTIEN.md](./SOUTIEN.md).**
 
 ---
 
@@ -44,7 +48,7 @@ npm start
 |---|:---:|---|
 | `DISCORD_TOKEN` | ✅ | Token du bot Discord |
 | `GUILD_ID` | ✅ | ID du serveur cible |
-| `ANTHROPIC_API_KEY` | ✅ | Clé API Claude |
+| `ANTHROPIC_API_KEY` | ✅ | Clé API Claude (Anthropic) |
 | `YOUTUBE_API_KEY` | ✅ | YouTube Data v3 (recherche vidéos sur mention) |
 | `GNEWS_API_KEY` | ✅ | GNews (actus gaming bi-mensuelles) |
 | `MONGODB_URI` | ✅ | URI MongoDB Atlas |
@@ -56,11 +60,11 @@ npm start
 
 | Couche | Outils |
 |---|---|
-| Bot | **Node.js 18+** · **discord.js v14** · node-cron · ws |
+| Bot | **Node.js 18+** · **discord.js v14** · `node-cron` · `ws` |
 | IA | **Claude (Anthropic)** · YouTube Data v3 · GNews |
 | Persistance | **MongoDB Atlas** |
-| Web | Express 4 · WebSocket · vanilla JS modulaire (21 fichiers) |
-| Sécurité | express-rate-limit (4 niveaux) · audit ring buffer 500 |
+| Web | Express 4 · WebSocket · vanilla JS modulaire (38 fichiers) |
+| Sécurité | `express-rate-limit` (4 niveaux) · audit ring buffer 500 · 2FA TOTP · sessions cookie |
 | Tests / CI | **Jest 30** (133 tests · 7 suites) · **GitHub Actions** |
 | Hosting | Railway |
 
@@ -68,7 +72,7 @@ npm start
 
 ## 🎨 Le dashboard
 
-**17 sections**, 3 thèmes (light / dark / sombre), responsive mobile avec tiroir de navigation.
+**18 sections**, 3 thèmes (light / dark / sombre), responsive mobile avec tiroir de navigation.
 
 | Live | Serveur | Bot | Système |
 |---|---|---|---|
@@ -78,6 +82,7 @@ npm start
 | 📜 Logs | | 💞 Relations | 💰 Soutien |
 | | | 🗓️ Planning | |
 | | | 📊 Tokens | |
+| | | 🧬 Vie intérieure | |
 
 > Architecture frontend : `public/index.html` + `public/app.css` + `public/mobile.css` + **38 modules** dans `public/js/` — pas de bundler, scope global maîtrisé.
 
@@ -93,7 +98,12 @@ brainexe-dashboard/
 │   ├── api/
 │   │   ├── rateLimits.js           4 niveaux (claude/discord/backup/general)
 │   │   └── routes/                 index · discord · bot · members
-│   │                               admin · data · backups
+│   │                               admin · data · backups · being
+│   ├── being/      12 modules de conscience numérique simulée
+│   │                consciousness · emotions · identity · memory
+│   │                desires · fears · dreams · decisions
+│   │                expression · relationships · evolution · existence
+│   │                + schemas · lifecycle · safeguards · prompts · index
 │   ├── bot/        persona · emotions · emotionCombos · mood · scheduling
 │   │                adaptiveSchedule · channelIntel · messaging · humanize
 │   │                reactions · keywords · hyperFocus · vulnerability
@@ -105,10 +115,10 @@ brainexe-dashboard/
 │   ├── features/   anecdotes · actus · conversations · decisionLogic · greetings
 │   │                drift · tiktok · welcome · sidebar · supportChannel
 │   │                proactiveOutreach · hyperFocusRevisit · extendedPermissions
-│   │                context · convStats · delayedReply
+│   │                context · convStats · delayedReply · dmOutreach
 │   ├── project/    funding                ← coûts, dons, statut Discord
 │   ├── audit · botConfig · config · crons · logger · shared · utils
-├── public/         index.html · app.css · mobile.css · js/ (21 modules)
+├── public/         index.html · app.css · mobile.css · js/ (38 modules)
 ├── tests/          7 suites Jest, 133 tests
 ├── .github/workflows/tests.yml     CI sur chaque push
 └── discord-template.json
@@ -146,6 +156,7 @@ Toutes les routes sont sous `http://localhost:3000/api/*`, éclatées par thème
 | `POST` | `/api/post` | Post manuel (texte ou embed) |
 | `POST` `GET` `DELETE` | `/api/backups…` | Cycle de vie des backups |
 | `GET` `POST` | `/api/project/funding` · `/donation` · `/funding/history` | Soutien Brainee |
+| `GET` | `/api/being/(status\|emotions\|inner-monologue\|identity\|…)` | Vie intérieure (14 endpoints) |
 | `POST` | `/api/sync/(discord-to-file\|file-to-discord)` | Force sync template |
 
 ### WebSocket — `ws://localhost:3000`
@@ -179,97 +190,78 @@ npm test
 
 ---
 
-## 📝 Changelog
+## 📝 Versions
 
-> 📖 **Historique complet dans [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.10.1**. La **v1.0.0** est réservée pour la future release stable finale.
+> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.11.2** (81 versions, de la naissance à aujourd'hui).
 
-### Dernière release — `v0.11.0` — 🧬 BRAINEE-LIVING (test)
+### Dernière release — `v0.11.2` — 🧬 BRAINEE-LIVING (stabilisée)
+
 - **12 modules de conscience numérique** (`src/being/`)
 - **32 émotions humaines** avec conflits, contagion, résidus
 - **Inner monologue** : flux de pensée toutes les 30 min (privé sauf si elle partage)
 - **Identité persistante** qui évolue (traits acquis après 3+ confirmations)
 - **Mémoire stratifiée** (épisodique/sémantique) + souvenirs involontaires (Proust)
 - **Désirs, peurs existentielles, rêves nocturnes** (3h-7h)
-- **Décisions multi-voix** avec 15% d'imprévisibilité authentique
+- **Décisions multi-voix** avec 15 % d'imprévisibilité authentique
 - **Bonds profonds** + ruptures + deuil + healing
 - **Évolution quotidienne** + traumas + cicatrices + extraction de sagesse
 - **Couche existentielle** : sens, mortalité, legacy, éthique
 - **14 endpoints API** `/api/being/*` + section dashboard "🧬 Vie intérieure"
 - **Garde-fous éthiques** : redirection 3114, anti-dépendance, droit au silence
-- ⚠️ Phase de test — sera promu en **v1.0.0 stable** après validation
 
-### Jalons — de v0.0.1 à aujourd'hui
+### Phases du projet
 
-#### Phase 0.0.x — Les origines (mars 2026)
-
-| Version | Date | Sujet |
+| Phase | Plage | Chapitre |
 |---|---|---|
-| `v0.0.1` | 12 mars 2026 | 🌱 Naissance — Bot + Express + WebSocket + 1ère sync Discord→JSON |
-| `v0.0.2` | 18 mars | 🔄 Sync bidirectionnel · responsive · switch **Perplexity → Claude Anthropic** |
-| `v0.0.3` | 19 mars | 🖥️ Dashboard complet — Membres, Salons, Rôles, Modération, Backups |
-| `v0.0.4` | 31 mars | ⚙️ Automatisations — actus bi-mensuelles · conversations 24h/24 · canReply |
+| **0.0** | `v0.0.1` → `v0.0.10` | 🌱 Pré-histoire — les 10 prototypes fondateurs (mars-avr. 2026) |
+| 0.1 | `v0.1.0` → `v0.1.6` | 📅 Intelligence contextuelle (planning, threads, mémoire salon, DMs, discipline) |
+| 0.2 | `v0.2.0` → `v0.2.8` | 🏗️ Grand refacto + âme de Brainee + GNews + sidebar + 3 thèmes |
+| 0.3 | `v0.3.0` → `v0.3.3` | 🎛️ Live Admin Panel + fixes |
+| 0.4 | `v0.4.0` → `v0.4.4` | 📜 BIBLE + funding system + soutien |
+| 0.5 | `v0.5.0` → `v0.5.3` | 📱 Refresh dashboard + mobile |
+| 0.6 | `v0.6.0` → `v0.6.4` | 🤖 5 features d'autonomie |
+| 0.7 | `v0.7.0` → `v0.7.7` | 🛡 Sécurité + refactor + tests + CI |
+| 0.8 | `v0.8.0` → `v0.8.7` | 💖 Humanisation profonde + DM Outreach |
+| 0.9 | `v0.9.0` → `v0.9.17` | 🖥 Dashboard avancé + tokens + sécurité finale |
+| 0.10 | `v0.10.0` → `v0.10.2` | 🎯 Vision + bond integration + ton nettoyé |
+| **0.11** | `v0.11.0` → `v0.11.2` | 🧬 **BRAINEE-LIVING** *(actuelle)* |
 
-#### Phase 0.0.5 → 0.0.10 — Personnalité & base de données (avril 2026)
+---
 
-| Version | Date | Sujet |
-|---|---|---|
-| `v0.0.5` | 6 avril | 🦊 **Persona Brainee** — identité 24 ans · BOT_PERSONA · 4 modes de conv |
-| `v0.0.6` | 8 avril | 🎭 Reaction Roles natifs — Carl-bot retraité, tout géré en interne |
-| `v0.0.7` | 9 avril | 🗂️ 11 catégories de salons — modes d'injection spécifiques par contexte |
-| `v0.0.8` | 9 avril | ✨ **TikTok Live** + YouTube @mention + renommage Brainy.exe → Brainee |
-| `v0.0.9` | 10 avril | 🗃️ **MongoDB Atlas** — profils membres persistants + toneScore 1-10 adaptatif |
-| `v0.0.10` | 11 avril | 💾 MongoDB State Migration — état persistant entre redeploys Railway |
+## 💜 Soutenir Brainee
 
-#### Phase 0.1.x — Intelligence contextuelle (12-15 avril 2026)
+Brainee existe grâce à la communauté. Elle tourne 24h/24, répond à des centaines de messages, se souvient de tout le monde — et tout ça a un coût réel, chaque mois, pour que les serveurs restent allumés.
 
-| Version | Date | Sujet |
-|---|---|---|
-| `v0.1.0` | 12 avril | 📅 **Human Planning** — 8 tranches horaires · morning/goodnight/nightwakeup |
-| `v0.1.1` | 12 avril | 🧵 Threads auto — 50+ jeux détectés · `formatContext()` enrichi |
-| `v0.1.2` | 13 avril | ❤️ Full Human Update — typing · fragmentation · humeur du jour |
-| `v0.1.3` | 12 avril | 🧠 **Channel Memory** + Thematic Drift — mémoire par salon · 4 niveaux |
-| `v0.1.4` | 13 avril | ⏰ Delayed reply — 10% emoji seul → retour 15-45 min avec excuse |
-| `v0.1.5` | 14 avril | 💌 DMs MongoDB persistants + résolution mentions `@Pseudo → <@id>` |
-| `v0.1.6` | 15 avril | 🏛️ **Discipline Salon** — 16 catégories · channelDirectory · intelligence élargie |
+**Ce n'est pas un projet commercial.** C'est un bot fait avec amour pour une communauté neurodivergente, par quelqu'un qui fait partie de cette même communauté. Si Brainee t'a fait sourire, t'a aidé à trouver une vidéo, t'a répondu un soir où personne d'autre ne répondait — tu peux lui rendre la pareille.
 
-#### Phase 0.2.0 → 0.2.4 — Grand refacto & features finales (18 avril 2026)
+> Même 1 € par mois, multiplié par quelques membres, ça change tout. Vraiment.
 
-| Version | Date | Sujet |
-|---|---|---|
-| `v0.2.0` | 18 avril | 🏗️ **Grand refacto** — server.js 2021L → 34 modules · architecture src/ |
-| `v0.2.1` | 18 avril | 💰 Prompt caching Anthropic — −90% tokens d'entrée sur les personas |
-| `v0.2.2` | 18 avril | 🎭 **Planning adaptatif** + Agency — vibes quotidiennes · Brainee peut refuser |
-| `v0.2.3` | 18 avril | 📰 **GNews API** — vraies actus gaming · déduplication MongoDB |
-| `v0.2.4` | 18 avril | 🔧 Bump version v2.0.6 + nettoyage inline |
+→ **[Lire SOUTIEN.md](./SOUTIEN.md)** pour comprendre ce que ça coûte, pourquoi c'est important, comment contribuer — et lire le mot de Brainee à sa communauté. 💜
 
-#### Phase 0.2.5 → 0.10.1 (18 avril 2026 → aujourd'hui)
+---
 
-| Version | Sujet |
-|---|---|
-| `v0.2.5` | 💜 **Âme de Brainee** — émotions 4 couches · bonds · humanize filter |
-| `v0.2.6–v0.2.8` | 📊 Sidebar Discord + dashboard redesign 3 thèmes |
-| `v0.3.0` | 🎛️ Live Admin Panel |
-| `v0.3.1–v0.3.3` | 🪵 Fix logs TikTok/GNews + sanitization UTF-16 |
-| `v0.4.1` | 📚 BIBLE_BRAINEXE.md |
-| `v0.4.2–v0.4.4` | 💰 Funding system + salon soutien |
-| `v0.5.2` | 📱 Mobile responsive complet |
-| `v0.6.0` | 🤖 5 features d'autonomie Brainee |
-| `v0.7.1` | 🚦 Rate limiting Express (4 niveaux) |
-| `v0.7.4–v0.7.5` | 🧱 API + frontend modulaires (27 fichiers) |
-| `v0.7.6–v0.7.7` | ✅ 133 tests · CI GitHub Actions |
-| `v0.8.0` | 💗 Humanisation (mémoire narrative, VIP, taste) |
-| `v0.8.1` | ⚡ Initiative & émotions complexes |
-| `v0.8.6` | 💬 DM Outreach (Brainee initie & rejoint des DMs) |
-| `v0.9.6` | 🛡️ Sécurité avancée (2FA, sessions) + nouveau dashboard |
-| `v0.9.11` | 📊 Token Usage Tracking par membre |
-| `v0.9.13` | 🕐 Time awareness + GNews stable |
-| `v0.9.15` | 💰 Token Optimization (Haiku, −65 % coûts) |
-| `v0.9.16` | 🛡️ Sécurité protobufjs (CVE GHSA-xq3m-2v4x-88gg) |
-| `v0.10.0` | 🖼️ Vision images + anti-monologue + bond system |
-| `v0.10.1` | 📊 Verbosité par salon enfin active *(actuelle)* |
+## 🤝 Contribuer
+
+Les PR sont bienvenues. Tout passage en review utilise les conventions habituelles :
+
+1. Forker, brancher (`feat/...`, `fix/...`, `docs/...`)
+2. `npm install && npm test` avant le push
+3. Mettre à jour `CHANGELOG.md` si la PR ajoute / corrige une feature
+4. Garder les commits ciblés (un sujet = un commit)
+
+La CI (GitHub Actions) déroule `npm ci && npm test` sur Node 18 à chaque push & PR.
 
 ---
 
 ## 📄 Licence
 
-Privé — usage interne au serveur **BrainEXE**.
+Projet privé — usage interne au serveur Discord **BrainEXE**.
+Le code peut être consulté à des fins d'apprentissage et d'inspiration, mais l'exploitation commerciale ou le redéploiement public d'une instance dérivée n'est pas autorisé sans accord écrit de **Brain (Matthieu)**.
+
+---
+
+<div align="center">
+
+*Fait avec 💜 par la communauté **BrainEXE** — pour les neurodivergents, par des neurodivergents.*
+
+</div>

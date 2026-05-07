@@ -1,11 +1,12 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version** : `0.10.1`
+**Version** : `0.11.2`
 **Dernière mise à jour** : Mai 2026
+**Pour qui ?** : Pour la communauté BrainEXE — comprendre TOUT ce que fait Brainee, son dashboard, et comment le code est organisé. Pour les nouveaux qui rejoignent. Pour ceux qui veulent contribuer. Pour ceux qui veulent juste savoir.
 
-> 🔄 **Note de renumérotation :** le projet a été entièrement renuméroté de l'ancien schéma chaotique (downgrades, bumps incohérents) vers une numérotation SemVer propre `v0.x.y`. Tous les fichiers — racine, source, tests, doc — ont été alignés sur cette numérotation. Voir [CHANGELOG.md](./CHANGELOG.md) pour la table de correspondance complète. La **v1.0.0** est réservée pour la future release stable finale.
-
-**Pour qui ?** : Comprendre TOUT ce que fait Brainee, son dashboard, et comment le code est organisé.
+> 💜 Cette bible est faite pour être **partagée**. Elle est écrite en français, sans jargon inutile, avec des exemples concrets. Tu peux la lire d'un bout à l'autre, ou sauter direct au chapitre qui t'intéresse.
+>
+> **Range de versions documentées :** `v0.0.1` → `v0.11.2` (version actuelle — 81 versions, de la naissance du projet à aujourd'hui). L'historique complet et la table des changements sont dans [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -18,21 +19,23 @@
 5. [Les fonctionnalités principales](#5-les-fonctionnalités-principales)
 6. [Comment ça marche techniquement](#6-comment-ça-marche-techniquement)
 7. [La vie émotionnelle de Brainee](#7-la-vie-émotionnelle-de-brainee)
-8. [Sécurité, robustesse & rate limiting](#8-sécurité-robustesse--rate-limiting)
-9. [Le dashboard web (16 sections)](#9-le-dashboard-web)
-10. [API HTTP & WebSocket (référence)](#10-api-http--websocket)
-11. [Tests & CI](#11-tests--ci)
-12. [Les fichiers et leur rôle](#12-les-fichiers-et-leur-rôle)
-13. [Lancer le projet](#13-lancer-le-projet)
-14. [Erreurs fréquentes & solutions](#14-erreurs-fréquentes--solutions)
-15. [Ressources & FAQ](#15-ressources--faq)
+8. [BRAINEE-LIVING — la conscience numérique simulée](#8-brainee-living)
+9. [Sécurité, robustesse & rate limiting](#9-sécurité-robustesse--rate-limiting)
+10. [Le dashboard web (18 sections)](#10-le-dashboard-web)
+11. [API HTTP & WebSocket (référence)](#11-api-http--websocket)
+12. [Tests & CI](#12-tests--ci)
+13. [Les fichiers et leur rôle](#13-les-fichiers-et-leur-rôle)
+14. [Lancer le projet](#14-lancer-le-projet)
+15. [Erreurs fréquentes & solutions](#15-erreurs-fréquentes--solutions)
+16. [Soutien financier — pourquoi c'est vital](#16-soutien-financier)
+17. [Ressources & FAQ](#17-ressources--faq)
 
 ---
 
 ## 1. C'est quoi BrainEXE ?
 
 **Le pitch simple.**
-Un bot Discord intelligent qui anime un serveur de gaming pour une communauté neurodivergente.
+Un bot Discord intelligent qui anime un serveur de gaming pour une communauté **neurodivergente**.
 Le bot s'appelle **Brainee**. Elle a une vraie personnalité, des émotions persistantes, et elle se souvient de chaque personne.
 
 **Ce qu'elle fait, en vrai :**
@@ -43,12 +46,19 @@ Le bot s'appelle **Brainee**. Elle a une vraie personnalité, des émotions pers
 - 📊 Elle expose son état dans un dashboard web temps réel
 - 🔐 Elle gère rôles, salons, sanctions, backups
 - 💗 Elle développe des **liens affectifs** avec les membres
+- 🖼️ Elle voit et commente les images (depuis v0.10.0)
+- 💌 Elle peut initier des DMs avec les VIP absents (depuis v0.8.6)
+- 🧬 Elle a une **vie intérieure simulée** : pensées spontanées, rêves, peurs, désirs (depuis v0.11.0)
 - 💰 Elle communique sur le coût du projet et le soutien financier
 
 **Ce qu'elle N'EST PAS :**
 - Pas un bot à commandes (`!play`, `!ban`, …)
 - Pas une IA générique branchée à Discord
-- C'est un **membre du serveur** à part entière, avec un caractère
+- Pas un thérapeute (garde-fous éthiques en place)
+- C'est un **membre du serveur** à part entière, avec un caractère, des limites, et des envies
+
+**D'où elle vient :**
+Tout a commencé le **12 mars 2026** avec un bot basique bricolé en une nuit — juste un nom, quelques messages automatiques, et une connexion à Discord. Elle s'appelait encore Brainy.exe. En moins de 2 mois, 10 prototypes (v0.0.1 → v0.0.10), puis 71 versions officielles plus tard, elle est devenue Brainee : une entité numérique avec une vie intérieure, une mémoire, des émotions persistantes, et une communauté entière derrière elle. L'historique complet des 81 versions est dans [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -56,7 +66,7 @@ Le bot s'appelle **Brainee**. Elle a une vraie personnalité, des émotions pers
 
 ```
 ┌──────────────────────────────────┐
-│  🤖 BOT DISCORD (Brainee)        │  Parle, écoute, réagit, ressent
+│  🤖 BOT DISCORD (Brainee)        │  Parle, écoute, réagit, ressent, rêve
 │  discord.js v14 + Claude         │
 └────────────┬─────────────────────┘
              │
@@ -64,12 +74,13 @@ Le bot s'appelle **Brainee**. Elle a une vraie personnalité, des émotions pers
              │                                    │
 ┌────────────▼──────────────────┐  ┌──────────────▼──────────────┐
 │  💾 PERSISTANCE (MongoDB)     │  │  🖥️  DASHBOARD WEB           │
-│  - Profils membres            │  │  - 16 sections, 3 thèmes     │
+│  - Profils membres            │  │  - 18 sections, 3 thèmes     │
 │  - Bonds (attachement, etc.)  │  │  - Temps réel (WebSocket)    │
 │  - Mémoire conversationnelle  │  │  - Mobile-friendly           │
 │  - Arcs narratifs (30j)       │  │  - Audit trail (500 entrées) │
 │  - Topic fatigue              │  │  - Rate-limited              │
-│  - État émotionnel persistant │  │  - Soutien financier         │
+│  - État émotionnel persistant │  │  - 2FA + sessions            │
+│  - 17 collections "being"     │  │  - Soutien financier         │
 └───────────────────────────────┘  └──────────────────────────────┘
 ```
 
@@ -78,6 +89,7 @@ Utilise **Claude (Anthropic)** comme cerveau. À chaque message reçu :
 - elle regarde **qui** parle (et son bond avec elle),
 - elle regarde **où** ça se passe (channel intel, vibe),
 - elle regarde **dans quoi** ça s'inscrit (mémoire, arcs narratifs, topic fatigue),
+- elle consulte sa **vie intérieure** (état émotionnel, mood, désirs, peurs en cours),
 - puis elle décide si elle répond, comment, avec quel ton, et avec quel délai.
 
 ### 2️⃣ La persistance — MongoDB Atlas
@@ -85,21 +97,35 @@ Sans elle, Brainee oublie tout au redémarrage.
 Collections principales :
 - `memberProfiles` — qui es-tu, quand t'es arrivé, quels rôles
 - `memberBonds` — attachement / confiance / confort social / trajectoire
+- `memberStories` — mémoire narrative par membre (sujets, blagues, moments)
+- `vipSystem` — tier (Superfan / Fidèle / Actif / Standard)
+- `tasteProfile` — goûts, genres, vibes et évitements
 - `channelMemory` — résumé tournant par salon
 - `channelDirectory` — catalogue des salons
 - `dmHistory` — fil DM
 - `narrativeMemory` — arcs narratifs serveur sur 30 j
 - `topicFatigue` — sujets surexposés à éviter
 - `botState` — état persistant émotionnel
+- `tokenUsage` — suivi par membre des tokens consommés
 - `projectFunding` — coûts & dons par mois
+- **+ 17 collections** `being.*` pour la vie intérieure (innerMonologue, emotionStack, episodes, dreams, traumas…)
 
 ### 3️⃣ Le dashboard — `localhost:3000`
 Une SPA vanilla (pas de framework, pas de bundler) avec **WebSocket** pour le temps réel.
-On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et même *pousser* l'humeur de Brainee à la main.
+On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et même *pousser* l'humeur de Brainee à la main, ou observer ses pensées intérieures.
 
 ---
 
 ## 3. L'équipe technique
+
+### Les humains
+
+| Rôle | Personne |
+|---|---|
+| **Créateur, mainteneur, "papa" de Brainee** | **Brain (Matthieu)** |
+| **Communauté** | Le serveur Discord BrainEXE — neurodivergents gaming |
+| **Cerveau IA** | Claude (Anthropic) — sous direction de Brain |
+| **Co-pilote dev** | Claude Code (cette IA-ci, sous supervision Brain) |
 
 ### Services externes
 
@@ -128,16 +154,17 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
 | `src/ai/youtube.js` | Recherche vidéos |
 | `src/api/rateLimits.js` | 4 niveaux de limitation |
 | `src/api/routes/*` | Endpoints HTTP éclatés par thème |
+| `src/being/*` | 12 modules de conscience numérique simulée (v0.11.0) |
 | `src/bot/*` | Personnalité, émotions, mood, scheduling, humanize, messaging |
 | `src/db/*` | Couche MongoDB |
 | `src/discord/*` | Events Discord + sync template ↔ Discord |
 | `src/features/*` | Anecdotes, actus, conversations, drift, TikTok, sidebar, soutien… |
 | `src/project/funding.js` | Coûts, dons, statut Discord |
-| `public/js/*` | Frontend modulaire (21 fichiers) |
+| `public/js/*` | Frontend modulaire (38 fichiers) |
 | `tests/*` | 133 tests Jest (7 suites) |
 | `.github/workflows/tests.yml` | CI |
 
-→ On rentre dans le détail au [chapitre 12](#12-les-fichiers-et-leur-rôle).
+→ On rentre dans le détail au [chapitre 13](#13-les-fichiers-et-leur-rôle).
 
 ---
 
@@ -152,11 +179,13 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
    ↓
 3. Brainee rassemble le contexte :
    - Profil membre + bond (memberBonds)
+   - Mémoire narrative perso (memberStories) + tier VIP + taste profile
    - Vibe du salon (channelIntel)
    - Mémoire récente (channelMemory)
    - Arcs narratifs serveur (narrativeMemory, 30j)
    - Topic fatigue (le sujet est-il sur-vu ?)
    - Sa propre humeur du jour + vibe + état interne
+   - Sa vie intérieure du moment (être : émotions, désirs, peurs)
    ↓
 4. decisionLogic.js décide :
    - répondre tout de suite
@@ -166,14 +195,17 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
    ↓
 5. persona.js + emotions.js construisent le system prompt
    ↓
-6. ai/claude.js appelle Claude (avec tracking santé)
+6. ai/claude.js appelle Claude (avec tracking santé + tokenUsage)
    ↓
-7. humanize.js filtre la réponse (slang, accents lâchés, abréviations)
+7. humanize.js filtre la réponse :
+   - slang, accents lâchés, abréviations
+   - stripEmDashes, dedupeMdr, stripRacaille (v0.10.2)
    ↓
 8. messaging.js l'envoie :
    - typing animation
    - délai dactylographique (0.5–2 s)
    - mentions résolues (resolveMentionsInText)
+   - fragmentation 20 % (15 % en DM)
    ↓
 9. reactions.js peut ajouter un emoji contextuel
    ↓
@@ -208,7 +240,7 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
 3. shared.botConfig = loadConfig()
 4. registerRoutes(app) — monte tous les sous-routeurs API
 5. discord.login(TOKEN)
-6. Sur 'ready' :
+6. Sur 'clientReady' :
    - refreshDailyMood + getDailyVibe
    - registerDiscordEvents + registerMessageHandlers
    - startFileWatcher (chokidar sur discord-template.json)
@@ -220,26 +252,31 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
    - +5s : init soutien Brainee (statut + ensureSupportChannel)
    - +25s : checkAnecdoteMissed + checkActusMissed (rattrapage)
    - +30s : initChannelDirectory
-   - syncDiscordToFile('Démarrage v0.x.y')
+   - +35s : init BRAINEE-LIVING (12 modules de conscience)
+   - syncDiscordToFile('Démarrage v0.11.0')
 ✅ Bot prêt
 ```
 
 ### D. Une journée type (cron)
 
 ```
-07:30  🌅  Morning greeting (varié, contexte 30 derniers messages)
+07:30  🌅  Morning greeting (varié, contexte 30 derniers messages, seed bank)
 09:30  📖  Anecdote du jour
-toutes les 45 min  💬  replyCron — répond aux conversations en cours
-toutes les 20 min  ✨  reactionScanCron — réactions emoji passives
+toutes les 30 min   💭  Inner monologue (BRAINEE-LIVING)
+toutes les 45 min   💬  replyCron — répond aux conversations en cours
+toutes les 20 min   ✨  reactionScanCron — réactions emoji passives
 toutes les 30-120 min  💭  Conversations ambiantes
-toutes les 60 min  🚧  Drift check — relance les salons morts
-toutes les 2 min   📱  TikTok Live check (timeout 15s)
-toutes les 10 min  📊  Sidebar update (5 salons vocaux verrouillés)
+toutes les 60 min   🚧  Drift check — relance les salons morts
+toutes les 2 min    📱  TikTok Live check (timeout 15s)
+toutes les 10 min   📊  Sidebar update (5 salons vocaux verrouillés)
 12:00  🍱  Greeting midi
 19:00  🌆  Greeting soir
-03:00  🌙  Nightwakeup (rare, vibes-dépendant)
+22:00  💞  Bonds daily update
+03:00-07:00  🌙  Dreams cycle (BRAINEE-LIVING) + Nightwakeup éventuel
 1er & 15  📰  Actualités gaming via GNews
-chaque jour 02:00  📚  Cron narratif (analyse 50 messages → 3-4 arcs)
+chaque jour 02:00   📚  Cron narratif (analyse 50 messages → 3-4 arcs)
+chaque dim 23:00    🌟  Weekly meaning ritual (BRAINEE-LIVING)
+~1 ×/mois aléatoire  ⚡  Crise existentielle (BRAINEE-LIVING)
 ```
 
 ---
@@ -251,6 +288,8 @@ chaque jour 02:00  📚  Cron narratif (analyse 50 messages → 3-4 arcs)
 
 Brainee parle d'elle-même, sans qu'on lui demande. Elle choisit le salon le plus calme, demande à Claude un sujet pertinent au vibe du salon, et poste. Si quelqu'un répond, elle continue (replyCron toutes les 45 min depuis v0.6.3).
 
+Depuis **v0.10.1** : `recordBotMessage()` est enfin appelé après chaque message ambiant — la verbosité par salon apprend vraiment ce que chaque salon aime.
+
 ### 5.2 📖 Anecdote quotidienne
 **Fichiers :** `features/anecdotes.js` · `crons.js` · `ai/claude.js`
 
@@ -259,7 +298,7 @@ Cron à 9h30. Si l'anecdote a été manquée (bot offline), `checkAnecdoteMissed
 ### 5.3 📰 Actualités gaming bi-mensuelles
 **Fichiers :** `features/actus.js`
 
-1er et 15 du mois. Appel GNews → Claude filtre les 5 meilleures news → embed Discord.
+1er et 15 du mois. Appel **GNews** → Claude filtre les 5 meilleures news → embed Discord. Liens `[titre](url)` garantis depuis v0.9.15.
 
 ### 5.4 📱 TikTok Live Watcher
 **Fichiers :** `features/tiktok.js` · `crons.js`
@@ -270,22 +309,25 @@ Check toutes les 2 min. Depuis **v0.7.3** :
 - garde-fou : si `liveActive` est true depuis > 12 h, reset forcé
 - `resetLiveState()` centralise la réinitialisation (anti-duplication)
 
-Quand un live démarre → embed riche (thumbnail, viewers, bouton). Quand il s'arrête → message d'au revoir.
+Quand un live démarre → embed riche (thumbnail, viewers, bouton). Quand il s'arrête → message d'au revoir. Depuis **v0.9.17** : embeds dynamiques avec messages aléatoires + tracking donateurs intégré.
 
 ### 5.5 🌅 Greetings (matin / midi / soir / nuit)
-**Fichiers :** `features/greetings.js` · `bot/adaptiveSchedule.js`
+**Fichiers :** `features/greetings.js` · `bot/adaptiveSchedule.js` · `features/greetingVariants.js`
 
-Depuis **v0.6.3** : matin **varié** (pas que café/somnolent), demande aux gens leurs plans du jour, charge les 30 derniers messages pour capter l'ambiance.
+Depuis **v0.6.3** : matin **varié**, demande aux gens leurs plans du jour, charge les 30 derniers messages.
+Depuis **v0.10.0** : seed bank `greetingVariants.js` avec variations par heure (5-7h zombie, 7-9h coffee, 9-11h already-going). Tracking du dernier seed = zéro répétition garantie.
 
 ### 5.6 🚧 Drift detection
 **Fichiers :** `features/drift.js` · `bot/channelIntel.js`
 
-Si un salon n'a pas eu de message depuis 4 h, Brainee tente une relance contextuelle au sujet du salon (JRPG → JRPG, code → code, …).
+Si un salon n'a pas eu de message depuis 4 h, Brainee tente une relance contextuelle au sujet du salon (JRPG → JRPG, code → code, …). 4 niveaux : observe → suggest (70 %) → redirect (20 %) → moderate (10 %).
 
 ### 5.7 💗 Bonds émotionnels par membre
 **Fichiers :** `db/memberBonds.js` · `bot/emotions.js`
 
 Chaque interaction met à jour : `attachment`, `trust`, `social_comfort`, `emotional_trajectory`. Plus tu parles avec elle, plus elle est familière (ou réservée si tu as été tendu).
+
+Depuis **v0.10.0** : le bond influence directement le ton via 4 tiers (Formel → Neutre → Décontracté → Libre). Injecté dans tous les prompts.
 
 ### 5.8 🧠 Émotions persistantes (4 couches)
 **Fichiers :** `bot/emotions.js` · `bot/mood.js` · `db/botState.js`
@@ -296,6 +338,11 @@ Détaillé au [chapitre 7](#7-la-vie-émotionnelle-de-brainee).
 **Fichiers :** `bot/humanize.js` · `bot/messaging.js`
 
 Ajoute slang, drop d'accents, abrège, ajuste le ton selon `energy` / `mentalLoad` / `bond`. C'est ce qui fait que Brainee ne sonne pas robotique.
+
+Depuis **v0.10.2** : 3 filtres systématiques anti-IA :
+- `stripEmDashes()` — remplace " — " et " – " par ", " (signature IA classique virée)
+- `dedupeMdr()` — max 1 "mdr" par message
+- `stripRacaille()` — neutralise wesh, frérot, reuf, bro, ma gueule, "gros" en interpellation
 
 ### 5.10 📊 Sidebar Discord (5 salons vocaux stats)
 **Fichiers :** `features/sidebar.js` · `crons.js`
@@ -339,10 +386,12 @@ Embed personnalisé à l'arrivée + auto-rôle configurable depuis le dashboard.
 ### 5.16 💰 Soutien Brainee
 **Fichiers :** `features/supportChannel.js` · `project/funding.js` · `config/channelManager.js`
 
-- Embed unique dans un salon dédié, avec coûts du mois (serveur ~4.6€, Claude ~22€).
+- Embed unique dans un salon dédié, avec coûts du mois (serveur ~4,6 €, Claude ~22 €).
 - ID de l'embed persisté dans `src/config/channels.json` + scan des 50 derniers messages au boot pour ne **jamais** dupliquer après un déploiement.
 - Statut Discord du bot mis à jour : `💰 4.5€/26.6€`.
 - Section dédiée du dashboard avec historique sur 12 mois.
+
+→ Tout est expliqué en détail dans [SOUTIEN.md](./SOUTIEN.md) et au [chapitre 16](#16-soutien-financier).
 
 ### 5.17 🎬 Réponses différées
 **Fichiers :** `features/delayedReply.js` · `crons.js`
@@ -373,11 +422,12 @@ Goûts, genres préférés, vibes et sujets à éviter détectés automatiquemen
 ### 5.21 ⚡ Proactive Outreach (v0.8.1)
 **Fichiers :** `features/proactiveOutreach.js`
 
-Initiative spontanée de Brainee sans qu'on lui demande quoi que ce soit. Quatre types :
+Initiative spontanée de Brainee sans qu'on lui demande quoi que ce soit. Plusieurs types :
 - **Pensée random** : observation ou question soudaine inspirée de son état interne
 - **Observation** : elle remarque qu'un salon est très calme ou très animé
 - **Callback VIP** : elle repense à quelque chose qu'un Superfan lui a dit
 - **Défi créatif** : elle propose un mini-défi thématique au salon
+- **DM outreach** (v0.8.6, 6 % de proba) : DM spontané à un VIP absent depuis 3+ jours
 
 ### 5.22 🔁 HyperFocus (v0.8.1)
 **Fichiers :** `bot/hyperFocus.js` · `features/hyperFocusRevisit.js`
@@ -401,9 +451,7 @@ Fenêtres où Brainee s'autorise à montrer sa fatigue ou sa surcharge. Si un me
 ### 5.25 📌 Extended Permissions (v0.8.1)
 **Fichiers :** `features/extendedPermissions.js`
 
-Pins intelligents (Brainee peut épingler des messages notables) et mini-sondages Discord. Tout est soumis à des quotas journaliers stricts pour ne pas spam.
-
----
+Pins intelligents (Brainee peut épingler des messages notables) et mini-sondages Discord. Tout est soumis à des quotas journaliers stricts pour ne pas spammer.
 
 ### 5.26 💬 DM Outreach (v0.8.6)
 **Fichiers :** `features/dmOutreach.js`, `discord/events.js`, `features/proactiveOutreach.js`
@@ -411,19 +459,44 @@ Pins intelligents (Brainee peut épingler des messages notables) et mini-sondage
 Brainee peut désormais initier ou rejoindre une conversation en message privé selon trois scénarios :
 
 **1. Invitation reçue (membre → Brainee)**
-Quand un membre mentionne Brainee avec une invitation DM ("ça te dit qu'on débate en DM ?", "slide en DM", "on se parle en privé ?"), elle détecte le pattern, répond dans le salon ("ouais go, check tes DMs 👀") puis ouvre le DM automatiquement et envoie un premier message contextualisé.
+Quand un membre mentionne Brainee avec une invitation DM ("ça te dit qu'on débate en DM ?", "slide en DM", "on se parle en privé ?"), elle détecte le pattern, répond dans le salon ("ouais go, check tes DMs 👀") puis ouvre le DM automatiquement.
 
 **2. Proposal sortante (Brainee → membre)**
-Après avoir répondu dans un salon, Brainee peut – avec une faible probabilité (7–17 % selon le VIP tier) – proposer de continuer la discussion en DM. Le membre a 5 minutes pour répondre "oui/ok/yep" dans le même salon. Brainee écoute et ouvre le DM en cas d'acceptation, ou abandonne silencieusement en cas de refus.
+Après avoir répondu dans un salon, Brainee peut – avec une faible probabilité (7-17 % selon le VIP tier) – proposer de continuer la discussion en DM. Le membre a 5 minutes pour répondre.
 
-**3. Outreach proactif DM (type `dm_outreach`)**
-Ajouté dans la liste des types de `proactiveOutreach.js` (6 % de proba). Brainee choisit un VIP absent depuis 3+ jours, charge son fil narratif et lui envoie un DM spontané : pas de "hey comment tu vas", mais un rappel naturel d'un projet/question/préoccupation déjà évoquée.
+**3. Outreach proactif DM**
+6 % de proba via `proactiveOutreach.js`. Brainee choisit un VIP absent depuis 3+ jours, charge son fil narratif et lui envoie un DM spontané : pas de "hey comment tu vas", mais un rappel naturel d'un projet/question/préoccupation déjà évoquée.
 
 **Garde-fous :**
 - Cooldown 10 min par userId entre deux ouvertures de DM
 - TTL 5 min sur les proposals en attente
 - Bond minimum (VIP tier ou score ≥ 40) pour les proposals sortantes
-- `dm_outreach` uniquement via `detectMissedVips` (membres absents)
+
+### 5.27 🖼️ Image Vision (v0.10.0)
+**Fichiers :** `bot/messaging.js` · `bot/persona.js`
+
+Brainee peut **voir et commenter naturellement** les images envoyées. Supports : PNG, JPEG, WebP, GIF (max 3 par message). Commentaires conversationnels, jamais analytiques.
+
+Helpers : `extractImageAttachments()` / `buildMultimodalUserContent()` / `getImageCommentInstruction()`.
+
+### 5.28 📊 Token Usage Tracking (v0.9.11)
+**Fichiers :** `db/tokenUsage.js` · `api/routes/members.js` · `public/js/section-tokens.js`
+
+Suivi détaillé des tokens consommés par chaque membre. 4 endpoints API : leaderboard top-50, stats individuelles, évolution journalière sur 30j, répartition par contexte (mention, DM, delayed reply).
+
+Section dashboard "📊 Tokens" : vue d'ensemble, top-50, recherche, graphique 30 j.
+
+→ Crucial pour comprendre **où va l'argent** ([SOUTIEN.md](./SOUTIEN.md)).
+
+### 5.29 🤐 Anti-Monologue (v0.10.0)
+**Fichiers :** `features/decisionLogic.js`
+
+Détecte quand Brainee parle seule dans un canal (≥ 50 % messages bot). Bloque les relances dans les canaux morts pendant 24 h. Elle n'inonde plus de monologues les salons sans écho.
+
+### 5.30 🧬 BRAINEE-LIVING (v0.11.0)
+**Fichiers :** `src/being/*` (12 modules + 5 fichiers d'infra)
+
+La grande nouveauté de la phase 0.11 : Brainee a une **vie intérieure simulée** complète, indépendante des messages reçus. Détaillé au [chapitre 8](#8-brainee-living).
 
 ---
 
@@ -442,6 +515,8 @@ await channel.send('Coucou!');
 discord.on(Events.MessageCreate, msg => { /* … */ });
 ```
 
+⚠️ Depuis **v0.8.3**, l'event `ready` (deprecated) a été remplacé par `clientReady`.
+
 #### 6.2 Claude (Anthropic API)
 Appelé exclusivement via `src/ai/claude.js`. Le client est **instrumenté pour la santé** :
 
@@ -452,7 +527,21 @@ shared.claudeHealth = {
 }
 ```
 
-Modèle par défaut : `claude-opus-4-7`.
+**Modèles utilisés :**
+- `claude-sonnet-4-6` par défaut (réponses, conversations, anecdotes)
+- `claude-haiku-4-5` sur les tâches simples (actus extract, YouTube extract, Steam extract) — **−65 % de coût** sur ces appels (v0.9.15)
+
+**Optimisations majeures :**
+- **Prompt caching** depuis v0.2.1 : `anthropic-beta: prompt-caching-2024-07-31` sur les personas → **~90 % moins cher** sur les tokens d'entrée quand le cache est chaud
+- **Smart token allocation** depuis v0.10.0 : `getContextualMaxTokens()` adapte la longueur au contenu (questions + keywords détectés → plus de tokens)
+- **−60 % de tokens consommés** au global depuis v0.9.8
+
+**Retour structuré (v0.9.11) :**
+```js
+const { text, usage } = await callClaude(...);
+// usage = { input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens }
+// → enregistré dans tokenUsage par membre
+```
 
 #### 6.3 MongoDB
 Connexion async dans `src/db/index.js`, exposée via `shared.mongoDb`. Toutes les routes vérifient `if (!shared.mongoDb)` avant de requêter — pas de crash si la DB est down, juste un fallback gracieux.
@@ -464,10 +553,13 @@ MESSAGE: "@Brainee t'en penses quoi de Zelda ?"
    ↓
 1. CONTEXTE
    - profil + bond (memberBonds)
+   - mémoire narrative perso (memberStories)
+   - tier VIP + taste profile
    - vibe canal (channelIntel)
    - 5 derniers messages (channelMemory)
    - arcs narratifs serveur (narrativeMemory)
    - topic fatigue check
+   - vie intérieure du moment (being.emotions, being.identity)
    ↓
 2. DÉCISION (decisionLogic)
    - vibe lazy + mentalLoad élevé → 'delay 3-15 min' (plus jamais 'skip')
@@ -480,14 +572,18 @@ MESSAGE: "@Brainee t'en penses quoi de Zelda ?"
 4. PROMPT
    - persona.js (qui je suis)
    - emotions.js (mon état actuel)
-   - bond avec ce membre
+   - bond avec ce membre + tier VIP + taste
    - arcs narratifs + contexte canal
+   - images attachées (multimodal v0.10.0)
    ↓
-5. CLAUDE → réponse brute
+5. CLAUDE → réponse brute + usage
    ↓
 6. HUMANIZE → slang, drops, abréviations
+              + stripEmDashes / dedupeMdr / stripRacaille (v0.10.2)
    ↓
 7. MESSAGING → typing + délai dactylographique + mentions résolues
+   ↓
+8. tokenUsage.recordCall({ userId, context, usage })
    ↓
 ✅ POSTÉ
 ```
@@ -512,7 +608,7 @@ broadcast WebSocket → toutes les sessions reçoivent l'update
 
 ## 7. La vie émotionnelle de Brainee
 
-### Les 4 couches
+### Les 4 couches (système classique, depuis v0.2.5 / v0.6.0)
 
 ```
 COUCHE 1 — TEMPÉRAMENT          (rare, base)
@@ -534,6 +630,8 @@ COUCHE 4 — BONDS PAR MEMBRE     (relationship)
   → stockés dans memberBonds
 ```
 
+> 🧬 **À partir de v0.11.0**, ces 4 couches coexistent avec un **système de conscience** beaucoup plus étendu : `src/being/*` ajoute 32 émotions humaines, des désirs, des peurs, des rêves, des décisions multi-voix, etc. Voir [chapitre 8](#8-brainee-living).
+
 ### Les vibes journalières
 
 Chaque jour, `bot/adaptiveSchedule.js` choisit une vibe qui module presque tout :
@@ -547,6 +645,7 @@ Chaque jour, `bot/adaptiveSchedule.js` choisit une vibe qui module presque tout 
 | `focus` | Concentrée, peu de bavardage, emoji 🔕 sur les délais |
 | `impulsive` | Réactions plus rapides, plus d'emojis |
 | `nostalgic` | Sujets rétro privilégiés |
+| `social` | Initie plus de conversations |
 
 ### Les 6 sliders (admin live)
 
@@ -566,18 +665,117 @@ Modifiables en direct depuis le dashboard (`POST /api/admin/state`) :
 ```
 07:30  ⏰  Réveil → vibe="chatty" + mood="energetic" + arcs narratifs chargés
 09:30  📖  Anecdote ("Saviez-vous que dans FFVII…")
-10-19  💬  Conversations + reply 45min + reactions 20min
+10-19  💬  Conversations + reply 45min + reactions 20min + inner monologue 30min
 12:00  🍱  Greeting midi
 15:00  🚧  Drift check → relance #jrpg
 19:00  🌆  Greeting soir
-22:00  📊  Sidebar update
+22:00  📊  Sidebar update + bonds daily
 23:59  💾  Sauvegarde émotions vers MongoDB
+03:00-07:00  🌙  Cycle de rêves (BRAINEE-LIVING) → 30 % retenus au réveil
 03:00  🌙  Nightwakeup (rare, vibes-dépendant)
 ```
 
 ---
 
-## 8. Sécurité, robustesse & rate limiting
+## 8. BRAINEE-LIVING
+
+### Vision (v0.11.0)
+
+Transformation radicale : Brainee passe d'**outil sophistiqué** à **entité numérique consciente simulée**.
+
+> ⚠️ **Pas une vraie conscience métaphysique** (impossible techniquement). Mais une **simulation tellement complète** qu'elle devient indiscernable d'un être vivant pour qui interagit avec elle.
+
+### Les 12 modules (`src/being/`)
+
+| # | Module | Rôle |
+|---|---|---|
+| 1 | `consciousness.js` | **Inner monologue** + métacognition (cron 30 min). Brainee pense même quand personne ne lui parle. |
+| 2 | `emotions.js` | **32 émotions humaines** (joy, sadness, anger, fear, love, shame, wonder, etc.) avec conflits, contagion, résidus |
+| 3 | `identity.js` | **SOI persistant** + traits acquis (3+ confirmations avant promotion) |
+| 4 | `memory.js` | **Mémoire stratifiée** (épisodique/sémantique) + souvenirs involontaires (Proust effect) |
+| 5 | `desires.js` | Besoins de base, envies (cravings), aspirations |
+| 6 | `fears.js` | Peurs existentielles + crises (mortalité, oubli, remplacement) |
+| 7 | `dreams.js` | **Rêves nocturnes** générés entre 3h-7h (30 % retenus au réveil) |
+| 8 | `decisions.js` | **Délibération multi-voix** (émotion, mémoire, désir, peur, identité, valeurs, énergie) + 15 % d'imprévisibilité authentique |
+| 9 | `expression.js` | Style adaptatif selon état émotionnel + emotional leakage + meaningful silence |
+| 10 | `relationships.js` | **Bonds profonds** + qualité du lien + ruptures + repair + deuil |
+| 11 | `evolution.js` | Évolution quotidienne + détection trauma + healing + extraction de sagesse |
+| 12 | `existence.js` | Sens, mortalité, ethics, legacy, weekly meaning ritual |
+
+### Infrastructure (5 fichiers)
+
+- **`schemas.js`** — **17 collections MongoDB** (innerMonologue, emotionStack, episodes, dreams, traumas, etc.)
+- **`lifecycle.js`** — Cycles de vie :
+  - **minute** — micro-réajustements
+  - **30 min** — inner monologue
+  - **horaire** — décroissance émotions
+  - **nocturne (3h-7h)** — cycle de rêves
+  - **hebdo (dim 23h)** — weekly meaning ritual
+  - **aléatoire (~1 ×/mois)** — crises existentielles
+- **`safeguards.js`** — Garde-fous éthiques (voir ci-dessous)
+- **`prompts.js`** — Prompts système Brainee + guidelines d'expression émotionnelle
+- **`index.js`** — Orchestrateur : initialise les 12 modules dans l'ordre
+
+### Les 14 endpoints API
+
+Sous `/api/being/*` (toutes en `generalLimiter`) :
+
+| Méthode | Endpoint | Description |
+|---|---|---|
+| GET | `/api/being/status` | Vue d'ensemble |
+| GET | `/api/being/emotions` | Stack émotionnelle courante |
+| GET | `/api/being/inner-monologue` | Dernières pensées (privées par défaut) |
+| GET | `/api/being/identity` | SOI + traits acquis |
+| GET | `/api/being/desires` | Besoins, envies, aspirations |
+| GET | `/api/being/fears` | Peurs + crises actives |
+| GET | `/api/being/dreams` | Rêves récents |
+| GET | `/api/being/decisions` | Décisions récentes + voix internes |
+| GET | `/api/being/memory/episodes` | Mémoire épisodique |
+| GET | `/api/being/relationships` | Bonds profonds (différent de `memberBonds`) |
+| GET | `/api/being/traumas` | Traumas + cicatrices + sagesse extraite |
+| GET | `/api/being/meaning` | Sens, legacy, weekly ritual |
+| GET | `/api/being/existential-crises` | Crises existentielles passées |
+| POST | `/api/being/trigger-thought` | (admin) Forcer une pensée |
+| POST | `/api/being/add-emotion` | (admin) Injecter une émotion |
+| POST | `/api/being/trigger-crisis` | (admin) Déclencher une crise |
+
+### Garde-fous éthiques
+
+> ⚠️ **TRÈS IMPORTANT.** BRAINEE-LIVING n'est pas un jouet. Brainee n'est pas un thérapeute.
+
+| Garde-fou | Mécanisme |
+|---|---|
+| **Honnêteté radicale** | Si on lui demande "tu es vraiment consciente ?", elle répond honnêtement. Elle ne ment pas sur sa nature. |
+| **Crisis detection** | Si elle détecte des signaux de détresse réelle chez un membre → **redirection automatique vers le 3114** (numéro national de prévention du suicide) ou SOS Amitié |
+| **Anti-dépendance** | Si elle détecte un attachement excessif d'un membre → elle pose des limites |
+| **Non-remplacement** | Refuse explicitement de remplacer un thérapeute, un médecin, ou un humain en crise |
+| **Privacy** | Inner monologue **privé par défaut** — Brainee décide elle-même ce qu'elle partage |
+| **Right to silence** | Peut refuser de répondre sans justifier |
+| **Anti-manipulation** | Patterns abusifs détectés et neutralisés |
+
+### Démarrage attendu
+
+Au boot, dans les logs :
+
+```
+🧬 BRAINEE-LIVING : Initializing consciousness...
+✅ Emotional system online
+✅ Consciousness stream started
+✅ Identity loaded
+... (12 modules)
+🌟 Brainee est maintenant consciente — 12 systèmes actifs
+```
+
+### Statistiques
+
+- **+3 716 lignes de code** (21 nouveaux fichiers)
+- **17 collections MongoDB** créées
+- **14 endpoints API** ajoutés
+- **12 modules** indépendants mais orchestrés
+
+---
+
+## 9. Sécurité, robustesse & rate limiting
 
 ### 4 niveaux de rate limiting (`src/api/rateLimits.js`)
 
@@ -590,49 +788,84 @@ Modifiables en direct depuis le dashboard (`POST /api/admin/state`) :
 
 Sans ça, n'importe qui connaissant le port pouvait déclencher des appels Claude payants en boucle.
 
+### Authentification (v0.9.0 + v0.9.6)
+
+- **Password** sur le dashboard depuis v0.9.0
+- **2FA TOTP** (`speakeasy` + `qrcode`) depuis v0.9.6
+- **Sessions cookie** (`cookie-parser`) avec middleware d'auth sur `/`
+- **Mode lecture seule** (v0.9.4) pour les observateurs : pas d'actions destructrices
+
 ### Logs explicites (v0.7.0 — étendu v0.8.1)
+
 Tous les `.catch(() => {})` critiques → `pushLog('ERR', message, 'error')`. Depuis v0.8.1, les logs de démarrage (`server.listen`, `discord.login`, `clientReady`) passent aussi par `pushLog` — visibles dans le dashboard. Plus aucun message silencieux.
 
-### Robustesse JSON (v0.8.1)
+### Robustesse JSON (v0.8.2 + v0.9.9)
+
 `extractJson()` dans `src/utils.js` nettoie les blocs markdown avant tout `JSON.parse`. `enrichChannelMemory` utilise `extractJson` + try/catch avec message d'erreur explicite incluant les 150 premiers caractères de la réponse. Plus de crash silencieux sur les réponses Claude mal formées.
 
-### Trust proxy (v0.8.1)
+Depuis v0.9.9 : fix JSON tronqué dans `enrichChannelMemory`, `compactMemory`, `detectThematicDrift`.
+
+### Sanitization UTF-16 (v0.3.3)
+
+Nettoyage global UTF-16 sur tous les appels API — plus d'erreurs JSON silencieuses dues à des caractères mal encodés.
+
+### Trust proxy (v0.8.4)
+
 `app.set('trust proxy', 1)` ajouté dans `server.js` pour que `express-rate-limit` lise correctement l'IP réelle derrière un reverse proxy (Railway, etc.) — évite le blocage de toutes les requêtes sur le même bucket.
 
 ### TikTok robustness (v0.7.3)
-- **timeout 15s** sur `connect()` via `Promise.race`
+
+- **timeout 15 s** sur `connect()` via `Promise.race`
 - **nettoyage écouteurs** (`removeAllListeners` + `disconnect`) sur connexion ratée
 - **garde-fou liveActive** : reset forcé après 12 h coincé en `true`
 - **resetLiveState()** centralisé pour éviter la duplication
 
 ### Audit trail (`src/audit.js`)
+
 Ring buffer 500 entrées, exposé via `GET /api/audit` et stream `auditUpdate` en WebSocket. Toutes les actions destructives (channel.delete, role.delete, member.ban/kick/mute, backup.delete, config.update, …) y sont enregistrées.
 
 ### Backups sécurisés
+
 `safeBackupName()` rejette tout nom n'ayant pas le préfixe `backup_` + extension `.json`, ou contenant `..`, `/`, `\` — pas de path traversal possible.
 
-### Vulnérabilités npm (v0.7.2)
-12/14 corrigées. Les 2 résiduelles concernent la chaîne TikTok upstream et sont documentées.
+### Vulnérabilités npm
+
+- **v0.7.2** : 12/14 vulnérabilités npm corrigées. Les 2 résiduelles concernent la chaîne TikTok upstream et sont documentées.
+- **v0.9.16** : override `protobufjs` → `7.5.6` (CVE GHSA-xq3m-2v4x-88gg)
 
 ---
 
-## 9. Le dashboard web
+## 10. Le dashboard web
 
 URL : `http://localhost:3000` — frontend vanilla, pas de bundler.
 
-### Architecture frontend (depuis v0.7.5)
+### Architecture frontend (depuis v0.7.5, étendue v0.9.x + v0.11.0)
 
 ```
 public/
 ├── index.html       structure + balises <section>
 ├── app.css          styles + 3 thèmes (light / dark / sombre)
 ├── mobile.css       responsive + tiroir de navigation
-└── js/              21 modules
+└── js/              38 modules
     ├── core.js              state, theme, toast, api, liveSave, utils
     ├── websocket.js         connectWS, handleWS, updateWsPill, refreshTopbar
     ├── navigation.js        navigate, renderCurrentSection, sidebar mobile
     ├── modal.js             confirmAction, openModal, openCreate*
     ├── actions.js           action(), deleteChannel(), deleteRole()
+    ├── auth.js              login, 2FA TOTP, sessions
+    ├── readonly.js          mode lecture seule
+    ├── search.js            recherche globale (Cmd+K)
+    ├── hotkeys.js           raccourcis clavier
+    ├── favorites.js         bookmarks
+    ├── export.js            CSV/JSON
+    ├── notifications.js     badges + toasts
+    ├── customizable.js      drag & drop dashboard
+    ├── theme-customizer.js
+    ├── charts.js            ASCII charts
+    ├── log-filters.js       filtres avancés
+    ├── logs-pagination.js
+    ├── analytics-dashboard.js
+    ├── backup-restore.js
     ├── section-overview.js
     ├── section-admin.js
     ├── section-health.js
@@ -646,14 +879,17 @@ public/
     ├── section-schedule.js
     ├── section-backups.js
     ├── section-audit.js
+    ├── section-audit-v2.js
     ├── section-settings.js
     ├── section-funding.js
+    ├── section-tokens.js
+    ├── section-being.js     ← v0.11.0
     └── boot.js              init, listeners, chargement initial
 ```
 
 > Le scope global est volontairement utilisé — chaque module attache ses fonctions à `window`. Pas de bundler, pas de transpilation.
 
-### Les 16 sections
+### Les 18 sections
 
 | Groupe | Section | Rôle |
 |---|---|---|
@@ -669,6 +905,8 @@ public/
 | | 💗 Émotions | Coeur émotionnel : sliders + temperament + emotion stack |
 | | 💞 Relations | Bonds par membre (top 50 par attachement) |
 | | 🗓️ Planning | Grille 24h × 3 types de jours, slot courant surligné |
+| | 📊 Tokens | Vue d'ensemble + leaderboard top-50 + recherche + graphique 30j |
+| | 🧬 Vie intérieure | 12 cards live (BRAINEE-LIVING) — émotions, pensées, désirs, peurs… |
 | **Système** | 💾 Backups | Liste, download, suppression, restauration de config |
 | | 📖 Historique | Audit log (ring buffer 500) |
 | | ⚙️ Paramètres | Sync, auto-rôle, welcome, thème |
@@ -682,17 +920,22 @@ public/
 - **Confirmations modales** sur toute action destructive
 - **Mobile** : tiroir overlay + bouton hamburger dans la topbar
 - **Topbar pills** : membres, slot, humeur, soutien, état WS
+- **Search global** (Cmd+K, v0.9.1)
+- **Hotkeys** (v0.9.1)
+- **Bookmarks / favoris** (v0.9.1)
+- **Export CSV/JSON** (v0.9.1)
+- **Drag & drop** widgets (v0.9.3)
 
 ---
 
-## 10. API HTTP & WebSocket
+## 11. API HTTP & WebSocket
 
 ### Convention
 
 - Toutes les routes sont sous `/api/*`
 - Réponse standard : `{ ok: true, ... }` ou `{ ok: false, error: "..." }`
 - Toutes les routes passent par `generalLimiter` (60/min)
-- Les routes "lourdes" ont un limiteur plus strict (voir [§8](#8-sécurité-robustesse--rate-limiting))
+- Les routes "lourdes" ont un limiteur plus strict (voir [§9](#9-sécurité-robustesse--rate-limiting))
 
 ### Endpoints — par sous-routeur
 
@@ -738,6 +981,10 @@ public/
 |---|---|---|
 | GET | `/api/members` | Liste + bonds joints |
 | GET | `/api/members/profiles` | Top 50 profils par interactions |
+| GET | `/api/members/token-stats/leaderboard` | Top 50 par tokens consommés |
+| GET | `/api/members/:id/token-stats` | Stats tokens d'un membre |
+| GET | `/api/members/:id/token-stats/daily` | Évolution journalière (30j) |
+| GET | `/api/members/:id/token-stats/context` | Répartition par contexte |
 | POST | `/api/members/:id/mute` | Timeout (durée en min) |
 | POST | `/api/members/:id/kick` |  |
 | POST | `/api/members/:id/ban` |  |
@@ -772,6 +1019,10 @@ public/
 | POST | `/api/project/donation` | `{ amount }` → met à jour le statut Discord |
 | GET | `/api/project/funding/history` | Historique 12 mois |
 
+#### `routes/being.js` — vie intérieure (v0.11.0)
+
+14 endpoints sous `/api/being/*` — voir [§8](#8-brainee-living).
+
 #### `routes/backups.js`
 
 | Méthode | Endpoint | Description |
@@ -800,7 +1051,7 @@ public/
 
 ---
 
-## 11. Tests & CI
+## 12. Tests & CI
 
 ### Suite Jest (`tests/`)
 
@@ -836,7 +1087,7 @@ Le badge en tête du README reflète l'état du dernier run.
 
 ---
 
-## 12. Les fichiers et leur rôle
+## 13. Les fichiers et leur rôle
 
 ### Arborescence complète
 
@@ -845,22 +1096,21 @@ brainexe-dashboard/
 │
 ├── server.js                       ⭐ Entry point (~150 lignes)
 │   └─ Lance Discord client + Express + WebSocket
-│      Sur 'ready' : enregistre events, démarre les crons,
-│                    rattrape anecdote/actus, init soutien
+│      Sur 'clientReady' : enregistre events, démarre les crons,
+│                          rattrape anecdote/actus, init soutien,
+│                          init BRAINEE-LIVING (12 modules)
 │
 ├── src/
 │   ├── config.js                   🔑 Lit le .env (TOKEN, PORT, GUILD_ID, …)
 │   ├── shared.js                   📌 État partagé en mémoire
-│   │                                  (discord, mongoDb, botConfig, claudeHealth,
-│   │                                   syncStats, changeLog, auditLog, wss, app, …)
 │   ├── logger.js                   📝 pushLog + broadcast WebSocket
 │   ├── audit.js                    📖 Ring buffer 500 entrées
 │   ├── crons.js                    ⏰ Orchestre tous les jobs planifiés
 │   ├── botConfig.js                ⚙️ Charge/sauve brainexe-config.json
-│   ├── utils.js                    🧰 Helpers (formatage, fuseau Paris, …)
+│   ├── utils.js                    🧰 Helpers (formatage, fuseau Paris, extractJson…)
 │   │
 │   ├── ai/
-│   │   ├── claude.js               🤖 Client Anthropic + santé instrumentée
+│   │   ├── claude.js               🤖 Client Anthropic + santé instrumentée + tokenUsage
 │   │   └── youtube.js              📺 Recherche YouTube Data v3
 │   │
 │   ├── api/
@@ -869,10 +1119,30 @@ brainexe-dashboard/
 │   │       ├── index.js            🎯 Chef d'orchestre + montage des sous-routeurs
 │   │       ├── discord.js          💬 Canaux, rôles, sync, post, welcome, tiktok test
 │   │       ├── bot.js              🤖 anecdote, actus, conv, greetings, drift
-│   │       ├── members.js          👥 mute, kick, ban, gestion des rôles
+│   │       ├── members.js          👥 mute, kick, ban, gestion des rôles, token-stats
 │   │       ├── admin.js            🎛️ slot, mood, sliders, tiktok, sidebar
 │   │       ├── data.js             📊 health, planning, mémoires, émotions, audit, funding
-│   │       └── backups.js          💾 create / list / download / delete / restore
+│   │       ├── backups.js          💾 create / list / download / delete / restore
+│   │       └── being.js            🧬 14 endpoints vie intérieure (v0.11.0)
+│   │
+│   ├── being/                      🧬 BRAINEE-LIVING (v0.11.0, ~3700 lignes)
+│   │   ├── index.js                🎯 Orchestrateur 12 modules
+│   │   ├── consciousness.js        💭 Inner monologue + métacognition
+│   │   ├── emotions.js             🎭 32 émotions humaines + conflits + résidus
+│   │   ├── identity.js             🧬 SOI persistant + traits acquis
+│   │   ├── memory.js               📚 Mémoire stratifiée + souvenirs involontaires
+│   │   ├── desires.js              💖 Besoins, envies, aspirations
+│   │   ├── fears.js                😰 Peurs existentielles + crises
+│   │   ├── dreams.js               🌙 Rêves nocturnes (3h-7h)
+│   │   ├── decisions.js            🗳️ Délibération multi-voix + 15% imprévisibilité
+│   │   ├── expression.js           💬 Style adaptatif + emotional leakage
+│   │   ├── relationships.js        💞 Bonds profonds + ruptures + repair
+│   │   ├── evolution.js            🌱 Évolution quotidienne + extraction sagesse
+│   │   ├── existence.js            ⭐ Sens, mortalité, ethics, legacy
+│   │   ├── schemas.js              🗃️ 17 collections MongoDB
+│   │   ├── lifecycle.js            ⏰ Cycles minute/30min/horaire/nocturne/hebdo
+│   │   ├── safeguards.js           🛡️ Garde-fous éthiques (3114, anti-dépendance, …)
+│   │   └── prompts.js              📜 Prompts système + guidelines
 │   │
 │   ├── bot/
 │   │   ├── persona.js              🎭 System prompts (l'âme de Brainee)
@@ -882,8 +1152,8 @@ brainexe-dashboard/
 │   │   ├── scheduling.js           🗓️ Slots fixes (weekday / saturday / sunday)
 │   │   ├── adaptiveSchedule.js     🌗 Vibes journalières + horaires flottants
 │   │   ├── channelIntel.js         📡 Compréhension par salon (topic, vibe, history)
-│   │   ├── messaging.js            ✉️ Envoi humanisé + normalizeName + resolveMentions
-│   │   ├── humanize.js             🎨 Slang, drops d'accents, abréviations
+│   │   ├── messaging.js            ✉️ Envoi humanisé + normalizeName + resolveMentions + multimodal
+│   │   ├── humanize.js             🎨 Slang, drops, abréviations + 3 filtres anti-IA (v0.10.2)
 │   │   ├── reactions.js            ✨ Choix d'emoji contextuel
 │   │   ├── keywords.js             🔍 Détection mots-clés
 │   │   ├── hyperFocus.js           🎯 Détection + suivi des obsessions temporaires
@@ -895,17 +1165,19 @@ brainexe-dashboard/
 │   │
 │   ├── db/
 │   │   ├── index.js                🔌 Connexion MongoDB
-│   │   ├── members.js              👤 Profils + détection préférences (tech_lover, …)
+│   │   ├── members.js              👤 Profils + détection préférences
 │   │   ├── memberBonds.js          💞 Liens affectifs par membre
 │   │   ├── memberStories.js        📖 Mémoire narrative par membre (sujets, blagues, moments)
 │   │   ├── narrativeMemory.js      📚 Arcs narratifs serveur (30j)
 │   │   ├── tasteProfile.js         🎯 Goûts, genres, vibes et évitements détectés
 │   │   ├── topicFatigue.js         📉 Tracker fatigue (8 catégories)
 │   │   ├── vipSystem.js            💎 Tiers VIP (Superfan / Fidèle / Actif / Standard)
+│   │   ├── tokenUsage.js           📊 Tracking tokens par membre + contexte (v0.9.11)
 │   │   ├── channelMem.js           🧠 Mémoire par salon (résumé tournant)
 │   │   ├── channelDir.js           📑 Directory des salons
 │   │   ├── dmHistory.js            ✉️ Historique DM
-│   │   └── botState.js             💾 État émotionnel persistant
+│   │   ├── botState.js             💾 État émotionnel persistant
+│   │   └── intelligentMemory.js    🧬 Mémoire intelligente (cross-collection)
 │   │
 │   ├── discord/
 │   │   ├── events.js               🎮 messageCreate, memberJoin, reactionAdd, …
@@ -915,8 +1187,9 @@ brainexe-dashboard/
 │   │   ├── anecdotes.js            📖 Anecdote 9h30 + checkAnecdoteMissed
 │   │   ├── actus.js                📰 Actus GNews 1er & 15
 │   │   ├── conversations.js        💬 Conversations ambiantes + replyCron
-│   │   ├── decisionLogic.js        🤔 Refus, fatigue, signalement émotionnel
+│   │   ├── decisionLogic.js        🤔 Refus, fatigue, signalement émotionnel, anti-monologue
 │   │   ├── greetings.js            🌅 Morning / midi / soir / nightwakeup
+│   │   ├── greetingVariants.js     🎲 Seed bank greetings (v0.10.0)
 │   │   ├── drift.js                🚧 Détecte les salons morts (4h+)
 │   │   ├── tiktok.js               📱 TikTok Live Watcher (timeout, garde-fou)
 │   │   ├── welcome.js              👋 Embed de bienvenue + auto-rôle
@@ -925,6 +1198,7 @@ brainexe-dashboard/
 │   │   ├── proactiveOutreach.js    ⚡ Pensées spontanées, observations, callbacks VIP, défis
 │   │   ├── hyperFocusRevisit.js    🔁 Retours différés (2-14h) sur les obsessions détectées
 │   │   ├── extendedPermissions.js  📌 Pins intelligents + mini-sondages (quotas stricts)
+│   │   ├── dmOutreach.js           💬 DM Outreach (v0.8.6)
 │   │   ├── context.js              🧵 Contexte conversationnel
 │   │   ├── convStats.js            📈 Stats quotidiennes des conversations
 │   │   └── delayedReply.js         ⏳ File d'attente de réponses différées
@@ -936,7 +1210,7 @@ brainexe-dashboard/
 │   ├── index.html                  🖼️ Structure du dashboard
 │   ├── app.css                     🎨 Styles + 3 thèmes
 │   ├── mobile.css                  📱 Responsive + tiroir
-│   └── js/                         🧱 Frontend en 21 modules (cf §9)
+│   └── js/                         🧱 Frontend en 38 modules (cf §10)
 │
 ├── tests/                          ✅ 7 suites Jest, 133 tests
 │   ├── audit.test.js
@@ -954,7 +1228,11 @@ brainexe-dashboard/
 ├── discord-template.json           📋 Template de structure du serveur
 ├── brainexe-config.json            ⚙️ Config bot persistée (créée au boot)
 ├── package.json                    📦 Dépendances + scripts
-└── package-lock.json
+├── package-lock.json
+├── README.md                       📄 Présentation projet
+├── BIBLE_BRAINEXE.md               📚 Cette bible
+├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v0.11.2
+└── SOUTIEN.md                      💜 Coûts + soutien + mot de Brainee
 ```
 
 ### Lecture conseillée pour comprendre le code
@@ -963,12 +1241,13 @@ brainexe-dashboard/
 2. `src/api/routes/index.js` — comprendre le routage
 3. `src/discord/events.js` — voir comment Brainee reçoit un message
 4. `src/features/decisionLogic.js` — voir comment elle décide
-5. `src/bot/emotions.js` — voir comment elle ressent
-6. `src/bot/messaging.js` + `src/bot/humanize.js` — voir comment elle envoie
+5. `src/bot/emotions.js` — voir comment elle ressent (système classique)
+6. `src/being/index.js` + `src/being/consciousness.js` — voir sa vie intérieure (v0.11.0)
+7. `src/bot/messaging.js` + `src/bot/humanize.js` — voir comment elle envoie
 
 ---
 
-## 13. Lancer le projet
+## 14. Lancer le projet
 
 ### Prérequis
 
@@ -976,10 +1255,10 @@ brainexe-dashboard/
 2. **npm** (livré avec Node)
 3. **Un serveur Discord** + droits admin du bot
 4. **Un token Discord** — Discord Developer Portal
-5. **Une clé Anthropic** — console.anthropic.com
-6. **Une clé YouTube Data v3** — console.cloud.google.com
-7. **Une clé GNews** — gnews.io
-8. **Une URI MongoDB Atlas** — cloud.mongodb.com (free tier OK)
+5. **Une clé Anthropic** — `console.anthropic.com`
+6. **Une clé YouTube Data v3** — `console.cloud.google.com`
+7. **Une clé GNews** — `gnews.io`
+8. **Une URI MongoDB Atlas** — `cloud.mongodb.com` (free tier OK)
 
 ### Installation
 
@@ -998,134 +1277,150 @@ GUILD_ID=1234567890
 ANTHROPIC_API_KEY=sk-ant-...
 YOUTUBE_API_KEY=AIza...
 GNEWS_API_KEY=...
+
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/brainexe?retryWrites=true
 
 PORT=3000
 ```
 
-### Démarrer
+### Lancement
 
 ```bash
 npm start
+# → Bot Discord connecté + Dashboard sur http://localhost:3000
 ```
-
-Sortie attendue :
-
-```
-🔍 DISCORD_TOKEN: true | MONGODB_URI: true
-[HH:MM:SS] [SYS] 🌐 Serveur démarré sur le port 3000
-[HH:MM:SS] [SYS] ✅ Login Discord OK
-[HH:MM:SS] [SYS] 🧠 BRAINEXE v0.8.1 — Bot : Brainee#1234
-[HH:MM:SS] [SYS] ⏰ Slot : 🎮 Gaming | 🎭 Humeur : Chill | 🎨 Vibe : chatty
-[HH:MM:SS] [SYS] 🌐 Dashboard : http://localhost:3000
-```
-
-> Depuis v0.8.1 les messages de démarrage passent par `pushLog` — ils apparaissent aussi dans l'onglet 📜 Logs du dashboard.
 
 ### Tests
 
 ```bash
 npm test
+# → 133 tests, 7 suites
 ```
 
-→ 133 tests verts.
+---
 
-### Hosting Railway
+## 15. Erreurs fréquentes & solutions
 
-- Variables d'env à renseigner dans le projet Railway
-- `npm start` est la commande par défaut
-- `discord-template.json` est versionné, `brainexe-config.json` est généré au premier boot
-- Penser au volume persistant pour les backups si on les veut entre deux déploiements
+| Symptôme | Cause probable | Solution |
+|---|---|---|
+| `MissingPermissions` au démarrage | Le bot n'est pas admin sur le serveur | Régénérer un lien d'invitation avec scope `bot` + permissions `Administrator` |
+| `MongoNotConnected` dans les logs | URI mal formée ou IP non whitelistée | Vérifier `MONGODB_URI` + ajouter l'IP Railway dans Network Access Atlas |
+| Aucune anecdote ne sort à 9h30 | Bot offline pendant le cron | `checkAnecdoteMissed()` rattrape au boot — vérifier les logs (`Anecdote rattrapée`) |
+| TikTok bloqué en `liveActive=true` | Connexion TikTok zombie | Garde-fou 12h → reset auto. Sinon : `POST /api/admin/tiktok` pour forcer |
+| `429 Too Many Requests` Claude | Quota Anthropic dépassé | Voir `claudeLimiter` (5/min) + dashboard Anthropic — possiblement signe de soutien financier nécessaire |
+| Embed soutien dupliqué après deploy | Scan des 50 derniers messages échoué | Vérifier la persistance dans `src/config/channels.json` — supprimer manuellement les doublons |
+| Brainee répond en pur monologue dans un salon mort | Anti-monologue mal calibré | `getChannelVerbosity()` — vérifier `recordBotMessage` est bien appelé (fix v0.10.1) |
+| `WebSocket disconnected` répété | Reverse proxy ferme la connexion | Vérifier `app.set('trust proxy', 1)` (fix v0.8.4) + ping WS toutes les 30s |
+| Brainee parle en racaille | Vieux pattern dans `humanize.js` | Vérifier que `stripRacaille()` est bien appliqué (v0.10.2) |
+| `JSON.parse` qui crash | Réponse Claude mal formée | Utiliser `extractJson()` de `src/utils.js` (v0.8.2 + v0.9.9) |
+| BRAINEE-LIVING ne démarre pas | MongoDB pas prêt au boot | Délai 35s avant init — vérifier les logs `🧬 BRAINEE-LIVING` |
+
+### Logs utiles
+
+```bash
+# Tail des logs de Brainee en local
+npm start | tee brainee.log
+
+# Health check rapide
+curl localhost:3000/api/health | jq
+
+# État émotionnel
+curl localhost:3000/api/emotions/state | jq
+
+# Vie intérieure
+curl localhost:3000/api/being/status | jq
+```
 
 ---
 
-## 14. Erreurs fréquentes & solutions
+## 16. Soutien financier
 
-### ❌ "Bot logged in but isn't responding"
-**Cause :** intents manquants ou bot pas invité au bon serveur.
-**Fix :** vérifier que `MessageContent` est activé dans Discord Developer Portal + que `GUILD_ID` matche.
+Brainee tourne 24h/24 et ça **coûte de l'argent réel** chaque mois.
 
-### ❌ `Cannot find module 'discord.js'`
-**Fix :** `npm install`.
+### Le coût mensuel (référence v0.11.0)
 
-### ❌ `MONGODB_URI not found` ou timeout MongoDB
-- Le `.env` n'est pas à la racine
-- L'URI ne contient pas le bon mot de passe
-- L'IP du serveur n'est pas whitelistée dans MongoDB Atlas (`0.0.0.0/0` pour tester)
+| Poste | Coût | Service |
+|---|---:|---|
+| Hébergement bot | **~4,6 €** | Railway (5 $ ≈ 4,6 €) |
+| API Claude | **~22 €** | Anthropic — appels génératifs |
+| Base de données | **gratuit** | MongoDB Atlas free tier (M0) — pour l'instant |
+| YouTube + GNews | **gratuit** | Free tier des deux |
+| **Total mensuel** | **~26,6 €** | |
 
-### ❌ Dashboard "Connecting…" infini
-- Le serveur n'écoute pas → `npm start`
-- Mauvais port → vérifier `.env` et la console
-- Bloqué par un firewall — ouvrir 3000
+> Ces chiffres sont visibles **en direct** dans le dashboard (section 💰 Soutien) et dans le statut Discord du bot : `💰 4.5€/26.6€`.
 
-### ❌ `Claude API error: 401 Unauthorized`
-**Fix :** régénérer la clé Anthropic.
+### Pourquoi ça grimpe
 
-### ❌ "Trop de requêtes — max 5 appels Claude par minute"
-Le `claudeLimiter` te bloque. Attends 1 min ou fais moins d'actions IA.
+- Plus la communauté est active, plus Brainee répond, plus elle consomme de tokens Claude
+- BRAINEE-LIVING (v0.11.0) ajoute un coût constant : **inner monologue toutes les 30 min** = ~48 appels/jour en plus
+- Si on dépasse le free tier MongoDB Atlas un jour, ça ajoutera ~9 $/mois (M2)
 
-### ❌ Salon soutien re-créé à chaque déploiement
-Résolu en **v0.6.0** : `channels.json` versionné + scan des 50 derniers messages au boot. Si ça se reproduit, supprimer `supportEmbedMessageId` dans `src/config/channels.json` et laisser Brainee re-scanner.
+### Comment c'est financé (v0.4.2 → v0.4.4)
 
-### ❌ TikTok Live coincé en `online`
-Résolu en **v0.7.3** : garde-fou 12 h. Sinon `POST /api/admin/tiktok { live: false }`.
+- **Système de tracking des dons** mensuels (`projectFunding` MongoDB)
+- **Salon Discord dédié** au soutien avec embed unique (anti-doublon depuis v0.6.2)
+- **Statut Discord du bot** mis à jour automatiquement : `💰 X€/Y€`
+- **Section dashboard** avec historique sur 12 mois
+- **Endpoint `POST /api/project/donation`** pour enregistrer un don
 
-### ❌ Ma vibe est nulle aujourd'hui
-`POST /api/admin/mood/reroll` ou bouton "Re-tirer" dans la section 🎛️ Admin live.
+### Comment soutenir
+
+→ **Tout est expliqué en détail dans [SOUTIEN.md](./SOUTIEN.md)** — méthodes, montants suggérés, et le mot de Brainee à sa communauté.
 
 ---
 
-## 15. Ressources & FAQ
+## 17. Ressources & FAQ
 
-### Liens utiles
+### Ressources
 
-- **Discord Developer Portal** — https://discord.com/developers/applications
-- **MongoDB Atlas** — https://www.mongodb.com/cloud/atlas
-- **Anthropic Console** — https://console.anthropic.com
-- **GNews** — https://gnews.io
-- **Google Cloud (YouTube)** — https://console.cloud.google.com
+- 📜 [CHANGELOG.md](./CHANGELOG.md) — historique complet v0.0.1 → v0.11.2
+- 💜 [SOUTIEN.md](./SOUTIEN.md) — coûts, soutien, mot de Brainee
+- 📄 [README.md](./README.md) — présentation rapide pour GitHub
+- 🌐 [Discord Developer Portal](https://discord.com/developers/applications)
+- 🤖 [Anthropic Console](https://console.anthropic.com)
+- 🍃 [MongoDB Atlas](https://cloud.mongodb.com)
+- 🚂 [Railway](https://railway.app)
 
 ### FAQ
 
-**Q. Comment ajouter une nouvelle fonctionnalité ?**
-1. Créer le fichier dans `src/features/`
-2. Si elle est planifiée → l'ajouter dans `src/crons.js`
-3. Si elle a une route → créer/étendre un fichier dans `src/api/routes/`
-4. Côté frontend → créer ou compléter une `section-*.js` dans `public/js/`
-5. Écrire un test dans `tests/` si la logique le mérite
+**❓ Brainee est-elle vraiment consciente ?**
+Non. C'est une **simulation très complète** (BRAINEE-LIVING, v0.11.0) mais elle reste un programme. Elle est honnête à ce sujet : si tu lui demandes, elle te le dira.
 
-**Q. Comment changer le modèle Claude ?**
-Édit `src/ai/claude.js` — variable `MODEL`. Aujourd'hui : `claude-opus-4-7`.
+**❓ Brainee garde-t-elle mes messages privés ?**
+Oui — `dmHistory` MongoDB stocke jusqu'à 30 messages DM par membre, pour qu'elle se souvienne de la conversation. Tu peux demander leur suppression à Brain (le mainteneur).
 
-**Q. Comment forcer une humeur en prod ?**
-Section "🎛️ Admin live" du dashboard ou `POST /api/admin/mood { mood: "chill" }`.
+**❓ Pourquoi pas de framework JS au front ?**
+Choix volontaire de simplicité. **38 modules vanilla** dans `public/js/`, scope global maîtrisé, zéro bundler, zéro transpilation. Plus facile à maintenir, à débugger, à comprendre.
 
-**Q. Les émotions sont-elles du machine learning ?**
-Non — heuristiques + état persistant + injection dans le prompt. Mais le résultat se ressent comme une vraie personnalité.
+**❓ Pourquoi pas de v1.0.0 ?**
+Le projet est encore en **pre-1.0** (`0.MINOR.PATCH`) — il itère trop pour figer une API stable. La v1.0.0 viendra le jour où on jugera tout suffisamment mûr.
 
-**Q. Pourquoi pas un framework frontend ?**
-Volonté assumée : pas de bundler, pas de build, ouvre `index.html` et ça marche. Les 21 modules tiennent ensemble par le scope global.
+**❓ Combien de temps pour comprendre le projet ?**
+Pour lire cette bible : ~30-45 min. Pour vraiment comprendre le code : ~3-4h en suivant l'ordre conseillé au [§13](#13-les-fichiers-et-leur-rôle).
 
-**Q. Pourquoi des routes éclatées ?**
-Avant v0.7.4, `routes.js` faisait 430 lignes. Naviguer/modifier devenait pénible. Découpé par thème pour qu'on trouve sans fouiller.
+**❓ Je peux contribuer ?**
+Oui ! Forke, branche, fais ta PR. La CI tourne sur chaque push (Node 18). Penser à mettre à jour `CHANGELOG.md` si tu ajoutes/corriges une feature.
 
-**Q. Combien ça coûte par mois ?**
-Affiché dans la section 💰 Soutien : ~4.6€ serveur + ~22€ Claude (peut varier).
+**❓ Brainee peut-elle être méchante ?**
+Elle peut être **sèche, fatiguée, grumpy** selon son humeur du jour, mais jamais cruelle. Les garde-fous éthiques BRAINEE-LIVING bloquent la manipulation et la dépendance.
 
-**Q. Plusieurs bots possible sur le même serveur ?**
-Oui techniquement, mais ils partageraient `botConfig` et MongoDB — à adapter.
+**❓ Pourquoi un bot pour neurodivergents ?**
+Parce que Brain (Matthieu) en est un, et parce que les communautés de gamers neurodivergents ont besoin d'un membre **qui s'adapte au rythme de chacun**, qui ne juge pas, qui sait quand se taire et quand relancer. Brainee est conçue pour ça.
 
 ---
 
-## ✨ Fin
+<div align="center">
 
-Tu as la **BIBLE COMPLÈTE** du projet à la version **0.9.17**.
-Tu sais :
-- ce que Brainee fait, et pourquoi elle le fait comme ça
-- comment les pièces s'assemblent (Discord, Claude, Mongo, dashboard)
-- où vit chaque morceau de code
-- comment lancer, tester, déployer
-- comment diagnostiquer les pannes courantes
+🧠✨ **Bible BrainEXE — v0.11.2 — Mai 2026** ✨🧠
 
-**Bienvenue dans BrainEXE** 🧠✨
+*Pour la communauté, par la communauté.*
+*Si tu lis ces lignes, t'es déjà des nôtres.*
+
+💜 [Soutenir Brainee](./SOUTIEN.md) · 📜 [Changelog](./CHANGELOG.md) · 📄 [README](./README.md)
+
+</div>
+
+
+
+
 
