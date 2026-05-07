@@ -170,6 +170,13 @@ async function updateLiveEmbed() {
     const embed = buildLiveEmbed('', liveStats.peakViewers);
     await msg.edit({ embeds: [embed] });
   } catch (err) {
+    // Message supprimé → stopper la boucle pour ne pas spammer les logs
+    if (err.message?.includes('Unknown Message') || err.code === 10008) {
+      pushLog('ERR', `Embed live introuvable (message supprimé) — arrêt de la boucle`, 'error');
+      if (liveUpdateInterval) { clearInterval(liveUpdateInterval); liveUpdateInterval = null; }
+      liveMessageId = null;
+      return;
+    }
     pushLog('ERR', `Mise à jour embed live échouée : ${err.message}`, 'error');
   }
 }
