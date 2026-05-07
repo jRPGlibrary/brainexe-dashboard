@@ -46,6 +46,13 @@ const {
 const { YOUTUBE_KEYWORDS, GAMING_KEYWORDS } = require('../bot/keywords');
 const { shouldRespond, recordMessageTopic } = require('../features/decisionLogic');
 const { getNarrativeContext } = require('../db/narrativeMemory');
+const { checkEmotionalRefusal, isInRefusalCooldown } = require('../features/emotionalRefusal');
+const { analyzeConviction } = require('../features/conviction');
+const {
+  getAttachmentStage, tryPromoteSingularBond,
+  detectRejectionSignal, handleSingularBondRejection,
+  getSingularBondBlock, getAppreciationInjection,
+} = require('../features/attachmentStages');
 const { extractGameName, searchSteam } = require('../ai/steam');
 const {
   detectDmInvite, detectDmAccept, detectDmRefuse,
@@ -110,6 +117,24 @@ async function handleMentionReply(message, userQuery) {
     applyNaturalDecay();
     detectEmotionFromMessage(userQuery, { userId: message.author.id });
 
+    // v0.12.0 : Refus émotionnel — vérifié AVANT tout le reste
+    const refusal = checkEmotionalRefusal(true); // true = mention directe
+    if (refusal.shouldRefuse && !refusal.isSilent) {
+      // Elle dit pourquoi elle ne répond pas
+      try {
+        await message.reply(refusal.message);
+        await message.react('😶').catch(() => {});
+      } catch (_) {}
+      pushLog('SYS', `🚫 Refus émotionnel @mention [${refusal.type}] → ${message.author.username}`);
+      return;
+    }
+    if (refusal.shouldRefuse && refusal.isSilent) {
+      // Cooldown actif mais silencieux — juste une réaction
+      await message.react('⏳').catch(() => {});
+      pushLog('SYS', `🚫 Cooldown refus silencieux @mention → ${message.author.username}`);
+      return;
+    }
+
     // v0.6.0 : Check if Brainee should respond (autonomy logic)
     // For mentions, we check but still respect the urgent flag from caller
     const vibe = getDailyVibe();
@@ -144,6 +169,28 @@ async function handleMentionReply(message, userQuery) {
     const emotionBlock = getEmotionalInjection();
     const temperamentBlock = getTemperamentInjection();
     const narrativeBlock = await getNarrativeContext();
+
+    // v0.12.0 : Système de conviction — détecte l'insistance/contradiction
+    const convictionResult = analyzeConviction(message.author.id, userQuery);
+    const convictionBlock = convictionResult?.convictionBlock || '';
+
+    // v0.12.0 : Lien singulier + arc de rejet
+    const singularBlock = getSingularBondBlock(bond, message.author.username);
+    const appreciationBlock = getAppreciationInjection(bond, message.author.username);
+
+    // Détection de rejet du lien singulier
+    const singularHolder = await (async () => {
+      try { const { getSingularBondHolder } = require('../features/attachmentStages'); return await getSingularBondHolder(); } catch (_) { return null; }
+    })();
+    if (singularHolder === message.author.id && detectRejectionSignal(userQuery)) {
+      await handleSingularBondRejection(message.author.id, message.author.username);
+      pushLog('SYS', `💔 Signal de rejet détecté → ${message.author.username}`);
+    }
+
+    // Peurs : vérifier si le message déclenche une peur existentielle
+    if (shared.fears) {
+      shared.fears.checkTriggers(userQuery.toLowerCase()).catch(() => {});
+    }
 
     // 📚 Mémoire narrative par membre (v0.8.0)
     const memberStories = await getMemberStories(message.author.id);
@@ -189,7 +236,7 @@ async function handleMentionReply(message, userQuery) {
     const temporalBlock = getTemporalBlock();
     // 🔗 Contexte DM récents avec cette personne pour faire le lien serveur ↔ DM
     const dmCrossContext = await enrichServerWithDmContext(message.author.id, message.author.username).catch(() => '');
-    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
+    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -230,7 +277,17 @@ async function handleMentionReply(message, userQuery) {
 
     await sendHuman(message.channel, replyResolved + youtubeBlock + steamBlock, message, { bond });
     await updateMemberProfile(message.author.id, message.author.username, userQuery);
-    await applyInteractionToBond(message.author.id, message.author.username, userQuery);
+    const updatedBond = await applyInteractionToBond(message.author.id, message.author.username, userQuery);
+
+    // v0.12.0 : Vérifier la promotion au lien singulier (stade 5) après chaque interaction
+    if (updatedBond && updatedBond.baseAttachment > 83) {
+      tryPromoteSingularBond(message.author.id, updatedBond).catch(() => {});
+    }
+
+    // v0.12.0 : Mettre à jour les besoins sociaux dans le module desires
+    if (shared.desires) {
+      shared.desires.updateNeeds().catch(() => {});
+    }
     // Log pour le bridge DM/Serveur (côté serveur)
     try {
       await logMessageForBridge(message.author.id, message.author.username, userQuery, message.channelId, message.channel.name, 'server');
@@ -492,6 +549,33 @@ function registerMessageHandlers() {
       }
     } catch (_) {
       // Silent fail
+    }
+  });
+
+  // v0.12.0 : Listener threads — détection de création de thread + messages dans threads
+  shared.discord.on(Events.ThreadCreate, async (thread) => {
+    if (!thread.guildId || thread.guildId !== GUILD_ID) return;
+    pushLog('SYS', `🧵 Thread créé : "${thread.name}" dans #${thread.parent?.name || 'inconnu'}`);
+    // On ne réagit pas automatiquement à la création — le channelWatcher s'en charge
+  });
+
+  // Messages dans les threads — déclenchement du refus émotionnel si besoin
+  shared.discord.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot || !message.guild || message.guild.id !== GUILD_ID) return;
+    if (!message.channel.isThread()) return;
+    // Si mentionnée dans un thread, traiter comme une mention classique
+    if (shared.discord.user && message.mentions.has(shared.discord.user)) return; // Géré par le handler @mention
+    // Conviction dans les threads si réponse au bot
+    if (message.reference) {
+      try {
+        const refMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+        if (refMsg?.author?.id === shared.discord.user?.id) {
+          await recordEngagement(refMsg.id, 'thread_reply').catch(() => {});
+          // Analyser conviction dans les threads aussi
+          const conv = analyzeConviction(message.author.id, message.content || '');
+          if (conv?.isShutdown) pushLog('SYS', `💪 Conviction shutdown (thread) → ${message.author.username}`);
+        }
+      } catch (_) {}
     }
   });
 

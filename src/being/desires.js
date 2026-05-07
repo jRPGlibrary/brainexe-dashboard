@@ -69,17 +69,30 @@ class DesireSystem {
   }
 
   /**
-   * Update needs based on recent interactions
+   * Update needs based on recent interactions (v0.12.0 : safe si memory non dispo)
    */
   async updateNeeds() {
-    // If ignored for > 4 hours, social_contact increases
-    const recentEvents = await shared.memory.recall({ themes: ['interaction'] });
-
-    if (recentEvents.length === 0) {
-      this.desires.basicNeeds.social_contact.current = Math.min(
-        100,
-        this.desires.basicNeeds.social_contact.current + 5
-      );
+    try {
+      let hasRecentInteraction = false;
+      if (shared.memory) {
+        const recentEvents = await shared.memory.recall({ themes: ['interaction'] });
+        hasRecentInteraction = recentEvents.length > 0;
+      }
+      // Si pas d'interaction récente, le besoin social monte
+      if (!hasRecentInteraction) {
+        this.desires.basicNeeds.social_contact.current = Math.min(
+          100,
+          this.desires.basicNeeds.social_contact.current + 3
+        );
+      } else {
+        // Interaction récente : légère baisse du besoin social
+        this.desires.basicNeeds.social_contact.current = Math.max(
+          0,
+          this.desires.basicNeeds.social_contact.current - 2
+        );
+      }
+    } catch (_) {
+      // Silent fail — ne pas bloquer le cron
     }
   }
 }
