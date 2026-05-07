@@ -442,3 +442,60 @@
     padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* ════ ANALYTICS — RESPONSIVE ═══════════════════════ */
+
+/* Heatmap 7j×24h : scroll horizontal sur mobile */
+.week-heatmap-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.week-heatmap {
+  min-width: max-content;
+}
+
+@media (max-width: 768px) {
+  /* Analytics grid → 1 colonne sur mobile */
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Cellules heatmap plus petites */
+  .heatmap-cell {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Barres membres : label plus court */
+  .analytics-label {
+    min-width: 60px;
+    font-size: 11px;
+  }
+
+  /* Peak hours : layout compact */
+  .peak-item {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 520px) {
+  /* Pills topbar : masquer ws-pill sur très petit écran */
+  #ws-pill {
+    display: none;
+  }
+
+  /* Cellules heatmap encore plus petites */
+  .heatmap-cell {
+    width: 8px;
+    height: 8px;
+    gap: 2px;
+  }
+
+  .heatmap-day {
+    gap: 2px;
+  }
+
+  .analytics-title {
+    font-size: 13px;
+  }
+}

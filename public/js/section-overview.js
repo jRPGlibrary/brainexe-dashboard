@@ -102,7 +102,7 @@ function renderOverview() {
       ${analyticsDashboard.renderAnalyticsDashboard()}
     </div>
 
-    <div class="card">
+    <div class="card" id="overview-recent-activity">
       <div class="card-header">
         <div>
           <div class="card-title">Activité récente</div>
@@ -115,6 +115,9 @@ function renderOverview() {
       </div>
     </div>
   `;
+
+  // Chargement async des données analytics après rendu du squelette
+  analyticsDashboard.initAnalytics().catch(() => {});
 }
 
 function renderDiscordPreview(a) {

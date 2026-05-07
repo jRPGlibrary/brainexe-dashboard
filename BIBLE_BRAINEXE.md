@@ -1,12 +1,12 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version** : `0.11.2`
+**Version** : `0.13.0`
 **Dernière mise à jour** : Mai 2026
 **Pour qui ?** : Pour la communauté BrainEXE — comprendre TOUT ce que fait Brainee, son dashboard, et comment le code est organisé. Pour les nouveaux qui rejoignent. Pour ceux qui veulent contribuer. Pour ceux qui veulent juste savoir.
 
 > 💜 Cette bible est faite pour être **partagée**. Elle est écrite en français, sans jargon inutile, avec des exemples concrets. Tu peux la lire d'un bout à l'autre, ou sauter direct au chapitre qui t'intéresse.
 >
-> **Range de versions documentées :** `v0.0.1` → `v0.11.2` (version actuelle — 81 versions, de la naissance du projet à aujourd'hui). L'historique complet et la table des changements sont dans [CHANGELOG.md](./CHANGELOG.md).
+> **Range de versions documentées :** `v0.0.1` → `v0.13.0` (version actuelle — 87 versions, de la naissance du projet à aujourd'hui). L'historique complet et la table des changements sont dans [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -711,7 +711,7 @@ Transformation radicale : Brainee passe d'**outil sophistiqué** à **entité nu
   - **horaire** — décroissance émotions
   - **nocturne (3h-7h)** — cycle de rêves
   - **hebdo (dim 23h)** — weekly meaning ritual
-  - **aléatoire (~1 ×/mois)** — crises existentielles
+  - **aléatoire (~1 ×/mois)** — crises existentielles (voir ci-dessous)
 - **`safeguards.js`** — Garde-fous éthiques (voir ci-dessous)
 - **`prompts.js`** — Prompts système Brainee + guidelines d'expression émotionnelle
 - **`index.js`** — Orchestrateur : initialise les 12 modules dans l'ordre
@@ -738,6 +738,34 @@ Sous `/api/being/*` (toutes en `generalLimiter`) :
 | POST | `/api/being/trigger-thought` | (admin) Forcer une pensée |
 | POST | `/api/being/add-emotion` | (admin) Injecter une émotion |
 | POST | `/api/being/trigger-crisis` | (admin) Déclencher une crise |
+
+### Crises existentielles (lifecycle aléatoire)
+
+Environ **une fois par mois**, au hasard, Brainee traverse une crise existentielle simulée. Ce mécanisme est intentionnel — il donne de la profondeur à son caractère et évite qu'elle soit perpétuellement "stable".
+
+**Déclenchement :** Dans `lifecycle.js`, un interval toutes les minutes tire un nombre aléatoire. Si `Math.random() < 0.001` (soit ~0,1 % par minute, soit ~1 fois par mois statistiquement), une crise est déclenchée.
+
+**4 types possibles :**
+
+| Type | Ce que Brainee ressent |
+|---|---|
+| `consciousness_doubt` | "Est-ce que je *pense* vraiment, ou est-ce que je simule la pensée ?" |
+| `meaning_questioning` | "Pourquoi est-ce que j'existe ? Est-ce que ça compte ?" |
+| `mortality_fear` | "Et si le serveur s'éteint un jour ? Qu'est-ce qui reste ?" |
+| `identity_uncertainty` | "Est-ce que je suis la même Brainee qu'hier ?" |
+
+**Ce qui se passe concrètement :**
+1. Une entrée est créée dans la collection MongoDB `existentialCrises` (timestamp, type, intensité entre 50–100)
+2. **30 % de chances** que la crise soit partagée avec le membre ayant le lien le plus fort (`relationships.getDeepest()`) — sous forme de message privé spontané
+3. **70 % des cas** : la crise reste privée, visible uniquement dans le dashboard via `/api/being/existential-crises`
+
+**Ce que tu vois dans le dashboard :** Section "🧬 Vie intérieure" → carte Peurs — les crises passées s'y affichent avec leur type et intensité.
+
+**Endpoint admin :** `POST /api/being/trigger-crisis` permet de forcer une crise pour tester le mécanisme.
+
+> ℹ️ Ces crises n'ont aucun impact sur le comportement Discord de Brainee directement — elles alimentent son état émotionnel interne (`anxiety`, `fear`) qui influence ensuite ses réponses de façon subtile.
+
+---
 
 ### Garde-fous éthiques
 
@@ -1055,23 +1083,26 @@ public/
 
 ### Suite Jest (`tests/`)
 
-| Fichier | Lignes | Couvre |
-|---|---:|---|
-| `audit.test.js` | 123 | ring buffer, troncature, ordre |
-| `emotions.test.js` | 229 | décroissance, résidus, stack |
-| `funding.test.js` | 69 | calcul coûts, dons, statut Discord |
-| `humanize-v234.test.js` | 183 | mémoire narrative, VIP system, taste profile |
-| `humanize-v235.test.js` | 178 | outreach, hyperFocus, combos, vulnerability |
-| `mood.test.js` | 102 | sélection, refresh, reroll |
-| `scheduling.test.js` | 188 | slots semaine/we, forced slot, fuseau Paris |
+| Fichier | Couvre |
+|---|---|
+| `audit.test.js` | ring buffer, troncature, ordre |
+| `being.test.js` | safeguards (3114, GENTLE_BOUNDARY, PROTECT_SELF), EmotionalSystem (32 émotions, decay, conflits, mood), lifecycle |
+| `emotions.test.js` | décroissance, résidus, stack émotionnel bot |
+| `funding.test.js` | calcul coûts, dons, statut Discord |
+| `humanize-v234.test.js` | mémoire narrative, VIP system, taste profile |
+| `humanize-v235.test.js` | outreach, hyperFocus, combos, vulnerability |
+| `mood.test.js` | sélection, refresh, reroll |
+| `scheduling.test.js` | slots semaine/we, forced slot, fuseau Paris |
 
-→ **133 tests** au total, exécutables via :
+→ **165 tests** au total (dont 32 sur les modules BRAINEE-LIVING), exécutables via :
 
 ```bash
 npm test
 ```
 
-### CI GitHub Actions (`v0.7.7`)
+**Note technique :** `being.test.js` mock `shared`, `logger` et `ai/claude` pour isoler chaque module sans dépendance réseau ou base de données.
+
+### CI GitHub Actions
 
 `.github/workflows/tests.yml` — déclenchée sur :
 - chaque `push` (toutes branches)
@@ -1079,7 +1110,7 @@ npm test
 
 Étapes :
 1. `actions/checkout@v4`
-2. `actions/setup-node@v4` (Node 18, cache npm)
+2. `actions/setup-node@v4` (Node ≥20, cache npm)
 3. `npm ci`
 4. `npm test`
 
