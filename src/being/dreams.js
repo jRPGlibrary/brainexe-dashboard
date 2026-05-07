@@ -47,7 +47,7 @@ Sois poétique et étrange. 2-3 phrases courtes.`,
 
       return dream;
     } catch (err) {
-      pushLog('ERR', `Dream generation failed: ${err.message}`, 'error');
+      pushLog('ERR', `Génération du rêve échouée : ${err.message}`, 'error');
       return null;
     }
   }

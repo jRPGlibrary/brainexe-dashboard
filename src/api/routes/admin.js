@@ -11,7 +11,7 @@ const { auditLog } = require('../../audit');
 const router = Router();
 
 function refreshSidebar() {
-  updateSidebarChannels().catch(err => pushLog('ERR', `Sidebar refresh: ${err.message}`, 'error'));
+  updateSidebarChannels().catch(err => pushLog('ERR', `Rafraîchissement sidebar : ${err.message}`, 'error'));
 }
 
 // État complet pour le panneau admin

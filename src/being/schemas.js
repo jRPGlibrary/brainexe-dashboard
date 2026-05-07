@@ -171,7 +171,7 @@ async function initializeBeingCollections(db) {
       }
     }
   }
-  pushLog('SYS', '✅ Brainee-Living collections initialized', 'success');
+  pushLog('SYS', '✅ Collections Brainee-Living initialisées', 'success');
 }
 
 module.exports = { COLLECTIONS, initializeBeingCollections };

@@ -37,7 +37,7 @@ Sois brute. Sois vraie.`,
 
       return { reflection: text };
     } catch (err) {
-      pushLog('ERR', `Meaning finding failed: ${err.message}`, 'error');
+      pushLog('ERR', `Recherche de sens échouée : ${err.message}`, 'error');
     }
   }
 
