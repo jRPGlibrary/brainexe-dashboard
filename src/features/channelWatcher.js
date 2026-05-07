@@ -173,7 +173,7 @@ async function shouldWatchJump(channel) {
 /**
  * Compose et envoie un message spontané dans le salon/thread.
  */
-async function performWatchJump(channel, messages, isThread = false) {
+async function performWatchJump(channel, messages, isThread = false, allMessages = null) {
   try {
     const slot = getCurrentSlot();
     const mood = refreshDailyMood();
@@ -185,7 +185,11 @@ async function performWatchJump(channel, messages, isThread = false) {
     const dirEntry = await getChannelDirectory(isThread ? (channel.parentId || channel.id) : channel.id);
     const intentBlock = getChannelIntentBlock(parentName, parentName, dirEntry?.officialDescription || '');
 
-    const msgMap = new Map(messages.map(m => [m.id, m]));
+    // Utiliser allMessages (avec messages bot) si disponible pour que formatContext
+    // puisse résoudre les références de reply vers les messages de Brainee
+    const msgMap = allMessages instanceof Map
+      ? allMessages
+      : new Map(messages.map(m => [m.id, m]));
     const context = formatContext(msgMap, null, 25);
 
     const threadNote = isThread
@@ -267,9 +271,10 @@ async function runChannelWatch() {
 
       // ── Canal principal ───────────────────────────────────────
       let channelMsgs = [];
+      let channelFetched = null;
       try {
-        const fetched = await channel.messages.fetch({ limit: 25 });
-        channelMsgs = [...fetched.values()]
+        channelFetched = await channel.messages.fetch({ limit: 25 });
+        channelMsgs = [...channelFetched.values()]
           .filter(m => !m.author.bot)
           .sort((a, b) => b.createdTimestamp - a.createdTimestamp);
       } catch (_) { continue; }
@@ -281,15 +286,16 @@ async function runChannelWatch() {
       if (Date.now() - newestMsg.createdTimestamp > AGE_MAX) continue;
 
       // Vérifier qu'on n'a pas déjà posté récemment dans ce salon
-      const allMsgs = await channel.messages.fetch({ limit: 10 });
-      const botRecentMsg = [...allMsgs.values()].find(m => m.author.id === botId);
+      const botRecentMsg = [...channelFetched.values()].find(m => m.author.id === botId);
       if (botRecentMsg && Date.now() - botRecentMsg.createdTimestamp < 30 * 60 * 1000) {
         // Quand même regarder les threads
       } else {
         if (await shouldWatchJump(channel)) {
           const score = await computeInterestScore(channelMsgs, channel.name, '');
           if (score >= 0.42) {
-            const jumped = await performWatchJump(channel, channelMsgs, false);
+            // Passer channelFetched (avec messages bot) pour que formatContext
+            // puisse résoudre les reply-references vers les messages de Brainee
+            const jumped = await performWatchJump(channel, channelMsgs, false, channelFetched);
             if (jumped) return; // Un seul saut par tick
           }
         }
@@ -300,9 +306,10 @@ async function runChannelWatch() {
         const activeThreads = await channel.threads.fetchActive();
         for (const [, thread] of activeThreads.threads) {
           let threadMsgs = [];
+          let threadFetched = null;
           try {
-            const fetched = await thread.messages.fetch({ limit: 20 });
-            threadMsgs = [...fetched.values()]
+            threadFetched = await thread.messages.fetch({ limit: 20 });
+            threadMsgs = [...threadFetched.values()]
               .filter(m => !m.author.bot)
               .sort((a, b) => b.createdTimestamp - a.createdTimestamp);
           } catch (_) { continue; }
@@ -313,7 +320,7 @@ async function runChannelWatch() {
           if (await shouldWatchJump(thread)) {
             const score = await computeInterestScore(threadMsgs, thread.name, channel.name);
             if (score >= 0.47) { // Seuil légèrement plus haut pour les threads
-              const jumped = await performWatchJump(thread, threadMsgs, true);
+              const jumped = await performWatchJump(thread, threadMsgs, true, threadFetched);
               if (jumped) return;
             }
           }

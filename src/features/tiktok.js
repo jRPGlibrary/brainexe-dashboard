@@ -170,6 +170,13 @@ async function updateLiveEmbed() {
     const embed = buildLiveEmbed('', liveStats.peakViewers);
     await msg.edit({ embeds: [embed] });
   } catch (err) {
+    // Message supprimé → stopper la boucle pour ne pas spammer les logs
+    if (err.message?.includes('Unknown Message') || err.code === 10008) {
+      pushLog('ERR', `Embed live introuvable (message supprimé) — arrêt de la boucle`, 'error');
+      if (liveUpdateInterval) { clearInterval(liveUpdateInterval); liveUpdateInterval = null; }
+      liveMessageId = null;
+      return;
+    }
     pushLog('ERR', `Mise à jour embed live échouée : ${err.message}`, 'error');
   }
 }
@@ -197,6 +204,13 @@ async function sendLiveStartEmbed(title, viewerCount, roomInfo = null) {
         : `🔴 **LIVE !** — ${title ? `_${title}_` : 'ça commence'} 🚀`,
       embeds: [embed],
     });
+
+    // Si le live s'est terminé pendant l'envoi du message (race condition), on nettoie
+    if (!liveActive) {
+      try { await msg.delete(); } catch (_) {}
+      pushLog('SYS', '📺 Live terminé avant fin d\'envoi embed — message supprimé', 'info');
+      return;
+    }
 
     liveMessageId = msg.id;
     liveChannelId = cfg.channelId;
@@ -343,9 +357,9 @@ function connectToTikTokLive() {
         }
       });
 
-      const onEnd = () => {
+      const onEnd = async () => {
         if (!liveActive) return;
-        sendLiveEndEmbed(title);
+        await sendLiveEndEmbed(title);
         resetLiveState();
       };
       conn.on('streamEnd', onEnd);

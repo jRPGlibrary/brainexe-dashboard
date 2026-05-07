@@ -8,6 +8,26 @@ Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.P
 
 ---
 
+## 🐛 v0.12.2 — Corrections compréhension des conversations + live TikTok
+**Date :** 2026-05-07
+
+### 🐛 Fixes
+
+- **Brainee ne comprenait pas les messages "ça" / "ce message"** : quand quelqu'un taguait Brainee en répondant à un autre message Discord (ex : "tu réponds quoi à ça ?"), elle ne savait pas à quoi "ça" faisait référence et répondait "je comprends même pas la question". Le message cité est maintenant injecté dans le contexte envoyé à Claude. (`src/discord/events.js`)
+
+- **Brainee perdait le fil des réponses à ses propres messages** : dans ses interventions spontanées (channel watcher), les messages bot étaient filtrés avant de construire le contexte. Résultat : quand Touko répondait directement à Brainee, ça apparaissait comme "(hors contexte)" au lieu de montrer ce que Brainee avait dit. Les messages bot sont maintenant inclus dans la map de contexte. (`src/features/channelWatcher.js`)
+
+- **Boucle d'erreurs infinie sur l'embed de live TikTok** : si le message d'annonce de live était supprimé manuellement, le bot continuait d'essayer de le mettre à jour toutes les 15 secondes → spam d'erreurs "Unknown Message" dans les logs. La boucle s'arrête maintenant dès que le message est introuvable. (`src/features/tiktok.js`)
+
+- **Faux live détecté / embed orphelin** : si TikTok signalait une connexion live qui coupait immédiatement, `resetLiveState()` s'exécutait pendant que `sendLiveStartEmbed` envoyait encore le message. La boucle de mise à jour démarrait quand même après le reset, avec un message orphelin dans Discord. On vérifie maintenant que le live est toujours actif après l'envoi, et on supprime le message si ce n'est plus le cas. (`src/features/tiktok.js`)
+
+### 📊 Statistiques
+- **3 fichiers modifiés** (`events.js`, `channelWatcher.js`, `tiktok.js`)
+- **4 bugs corrigés**
+- **100% backward compatible**
+
+---
+
 ## 🧬 v0.11.2 — Stabilisation BRAINEE-LIVING + fixes critiques
 **Date :** 2026-05-06
 
