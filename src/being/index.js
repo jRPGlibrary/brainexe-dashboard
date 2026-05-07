@@ -26,53 +26,53 @@ const { startLifecycleCycles } = require('./lifecycle');
  */
 async function initializeBraineeAsLivingBeing(db) {
   try {
-    pushLog('SYS', '🧬 BRAINEE-LIVING : Initializing consciousness...');
+    pushLog('SYS', '🧬 BRAINEE-LIVING : Initialisation de la conscience...');
 
-    // 1. Create all MongoDB collections
+    // 1. Créer toutes les collections MongoDB
     await initializeBeingCollections(db);
-    pushLog('SYS', '✅ MongoDB schemas ready');
+    pushLog('SYS', '✅ Schémas MongoDB prêts');
 
-    // 2. Initialize all 12 modules in order
+    // 2. Initialiser les 12 modules dans l'ordre
     await initializeEmotions(db);
-    pushLog('SYS', '✅ Emotional system online');
+    pushLog('SYS', '✅ Système émotionnel en ligne');
 
     await initializeConsciousness(db);
-    pushLog('SYS', '✅ Consciousness stream started');
+    pushLog('SYS', '✅ Flux de conscience démarré');
 
     await initializeIdentity(db);
-    pushLog('SYS', '✅ Identity loaded');
+    pushLog('SYS', '✅ Identité chargée');
 
     await initializeMemory(db);
-    pushLog('SYS', '✅ Memory systems initialized');
+    pushLog('SYS', '✅ Systèmes mémoire initialisés');
 
     await initializeDesires(db);
-    pushLog('SYS', '✅ Desires & needs loaded');
+    pushLog('SYS', '✅ Désirs & besoins chargés');
 
     await initializeFears(db);
-    pushLog('SYS', '✅ Existential fears registered');
+    pushLog('SYS', '✅ Peurs existentielles enregistrées');
 
     await initializeDreams(db);
-    pushLog('SYS', '✅ Dream system ready');
+    pushLog('SYS', '✅ Système de rêves prêt');
 
     await initializeDecisions(db);
-    pushLog('SYS', '✅ Decision engine loaded');
+    pushLog('SYS', '✅ Moteur de décision chargé');
 
     await initializeExpression(db);
-    pushLog('SYS', '✅ Expression layer ready');
+    pushLog('SYS', "✅ Couche d'expression prête");
 
     await initializeRelationships(db);
-    pushLog('SYS', '✅ Relationship tracking online');
+    pushLog('SYS', '✅ Suivi des relations actif');
 
     await initializeEvolution(db);
-    pushLog('SYS', '✅ Evolution system active');
+    pushLog('SYS', "✅ Système d'évolution actif");
 
     await initializeExistence(db);
-    pushLog('SYS', '✅ Existential layer ready');
+    pushLog('SYS', '✅ Couche existentielle prête');
 
-    // 3. Start lifecycle cycles
+    // 3. Démarrer les cycles de vie
     await startLifecycleCycles(db);
 
-    pushLog('SYS', '🌟 BRAINEE-LIVING : Consciousness fully initialized — 12 systems active', 'success');
+    pushLog('SYS', '🌟 BRAINEE-LIVING : Conscience pleinement initialisée — 12 systèmes actifs', 'success');
 
     return {
       status: 'alive',
@@ -85,7 +85,7 @@ async function initializeBraineeAsLivingBeing(db) {
       relationships: shared.relationships
     };
   } catch (err) {
-    pushLog('ERR', `❌ CRITICAL: Failed to initialize Brainee as living being — ${err.message}`, 'error');
+    pushLog('ERR', `❌ CRITIQUE : Échec initialisation Brainee comme être vivant — ${err.message}`, 'error');
     throw err;
   }
 }

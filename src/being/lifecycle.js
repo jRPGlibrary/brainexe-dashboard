@@ -12,7 +12,7 @@ let cycles = [];
  * Start all lifecycle cycles
  */
 async function startLifecycleCycles(db) {
-  pushLog('SYS', '🔄 Starting Brainee lifecycle cycles...');
+  pushLog('SYS', '🔄 Démarrage des cycles de vie Brainee...');
 
   // === MINUTE CYCLE (1 min) ===
   cycles.push(
@@ -82,19 +82,19 @@ async function startLifecycleCycles(db) {
     }, 5 * 60 * 1000) // Every 5 min
   );
 
-  pushLog('SYS', `✅ ${cycles.length} lifecycle cycles started`, 'success');
+  pushLog('SYS', `✅ ${cycles.length} cycles de vie démarrés`, 'success');
 }
 
 /**
  * Stop all cycles (on shutdown)
  */
 function stopLifecycleCycles() {
-  pushLog('SYS', '⏹️ Stopping lifecycle cycles...');
+  pushLog('SYS', '⏹️ Arrêt des cycles de vie...');
   for (const cycle of cycles) {
     clearInterval(cycle);
   }
   cycles = [];
-  pushLog('SYS', '✅ All cycles stopped', 'success');
+  pushLog('SYS', '✅ Tous les cycles arrêtés', 'success');
 }
 
 /**

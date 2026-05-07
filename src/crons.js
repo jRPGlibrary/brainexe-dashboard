@@ -227,7 +227,7 @@ function startConvCron() {
       if (shared.desires) shared.desires.updateNeeds().catch(() => {});
       if (shared.emotionalSystem) shared.emotionalSystem.decay(60).catch(() => {});
       pushLog('SYS', `💗 Évolution émotionnelle horaire [${slot.label}]`);
-    } catch (err) { pushLog('ERR', `emotionHourlyCron: ${err.message}`, 'error'); }
+    } catch (err) { pushLog('ERR', `cronÉmotionHoraire : ${err.message}`, 'error'); }
   }, { timezone: 'Europe/Paris' });
 
   // Évolution journalière des bonds + drift des états internes à 00h05
@@ -239,7 +239,7 @@ function startConvCron() {
       await runHyperFocusDecay();
       await saveEmotionalState();
       pushLog('SYS', `💞 Évolution journalière bonds + stories + hyper-focus + états internes`, 'success');
-    } catch (err) { pushLog('ERR', `emotionDailyCron: ${err.message}`, 'error'); }
+    } catch (err) { pushLog('ERR', `cronÉmotionJournalier : ${err.message}`, 'error'); }
   }, { timezone: 'Europe/Paris' });
 
   // Analyse narrative des derniers messages — une fois par jour à 02h
@@ -257,7 +257,7 @@ function startConvCron() {
         try {
           const msgs = await ch.messages.fetch({ limit: 50 });
           allMessages.push(...msgs.values());
-        } catch (err) { pushLog('SYS', `Narrative: impossible de lire #${ch.name} — ${err.message}`); }
+        } catch (err) { pushLog('SYS', `Narratif : impossible de lire #${ch.name} — ${err.message}`); }
       }
 
       if (allMessages.length < 10) return;
@@ -287,10 +287,10 @@ function startConvCron() {
           pushLog('SYS', `📖 Arcs narratifs mis à jour (${arcs.filter(a => a.title).length} identifiés)`, 'success');
         }
       } catch (parseErr) {
-        pushLog('ERR', `Narrative arc parsing: ${parseErr.message}`, 'error');
+        pushLog('ERR', `Analyse arcs narratifs : ${parseErr.message}`, 'error');
       }
     } catch (err) {
-      pushLog('ERR', `narrativeCron: ${err.message}`, 'error');
+      pushLog('ERR', `cronNarratif : ${err.message}`, 'error');
     }
   }, { timezone: 'Europe/Paris' });
 
@@ -299,7 +299,7 @@ function startConvCron() {
     if (!slot_is_active(getParisHour())) return;
     if (!rollOutreach()) return;
     pushLog('SYS', `⚡ Tick outreach déclenché`);
-    fireOutreach().catch(err => pushLog('ERR', `outreach: ${err.message}`, 'error'));
+    fireOutreach().catch(err => pushLog('ERR', `outreach échoué : ${err.message}`, 'error'));
   }, { timezone: 'Europe/Paris' });
 
   // Hyper-focus revisit — toutes les 25 min, traite UNE obsession arrivée à terme
@@ -336,9 +336,9 @@ function startConvCron() {
       for (const bond of bonds) {
         await tryPromoteSingularBond(bond.userId, bond);
       }
-      if (bonds.length > 0) pushLog('SYS', `💗 Attachment evolution : ${bonds.length} bond(s) > 83 vérifiés`);
+      if (bonds.length > 0) pushLog('SYS', `💗 Évolution liens : ${bonds.length} lien(s) > 83 vérifiés`);
     } catch (err) {
-      pushLog('ERR', `attachmentEvolution: ${err.message}`, 'error');
+      pushLog('ERR', `évolutionLiens : ${err.message}`, 'error');
     }
   }, { timezone: 'Europe/Paris' });
 

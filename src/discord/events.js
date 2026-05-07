@@ -212,7 +212,7 @@ async function handleMentionReply(message, userQuery) {
     const vulnBlock = getVulnerabilityBlock(vulnWindow);
     if (vulnWindow && detectSupport(userQuery)) {
       try { await recordSupportFromMember(message.author.id, message.author.username, userQuery); }
-      catch (vErr) { pushLog('ERR', `record support: ${vErr.message}`, 'error'); }
+      catch (vErr) { pushLog('ERR', `Enregistrement soutien : ${vErr.message}`, 'error'); }
     }
     const channelMemory = await getChannelMemory(message.channelId);
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
@@ -315,11 +315,11 @@ async function handleMentionReply(message, userQuery) {
       if (best && best.confidence >= 0.5) {
         await addMemberStory(message.author.id, message.author.username, best);
       }
-    } catch (storyErr) { pushLog('ERR', `Story detect: ${storyErr.message}`, 'error'); }
+    } catch (storyErr) { pushLog('ERR', `Détection histoire : ${storyErr.message}`, 'error'); }
 
     // 🎯 Mise à jour goûts depuis le message
     try { await updateTasteFromMessage(message.author.id, message.author.username, userQuery); }
-    catch (tasteErr) { pushLog('ERR', `Taste update: ${tasteErr.message}`, 'error'); }
+    catch (tasteErr) { pushLog('ERR', `Mise à jour goûts : ${tasteErr.message}`, 'error'); }
 
     // 🎯 Hyper-focus : si un sujet "obsessionnel" est mentionné, on enregistre une revisit
     try {
@@ -333,7 +333,7 @@ async function handleMentionReply(message, userQuery) {
           sourceMessageContent: userQuery,
         });
       }
-    } catch (hfErr) { pushLog('ERR', `HyperFocus register: ${hfErr.message}`, 'error'); }
+    } catch (hfErr) { pushLog('ERR', `Enregistrement hyperFocus : ${hfErr.message}`, 'error'); }
 
     pushLog('SYS', `💬 @mention → ${message.author.username} (mood: ${mood})`, 'success');
   } catch (err) { pushLog('ERR', `handleMentionReply échoué : ${err.message}`, 'error'); }
