@@ -205,6 +205,13 @@ async function sendLiveStartEmbed(title, viewerCount, roomInfo = null) {
       embeds: [embed],
     });
 
+    // Si le live s'est terminé pendant l'envoi du message (race condition), on nettoie
+    if (!liveActive) {
+      try { await msg.delete(); } catch (_) {}
+      pushLog('SYS', '📺 Live terminé avant fin d\'envoi embed — message supprimé', 'info');
+      return;
+    }
+
     liveMessageId = msg.id;
     liveChannelId = cfg.channelId;
 
@@ -350,9 +357,9 @@ function connectToTikTokLive() {
         }
       });
 
-      const onEnd = () => {
+      const onEnd = async () => {
         if (!liveActive) return;
-        sendLiveEndEmbed(title);
+        await sendLiveEndEmbed(title);
         resetLiveState();
       };
       conn.on('streamEnd', onEnd);
