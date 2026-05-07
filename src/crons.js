@@ -121,7 +121,7 @@ function startConvCron() {
         pushLog('SYS', `👁️ Scan réactif : ${toReact.length} réaction(s) → #${ch.channelName}`);
         shared.lastAnyBotPostTime = Date.now();
       }
-    } catch (_) {}
+    } catch (err) { pushLog('ERR', `Scan réactif cron: ${err.message}`, 'error'); }
   }, { timezone: 'Europe/Paris' });
 
   // Events flottants : morning/lunch/goodnight/nightWakeup déclenchés autour d'une heure aléatoire du jour

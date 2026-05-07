@@ -338,7 +338,7 @@ async function replyToConversations() {
           postedInThread = true;
         }
       }
-    } catch (_) {}
+    } catch (err) { pushLog('ERR', `Thread reply échoué: ${err.message}`, 'error'); }
     if (!postedInThread) {
       const replyMsg = await sendHuman(channel, replyResolved, lastMsg, { bond });
       if (replyMsg) recordBotMessage(replyMsg.id, ch.channelId, 'reply', replyResolved.length).catch(() => {});

@@ -61,6 +61,19 @@ function registerRoutes(app) {
     }
   });
 
+  // Health check public — pour uptime monitors et PM2
+  app.get('/api/health', (req, res) => {
+    const { version } = require('../../../package.json');
+    res.json({
+      ok: true,
+      version,
+      uptime: Math.floor(process.uptime()),
+      discord: shared.discord?.ws?.status === 0 ? 'connected' : 'disconnected',
+      mongodb: shared.mongoDb ? 'connected' : 'disconnected',
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   // Middleware d'auth sur toutes les routes /api
   app.use('/api/', requireAuth);
 
