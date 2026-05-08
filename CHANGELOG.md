@@ -1,10 +1,48 @@
 # 📜 Changelog — BrainEXE Dashboard
 
-Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.14.0** (version actuelle).
+Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.14.1** (version actuelle).
 Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.PATCH`. En pre-1.0, un `MINOR` peut introduire des breaking changes — c'est cohérent avec un projet qui itère encore.
 
 > **Convention :** chaque `MINOR` (`0.1.x`, `0.2.x`, …) correspond à un **chapitre** du projet (une thématique). Le `PATCH` est une vraie correction ou un ajout incrémental dans le chapitre courant.
 > Les versions `0.0.x` constituent la **pré-histoire** : les 10 premiers prototypes fondateurs (12–11 avril 2026) avant la numérotation officielle.
+
+---
+
+## 🚀 v0.14.1 — Autonomie maximale · Exploration tous salons · Outreach boosté
+**Date :** 2026-05-08
+
+### 🎯 Thème
+
+Brainee était trop passive : elle ratait des catégories entières, revenait trop rarement dans les mêmes salons, et son outreach se déclenchait trop peu souvent. Ce patch débloque tout : seuils abaissés, quotas augmentés, exploration diversifiée sur toutes les catégories du serveur.
+
+### ✨ Améliorations
+
+- **Exploration tous salons** (`src/features/channelWatcher.js`) :
+  - `categoryLastVisit` Map ajoutée pour tracker quand Brainee a visité chaque catégorie Discord
+  - Bonus score +0.12 si la catégorie n'a pas été visitée depuis 3h (diversité garantie)
+  - `INTEREST_KW` étendu pour couvrir toutes les catégories : social/neurodivergent, création, culture/débats, tech/dev, vie quotidienne
+  - `AGE_MAX` : 90 min → 150 min (messages plus anciens restent éligibles)
+  - Seuils d'intérêt assouplis : salons 0.42 → 0.34, threads 0.47 → 0.38
+  - Cooldowns réduits : CHANNEL_MIN_GAP 45 → 30 min, GLOBAL_MIN_GAP 8 → 5 min
+  - Vibe blocking assoupli : withdrawn 8%→15%, melancholic 12%→20%, introvert 15%→25%, lazy 10%→18%
+  - Seuil énergie : `state.energy < 18` → `state.energy < 14`
+
+- **Outreach boosté** (`src/features/proactiveOutreach.js`) :
+  - Probabilité de base : 3% → 5% (cap 8% → 12%)
+  - Cooldown global : 90 min → 60 min
+  - Vibe `grumpy` retiré des blocages (restent : introvert, withdrawn, lazy)
+  - `pickChannelsForType` étendu : `random_thought` cible cerveau/musique/films/manga/bouffe/code/ia, `vip_callback` cible qg/lounge/daily, `group_observation` cible qg/lounge/daily/cerveau
+
+- **Quota et persistance** (`src/features/convStats.js`) :
+  - Quota journalier par défaut : 16 → 22 posts/jour
+  - Fenêtre no-insist : 24h → 12h
+  - `WEEKLY_DEAD_LIMIT` : 1 → 2 tentatives avant abandon du salon mort
+
+- **Tentatives de conversation** (`src/features/conversations.js`) :
+  - `MAX_CONV_ATTEMPTS` : 5 → 10 salons candidats testés avant abandon
+
+- **Fréquence cron** (`src/crons.js`) :
+  - Outreach cron : `*/35` → `*/25` (tick toutes les 25 min au lieu de 35)
 
 ---
 

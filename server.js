@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 🧠 BRAINEXE DASHBOARD — Serveur Backend v0.14.0
+ * 🧠 BRAINEXE DASHBOARD — Serveur Backend v0.14.1
  * ================================================
  * Architecture refactorisée — entry point minimal
  * Toute la logique est dans src/
@@ -134,7 +134,7 @@ discord.once('clientReady', async () => {
   refreshDailyMood();
   const slot = getCurrentSlot();
   const vibe = getDailyVibe();
-  pushLog('SYS', `🧠 BRAINEXE v0.14.0 — Bot : ${discord.user.tag}`);
+  pushLog('SYS', `🧠 BRAINEXE v0.14.1 — Bot : ${discord.user.tag}`);
   pushLog('SYS', `⏰ Slot : ${slot.label} | 🎭 Humeur : ${getDailyMood()} | 🎨 Vibe : ${vibe.name}`);
   pushLog('SYS', `🌐 Dashboard : http://localhost:${PORT}`);
 
@@ -191,7 +191,7 @@ discord.once('clientReady', async () => {
     }
   }, 35000);
 
-  await syncDiscordToFile('Démarrage v0.14.0');
+  await syncDiscordToFile('Démarrage v0.14.1');
 });
 
 server.listen(PORT, '0.0.0.0', () => pushLog('SYS', `🌐 Serveur démarré sur le port ${PORT}`));
