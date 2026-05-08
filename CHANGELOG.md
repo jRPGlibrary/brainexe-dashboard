@@ -1,10 +1,42 @@
 # 📜 Changelog — BrainEXE Dashboard
 
-Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.13.0** (version actuelle).
+Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.14.0** (version actuelle).
 Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.PATCH`. En pre-1.0, un `MINOR` peut introduire des breaking changes — c'est cohérent avec un projet qui itère encore.
 
 > **Convention :** chaque `MINOR` (`0.1.x`, `0.2.x`, …) correspond à un **chapitre** du projet (une thématique). Le `PATCH` est une vraie correction ou un ajout incrémental dans le chapitre courant.
 > Les versions `0.0.x` constituent la **pré-histoire** : les 10 premiers prototypes fondateurs (12–11 avril 2026) avant la numérotation officielle.
+
+---
+
+## 🔁 v0.14.0 — Anti-répétition lexicale · Pont DM↔Serveur · Dashboard fixes
+**Date :** 2026-05-08
+
+### 🎯 Thème
+
+Qualité de conversation et fiabilité du dashboard. Brainee répétait trop souvent les mêmes mots dans des messages consécutifs (constaté sur des échanges réels). Le pont DM↔Serveur existait mais manquait de contexte narratif dans les deux sens. La section Tokens n'était pas câblée dans la navigation.
+
+### ✨ Améliorations
+
+- **Anti-répétition lexicale** (`src/bot/persona.js`, `src/features/context.js`, `src/discord/events.js`) : nouvelle fonction `extractRecentBraineeWords()` qui extrait les mots concrets (≥5 caractères, hors stop-words FR) des 4 derniers messages de Brainee dans le salon. Ces mots sont injectés dans le prompt dynamique via un bloc `🔁 MOTS RÉCENTS À ÉVITER` pour forcer la variation lexicale. Une règle `ANTI-RÉPÉTITION LEXICALE` a également été ajoutée dans `BOT_PERSONA_CONVERSATION`.
+
+- **Pont DM↔Serveur renforcé** (`src/features/dmServerBridge.js`, `src/discord/events.js`) :
+  - Limite serveur portée de 6 → 10 messages dans `enrichDMWithServerContext()`
+  - Limite DM portée de 4 → 6 messages dans `enrichServerWithDmContext()`
+  - `getNarrativeContext()` injecté dans le prompt DM pour que Brainee sache ce qui se passe sur le serveur même en MP
+  - Wording des blocs de pont clarifié (`PONT SERVEUR→DM` / `PONT DM→SERVEUR`)
+  - Instruction explicite dans le prompt DM : faire le lien naturellement sans le signaler
+
+- **Section Tokens correctement navigable** (`public/js/navigation.js`, `public/js/section-tokens.js`) :
+  - `initTokensSection` ajouté dans le map `renderCurrentSection` — la section se rendait une seule fois au boot puis ne se rechargait plus
+  - Titre et sous-titre `tokens` ajoutés dans la map `titles`
+  - `window.tokensDailyChartInstance.destroy()` + reset à `null` au début de chaque `initTokensSection()` pour éviter le conflit de canvas lors du re-render
+  - Suppression de l'auto-call `initTokensSection()` en fin de fichier (inutile, la navigation gère)
+
+- **Titre Vie intérieure** (`public/js/navigation.js`) : section `being` ajoutée dans la map `titles` (manquait, affichait le nom brut)
+
+### 🔧 Fixes
+
+- **Barre d'affinité membres** (`public/js/section-members.js`) : le dégradé CSS cassé (stops qui s'inversaient quand l'affinité était < 33) remplacé par une vraie `progress bar` avec couleur dynamique (rouge < 40 · orange 40-65 · vert ≥ 65) et valeur numérique affichée
 
 ---
 

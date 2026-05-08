@@ -7,7 +7,7 @@ const { GUILD_ID } = require('../config');
 
 // Récupérer le contexte récent du serveur pour une personne
 // Filtre source='server' pour ne pas mélanger DM et serveur dans le contexte
-async function getServerContextForUser(userId, userName, limit = 8) {
+async function getServerContextForUser(userId, userName, limit = 12) {
   if (!shared.mongoDb) return '';
 
   try {
@@ -32,7 +32,7 @@ async function getServerContextForUser(userId, userName, limit = 8) {
 }
 
 // Récupère les derniers DMs (côté logMessageForBridge) — utile pour le lien serveur → DM
-async function getDmContextForUser(userId, limit = 5) {
+async function getDmContextForUser(userId, limit = 8) {
   if (!shared.mongoDb) return '';
   try {
     const recent = await shared.mongoDb
@@ -67,17 +67,17 @@ function humanizeAgo(date) {
 // Évite un appel LLM par DM (économie de tokens significative).
 async function enrichDMWithServerContext(userId, userName, dmContent) {
   try {
-    const serverContext = await getServerContextForUser(userId, userName, 6);
+    const serverContext = await getServerContextForUser(userId, userName, 10);
     if (!serverContext) return dmContent;
 
-    // Mémoire utilisateur (légère)
+    // Mémoire intelligente utilisateur
     const userMemory = await getSmartMemory(userId, 'user');
     const memoryBlock = formatSmartMemory(userMemory);
 
     const linkBlock = [
-      `\n\n[🔗 Contexte serveur récent de ${userName} — utilise-le pour faire le lien si pertinent, sans le mentionner explicitement] :`,
+      `\n\n[🔗 PONT SERVEUR→DM — Ce que ${userName} a dit récemment sur le serveur, utilise ce contexte pour faire la liaison naturellement sans le mentionner explicitement] :`,
       serverContext,
-      memoryBlock ? `\nNotes mémoire:\n${memoryBlock}` : '',
+      memoryBlock ? `\n[Notes mémoire cross-canal]\n${memoryBlock}` : '',
     ].filter(Boolean).join('\n');
 
     return `${dmContent}${linkBlock}`;
@@ -89,9 +89,9 @@ async function enrichDMWithServerContext(userId, userName, dmContent) {
 // Enrichit un message serveur avec le contexte DM — pour que Brainee fasse le lien dans l'autre sens
 async function enrichServerWithDmContext(userId, userName) {
   try {
-    const dmContext = await getDmContextForUser(userId, 4);
+    const dmContext = await getDmContextForUser(userId, 6);
     if (!dmContext) return '';
-    return `\n[🔗 DM récents avec ${userName} — utilise pour faire le lien si pertinent, sans le mentionner explicitement] :\n${dmContext}`;
+    return `\n[🔗 PONT DM→SERVEUR — Échanges privés récents avec ${userName} à prendre en compte si pertinent, sans le mentionner explicitement] :\n${dmContext}`;
   } catch {
     return '';
   }

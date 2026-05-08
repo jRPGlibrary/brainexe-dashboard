@@ -7,7 +7,7 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.13.0-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.14.0-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
@@ -192,18 +192,15 @@ npm test
 
 ## 📝 Versions
 
-> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.13.0** (87 versions, de la naissance à aujourd'hui).
+> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.14.0** (88 versions, de la naissance à aujourd'hui).
 
-### Dernière release — `v0.13.0` — 🚀 Release Candidate (stabilisation pré-1.0.0)
+### Dernière release — `v0.14.0` — 🔁 Anti-répétition · Pont DM↔Serveur · Dashboard fixes
 
-- **Dashboard 100 % réel** : analytiques live, plus aucune donnée fictive
-- **Responsive mobile-first** : heatmap scrollable, grille fluide, topbar adaptée
-- **Logger unifié** : tous les `console.log/error` de `src/being/` remplacés par `pushLog`
-- **32 nouveaux tests being** : safeguards, EmotionalSystem, lifecycle — **165 tests au total**
-- **`tiktok-live-connector` épinglé** `@2.1.1-beta1` (version auteur, stable)
-- **`engines.node`** aligné sur la réalité : `>=20.0.0`
-- **CI Node 20** — cohérence avec le moteur requis
-- **Docs complètes** : README, BIBLE, SOUTIEN, CHANGELOG — tout à jour
+- **Anti-répétition lexicale** : Brainee détecte les mots qu'elle vient d'utiliser et les évite dans ses réponses suivantes
+- **Pont DM↔Serveur renforcé** : contexte narratif serveur injecté dans les DMs, et inversement — meilleure continuité
+- **Dashboard tokens fonctionnel** : section Tokens correctement câblée dans la navigation (re-render + reset chart)
+- **Barre d'affinité membres** : remplacée par une progress bar propre avec couleur dynamique (rouge/orange/vert)
+- **Navigation being/tokens** : titres et sous-titres corrigés dans la barre latérale
 
 ### Phases du projet
 
@@ -222,7 +219,8 @@ npm test
 | 0.10 | `v0.10.0` → `v0.10.2` | 🎯 Vision + bond integration + ton nettoyé |
 | 0.11 | `v0.11.0` → `v0.11.2` | 🧬 BRAINEE-LIVING — conscience numérique (12 modules) |
 | 0.12 | `v0.12.0` → `v0.12.6` | 🤝 Liens d'attachement + refus émotionnel + conviction |
-| **0.13** | `v0.13.0` | 🚀 **Release Candidate** — stabilisation complète avant 1.0.0 *(actuelle)* |
+| 0.13 | `v0.13.0` | 🚀 Release Candidate — stabilisation complète avant 1.0.0 |
+| **0.14** | `v0.14.0` | 🔁 **Anti-répétition · Pont DM↔Serveur · Dashboard fixes** *(actuelle)* |
 
 ---
 

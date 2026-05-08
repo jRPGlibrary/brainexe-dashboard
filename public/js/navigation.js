@@ -43,6 +43,8 @@ function navigate(section) {
     bonds:     ['💞 Relations', 'Liens affectifs avec les membres'],
     schedule:  ['🗓️ Planning', 'Grille horaire hebdomadaire du bot'],
     audit:     ['📖 Historique', 'Actions admin effectuées depuis le dashboard'],
+    tokens:    ['📊 Tokens', 'Consommation de tokens Claude par membre · leaderboard'],
+    being:     ['🧬 Vie intérieure', '12 modules BRAINEE-LIVING — conscience simulée'],
   };
   const [title, sub] = titles[section] || [section, ''];
   document.getElementById('page-title').textContent = title;
@@ -59,6 +61,7 @@ function renderCurrentSection() {
     funding: renderFunding, health: renderHealth, emotions: renderEmotions,
     being: renderBeingSection,
     bonds: renderBonds, schedule: renderSchedule, audit: renderAudit,
+    tokens: initTokensSection,
   };
   const fn = map[state.currentSection];
   if (fn) fn();
