@@ -5,6 +5,7 @@
 
 async function renderBonds() {
   const sec = document.getElementById('section-bonds');
+  if (!sec) return;
   sec.innerHTML = '<div class="empty">Chargement…</div>';
   try {
     const res = await api('/api/emotions/bonds');

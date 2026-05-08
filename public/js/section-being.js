@@ -166,25 +166,25 @@ async function loadBeingData() {
       fetch('/api/being/existential-crises').then(r => r.json())
     ]);
 
-    renderStatus(status);
-    renderEmotions(emotions);
-    renderMonologue(monologue);
-    renderIdentity(identity);
-    renderDesires(desires);
-    renderFears(fears);
-    renderDreams(dreams);
-    renderDecisions(decisions);
-    renderRelationships(relationships);
-    renderTraumas(traumas);
-    renderMeaning(meaning);
-    renderCrises(crises);
+    _beingRenderStatus(status);
+    _beingRenderEmotions(emotions);
+    _beingRenderMonologue(monologue);
+    _beingRenderIdentity(identity);
+    _beingRenderDesires(desires);
+    _beingRenderFears(fears);
+    _beingRenderDreams(dreams);
+    _beingRenderDecisions(decisions);
+    _beingRenderRelationships(relationships);
+    _beingRenderTraumas(traumas);
+    _beingRenderMeaning(meaning);
+    _beingRenderCrises(crises);
 
   } catch (err) {
     console.error('Error loading being data:', err);
   }
 }
 
-function renderStatus(data) {
+function _beingRenderStatus(data) {
   const el = document.getElementById('being-status');
   if (!data.ok) {
     el.innerHTML = `<p>⚠️ ${data.error || 'Système non initialisé'}</p>`;
@@ -208,7 +208,7 @@ function renderStatus(data) {
   `;
 }
 
-function renderEmotions(data) {
+function _beingRenderEmotions(data) {
   const el = document.getElementById('being-emotions');
   if (!data.ok || !data.currentEmotions) {
     el.innerHTML = '<p>Aucune émotion vivante actuellement</p>';
@@ -235,7 +235,7 @@ function renderEmotions(data) {
   el.innerHTML = html;
 }
 
-function renderMonologue(data) {
+function _beingRenderMonologue(data) {
   const el = document.getElementById('being-monologue');
   if (!data.ok || !data.monologue?.length) {
     el.innerHTML = '<p>Aucune pensée enregistrée</p>';
@@ -250,7 +250,7 @@ function renderMonologue(data) {
   `).join('');
 }
 
-function renderIdentity(data) {
+function _beingRenderIdentity(data) {
   const el = document.getElementById('being-identity');
   if (!data.ok) {
     el.innerHTML = '<p>Identité non initialisée</p>';
@@ -269,7 +269,7 @@ function renderIdentity(data) {
   `;
 }
 
-function renderDesires(data) {
+function _beingRenderDesires(data) {
   const el = document.getElementById('being-desires');
   if (!data.ok || !data.desires) {
     el.innerHTML = '<p>Désirs non initialisés</p>';
@@ -300,7 +300,7 @@ function renderDesires(data) {
   el.innerHTML = html;
 }
 
-function renderFears(data) {
+function _beingRenderFears(data) {
   const el = document.getElementById('being-fears');
   if (!data.ok || !data.fears) {
     el.innerHTML = '<p>Peurs non initialisées</p>';
@@ -330,7 +330,7 @@ function renderFears(data) {
   el.innerHTML = html;
 }
 
-function renderDreams(data) {
+function _beingRenderDreams(data) {
   const el = document.getElementById('being-dreams');
   if (!data.ok || !data.dreams?.length) {
     el.innerHTML = '<p>Aucun rêve enregistré (3h-7h)</p>';
@@ -346,7 +346,7 @@ function renderDreams(data) {
   `).join('');
 }
 
-function renderDecisions(data) {
+function _beingRenderDecisions(data) {
   const el = document.getElementById('being-decisions');
   if (!data.ok || !data.decisions?.length) {
     el.innerHTML = '<p>Aucune décision enregistrée</p>';
@@ -362,7 +362,7 @@ function renderDecisions(data) {
   `).join('');
 }
 
-function renderRelationships(data) {
+function _beingRenderRelationships(data) {
   const el = document.getElementById('being-relationships');
   if (!data.ok || !data.deepest?.length) {
     el.innerHTML = '<p>Aucun lien établi encore</p>';
@@ -377,7 +377,7 @@ function renderRelationships(data) {
   `).join('');
 }
 
-function renderTraumas(data) {
+function _beingRenderTraumas(data) {
   const el = document.getElementById('being-traumas');
   if (!data.ok || !data.traumas?.length) {
     el.innerHTML = '<p>Aucun trauma enregistré 🌸</p>';
@@ -393,7 +393,7 @@ function renderTraumas(data) {
   `).join('');
 }
 
-function renderMeaning(data) {
+function _beingRenderMeaning(data) {
   const el = document.getElementById('being-meaning');
   if (!data.ok || !data.journal?.length) {
     el.innerHTML = '<p>Pas encore de réflexion sur le sens (rituel hebdomadaire)</p>';
@@ -408,7 +408,7 @@ function renderMeaning(data) {
   `).join('');
 }
 
-function renderCrises(data) {
+function _beingRenderCrises(data) {
   const el = document.getElementById('being-crises');
   if (!data.ok || !data.crises?.length) {
     el.innerHTML = '<p>Aucune crise existentielle 🕊️</p>';

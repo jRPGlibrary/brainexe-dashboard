@@ -11,12 +11,13 @@ function initTokensSection() {
   }
 
   section.innerHTML = `
-    <div class="container">
-      <div class="header">
-        <h1>📊 Utilisation des Tokens</h1>
-        <p>Suivi détaillé de l'utilisation des tokens Claude par membre</p>
+    <div class="card mb-3">
+      <div class="card-header">
+        <div>
+          <div class="card-title">📊 Utilisation des Tokens</div>
+          <div class="card-subtitle">Suivi détaillé par membre · tokens Claude</div>
+        </div>
       </div>
-
       <div class="tabs-container">
         <button class="tab-btn active" data-tab="overview">Vue d'ensemble</button>
         <button class="tab-btn" data-tab="leaderboard">Leaderboard</button>
@@ -24,33 +25,32 @@ function initTokensSection() {
       </div>
 
       <div class="tab-content active" id="tab-overview">
-        <div class="grid">
-          <div class="card">
-            <h3>Statistiques globales</h3>
-            <div id="global-stats" class="stats-grid">
+        <div class="grid-2 mb-3">
+          <div>
+            <div class="card-title mb-2">Statistiques globales</div>
+            <div class="stats-grid" id="global-stats">
               <div class="stat">
-                <div class="stat-label">Total des tokens utilisés</div>
+                <div class="stat-label">Total tokens</div>
                 <div class="stat-value" id="total-tokens">—</div>
               </div>
               <div class="stat">
-                <div class="stat-label">Tokens d'entrée</div>
+                <div class="stat-label">Entrée</div>
                 <div class="stat-value" id="total-input">—</div>
               </div>
               <div class="stat">
-                <div class="stat-label">Tokens de sortie</div>
+                <div class="stat-label">Sortie</div>
                 <div class="stat-value" id="total-output">—</div>
               </div>
               <div class="stat">
-                <div class="stat-label">Messages traités</div>
+                <div class="stat-label">Messages</div>
                 <div class="stat-value" id="total-messages">—</div>
               </div>
             </div>
           </div>
-
-          <div class="card">
-            <h3>Rechercher un membre</h3>
-            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-              <input type="text" id="member-search" placeholder="Nom d'utilisateur Discord..." class="input">
+          <div>
+            <div class="card-title mb-2">Rechercher un membre</div>
+            <div class="flex gap-1 mb-2">
+              <input type="text" id="member-search" placeholder="Nom d'utilisateur Discord…" class="input flex-1">
               <button class="btn btn-primary" onclick="searchMemberTokens()">Rechercher</button>
             </div>
             <div id="search-results"></div>
@@ -59,42 +59,34 @@ function initTokensSection() {
       </div>
 
       <div class="tab-content" id="tab-leaderboard">
-        <div class="card">
-          <h3>Top 50 utilisateurs</h3>
-          <div id="leaderboard-container" style="overflow-x: auto;">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th style="width: 40px">Rang</th>
-                  <th>Utilisateur</th>
-                  <th style="width: 120px">Tokens</th>
-                  <th style="width: 120px">Entrée</th>
-                  <th style="width: 120px">Sortie</th>
-                  <th style="width: 100px">Messages</th>
-                  <th style="width: 120px">Dernière interaction</th>
-                </tr>
-              </thead>
-              <tbody id="leaderboard-body">
-                <tr><td colspan="7" class="text-center text-muted">Chargement...</td></tr>
-              </tbody>
-            </table>
-          </div>
+        <div style="overflow-x: auto;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width:44px">Rang</th>
+                <th>Utilisateur</th>
+                <th style="width:110px">Tokens</th>
+                <th style="width:110px">Entrée</th>
+                <th style="width:110px">Sortie</th>
+                <th style="width:90px">Messages</th>
+                <th style="width:110px">Dernière activité</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+              <tr><td colspan="7" class="text-center text-muted">Chargement…</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
       <div class="tab-content" id="tab-daily">
-        <div class="card">
-          <h3>Évolution journalière</h3>
-          <p class="text-muted" style="font-size: 0.9em; margin-bottom: 16px;">
-            Entrez un ID Discord ou un nom pour voir l'évolution sur 30 jours
-          </p>
-          <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-            <input type="text" id="daily-member-search" placeholder="ID Discord ou nom..." class="input">
-            <button class="btn btn-primary" onclick="loadDailyStats()">Charger</button>
-          </div>
-          <div id="daily-chart" style="height: 400px; margin-top: 20px;">
-            <canvas id="tokens-daily-chart"></canvas>
-          </div>
+        <div class="card-subtitle mb-2">Entrez un ID Discord ou un nom pour voir l'évolution sur 30 jours</div>
+        <div class="flex gap-1 mb-3">
+          <input type="text" id="daily-member-search" placeholder="ID Discord ou nom…" class="input flex-1">
+          <button class="btn btn-primary" onclick="loadDailyStats()">Charger</button>
+        </div>
+        <div style="position:relative; height:300px;">
+          <canvas id="tokens-daily-chart"></canvas>
         </div>
       </div>
     </div>
@@ -232,7 +224,7 @@ async function loadMemberTokenStats(userId, username) {
     const daily = await dailyRes.json();
 
     if (!stats.ok) {
-      showToast('Erreur lors du chargement', 'error');
+      toast('Erreur lors du chargement', 'error');
       return;
     }
 
@@ -290,7 +282,7 @@ async function loadMemberTokenStats(userId, username) {
 async function loadDailyStats() {
   const input = document.getElementById('daily-member-search').value.trim();
   if (!input) {
-    showToast('Entrez un ID Discord ou un nom', 'warning');
+    toast('Entrez un ID Discord ou un nom', 'warning');
     return;
   }
 
@@ -299,7 +291,7 @@ async function loadDailyStats() {
     const data = await res.json();
 
     if (!data.ok || !data.stats || data.stats.length === 0) {
-      showToast('Aucune donnée trouvée', 'warning');
+      toast('Aucune donnée trouvée', 'warning');
       return;
     }
 
@@ -330,10 +322,10 @@ async function loadDailyStats() {
       window.tokensDailyChartInstance.update();
     }
 
-    showToast('Données chargées', 'success');
+    toast('Données chargées', 'success');
   } catch (e) {
     console.error('Erreur:', e);
-    showToast('Erreur lors du chargement', 'error');
+    toast('Erreur lors du chargement', 'error');
   }
 }
 
@@ -343,9 +335,3 @@ function formatNumber(n) {
   return n.toLocaleString('fr-FR');
 }
 
-function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}

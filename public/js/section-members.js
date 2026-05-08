@@ -9,6 +9,7 @@ let _memberSort = 'name';
 
 function renderMembers() {
   const sec = document.getElementById('section-members');
+  if (!sec) return;
   sec.innerHTML = `
     <div class="card">
       <div class="card-header">

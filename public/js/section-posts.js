@@ -5,6 +5,7 @@
 
 function renderPosts() {
   const sec = document.getElementById('section-posts');
+  if (!sec) return;
   const g = state.guild || {};
   const options = [];
   (g.structure || []).forEach(cat => {

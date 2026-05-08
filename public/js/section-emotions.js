@@ -5,6 +5,7 @@
 
 async function renderEmotions() {
   const sec = document.getElementById('section-emotions');
+  if (!sec) return;
   sec.innerHTML = '<div class="empty">Chargement…</div>';
   try {
     const res = await api('/api/emotions/state');

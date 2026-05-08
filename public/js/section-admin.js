@@ -5,6 +5,7 @@
 
 function renderAdmin() {
   const sec = document.getElementById('section-admin');
+  if (!sec) return;
   const a = state.admin || {};
   const moods = a.moods || ['energique', 'chill', 'hyperfocus', 'zombie'];
   const slots = a.slots || [];

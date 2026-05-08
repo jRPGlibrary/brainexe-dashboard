@@ -26,6 +26,8 @@ function navigate(section) {
   document.querySelectorAll('.section').forEach(s => {
     s.classList.toggle('active', s.id === `section-${section}`);
   });
+  document.querySelector('.main')?.scrollTo(0, 0);
+  updateBottomTabs(section);
   const titles = {
     overview: ['Vue d\'ensemble', 'Dashboard temps réel · toute modification est appliquée instantanément'],
     admin:    ['🎛️ Admin live', 'Contrôle chaque paramètre du bot en direct — aucune sauvegarde requise'],
@@ -52,6 +54,12 @@ function navigate(section) {
   renderCurrentSection();
 }
 
+function updateBottomTabs(section) {
+  document.querySelectorAll('.bottom-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === section);
+  });
+}
+
 function renderCurrentSection() {
   const map = {
     overview: renderOverview, admin: renderAdmin,
@@ -64,5 +72,13 @@ function renderCurrentSection() {
     tokens: initTokensSection,
   };
   const fn = map[state.currentSection];
-  if (fn) fn();
+  if (fn) {
+    try {
+      fn();
+    } catch (e) {
+      console.error(`[Dashboard] Erreur rendu section "${state.currentSection}":`, e);
+      const sec = document.getElementById(`section-${state.currentSection}`);
+      if (sec) sec.innerHTML = `<div class="card"><div class="empty" style="color:var(--danger)">⚠️ Erreur : ${escapeHtml(e.message || String(e))}</div></div>`;
+    }
+  }
 }

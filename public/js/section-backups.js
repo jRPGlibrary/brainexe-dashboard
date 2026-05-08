@@ -5,6 +5,7 @@
 
 function renderBackups() {
   const sec = document.getElementById('section-backups');
+  if (!sec) return;
   sec.innerHTML = `
     <div class="grid-2">
       <div class="card">

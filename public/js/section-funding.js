@@ -15,6 +15,7 @@ async function loadFunding() {
 
 function renderFunding() {
   const sec = document.getElementById('section-funding');
+  if (!sec) return;
   const f = state.funding || {};
   const donated = f.totalDonated ?? 0;
   const total = f.totalCosts ?? 0;

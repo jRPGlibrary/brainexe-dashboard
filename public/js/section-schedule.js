@@ -5,6 +5,7 @@
 
 async function renderSchedule() {
   const sec = document.getElementById('section-schedule');
+  if (!sec) return;
   sec.innerHTML = '<div class="empty">Chargement…</div>';
   try {
     const res = await api('/api/schedule');
