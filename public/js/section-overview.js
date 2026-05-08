@@ -5,6 +5,7 @@
 
 function renderOverview() {
   const sec = document.getElementById('section-overview');
+  if (!sec) return;
   const a = state.admin || {};
   const g = state.guild || {};
   const stats = state.stats || {};

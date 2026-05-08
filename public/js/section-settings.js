@@ -5,6 +5,7 @@
 
 function renderSettings() {
   const sec = document.getElementById('section-settings');
+  if (!sec) return;
   const cfg = state.config || {};
   const w = cfg.welcome || {};
   sec.innerHTML = `

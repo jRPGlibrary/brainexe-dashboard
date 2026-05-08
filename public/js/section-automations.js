@@ -5,6 +5,7 @@
 
 function renderAutomations() {
   const sec = document.getElementById('section-automations');
+  if (!sec) return;
   const cfg = state.config || {};
   const items = [
     { key: 'anecdote',      title: 'Anecdotes',       icon: '📚', action: 'anecdote' },

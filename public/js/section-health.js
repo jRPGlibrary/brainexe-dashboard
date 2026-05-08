@@ -5,6 +5,7 @@
 
 async function renderHealth() {
   const sec = document.getElementById('section-health');
+  if (!sec) return;
   sec.innerHTML = '<div class="empty">Chargement…</div>';
   try {
     const h = await api('/api/health');

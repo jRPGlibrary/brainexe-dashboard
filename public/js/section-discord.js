@@ -5,6 +5,7 @@
 
 function renderChannels() {
   const sec = document.getElementById('section-channels');
+  if (!sec) return;
   const g = state.guild || {};
   const tree = (g.structure || []).map(cat => `
     <div class="channel-category">
@@ -45,6 +46,7 @@ function renderChannels() {
 
 function renderRoles() {
   const sec = document.getElementById('section-roles');
+  if (!sec) return;
   const roles = (state.guild?.roles || []).sort((a, b) => (b.position || 0) - (a.position || 0));
   sec.innerHTML = `
     <div class="card">

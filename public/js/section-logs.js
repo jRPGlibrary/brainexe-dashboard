@@ -10,6 +10,7 @@ let _autoScrollLogs = true;
 
 function renderLogs() {
   const sec = document.getElementById('section-logs');
+  if (!sec) return;
 
   if (state.logs.length > 100) {
     logsPagination.filters.search = _logFilter;

@@ -2,6 +2,7 @@
 
 async function renderAudit() {
   const sec = document.getElementById('section-audit');
+  if (!sec) return;
   sec.innerHTML = '<div class="empty">Chargement audit avancé…</div>';
 
   try {
