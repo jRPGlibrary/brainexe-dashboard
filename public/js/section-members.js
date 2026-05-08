@@ -66,7 +66,12 @@ function renderMembersList() {
                 <span>${m.bot ? '🤖 ' : ''}${escapeHtml(m.displayName || m.username || m.id)}</span>
               </td>
               <td class="text-sm">${rolesBadges || '—'}</td>
-              <td class="text-center"><div class="affinity-bar" style="width:100px; background:linear-gradient(90deg, #e74c3c ${Math.max(33, affinity * 0.33)}%, #f39c12 ${Math.max(33, Math.min(66, affinity * 0.66))}%, #27ae60 ${Math.min(100, affinity)}%)" title="${affinity}/100"></div></td>
+              <td class="text-center">
+                <div style="width:100px;height:8px;background:var(--border-color);border-radius:4px;overflow:hidden;display:inline-block" title="${affinity}/100">
+                  <div style="width:${affinity}%;height:100%;background:${affinity>=65?'#27ae60':affinity>=40?'#f39c12':'#e74c3c'};border-radius:4px;transition:width 0.3s"></div>
+                </div>
+                <span class="text-muted text-sm" style="margin-left:4px">${affinity}</span>
+              </td>
               <td class="text-center text-sm">${trend}</td>
               <td class="text-muted text-sm">${joinedDate}</td>
             </tr>

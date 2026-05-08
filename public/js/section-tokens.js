@@ -4,6 +4,11 @@ let tokenLeaderboard = [];
 function initTokensSection() {
   const section = document.getElementById('section-tokens');
   if (!section) return;
+  // Reset chart instance pour éviter le conflit canvas lors du re-render
+  if (window.tokensDailyChartInstance) {
+    window.tokensDailyChartInstance.destroy();
+    window.tokensDailyChartInstance = null;
+  }
 
   section.innerHTML = `
     <div class="container">
@@ -344,5 +349,3 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
-
-initTokensSection();

@@ -34,7 +34,7 @@ const {
   getActiveWindow, detectSupport, recordSupportFromMember, getVulnerabilityBlock,
 } = require('../bot/vulnerability');
 const { getRandomReaction } = require('../bot/reactions');
-const { formatContext } = require('../features/context');
+const { formatContext, extractRecentBraineeWords } = require('../features/context');
 const { scheduleDelayedReplyAfterEmoji } = require('../features/delayedReply');
 const { LIGHT_TAG_CLAUSE } = require('../features/greetings');
 const { scheduleDiscordToFile } = require('./sync');
@@ -223,6 +223,12 @@ async function handleMentionReply(message, userQuery) {
     const taggedMembers = [...message.mentions.users.values()].filter(u => u.id !== shared.discord.user.id).map(u => '@' + u.username);
     const taggedBlock = taggedMembers.length > 0 ? `Membres tagués : ${taggedMembers.join(', ')}. Tu peux les évoquer naturellement SANS les re-tagger — ils ont déjà été notifiés.` : '';
 
+    // 🔁 Anti-répétition lexicale — mots récents utilisés par Brainee dans ce salon
+    const recentBraineeWords = extractRecentBraineeWords(fetched, 4, shared.discord.user?.id);
+    const antiRepeatBlock = recentBraineeWords.length > 0
+      ? `\n🔁 MOTS RÉCENTS À ÉVITER (tu les as utilisés dans tes derniers messages) : ${recentBraineeWords.join(', ')}. Utilise des synonymes ou reformule complètement.`
+      : '';
+
     const needsYoutube = YOUTUBE_KEYWORDS.some(kw => userQuery.toLowerCase().includes(kw));
     let youtubeBlock = '';
     if (needsYoutube && require('../config').YOUTUBE_API_KEY) {
@@ -236,7 +242,7 @@ async function handleMentionReply(message, userQuery) {
     const temporalBlock = getTemporalBlock();
     // 🔗 Contexte DM récents avec cette personne pour faire le lien serveur ↔ DM
     const dmCrossContext = await enrichServerWithDmContext(message.author.id, message.author.username).catch(() => '');
-    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
+    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}${antiRepeatBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -370,6 +376,9 @@ function registerMessageHandlers() {
       const memberStories = await getMemberStories(message.author.id);
       const memberStoriesBlock = formatStoriesBlock(memberStories, message.author.username);
 
+      // 🌐 Mémoire narrative du serveur — pour faire le lien DM ↔ vie serveur
+      const dmNarrativeBlock = await getNarrativeContext().catch(() => '');
+
       // 💎 VIP tier
       const vipTier = getVipTier(bond);
       const vipBlock = getVipBlockForPrompt(vipTier, bond, message.author.username);
@@ -393,7 +402,7 @@ function registerMessageHandlers() {
 
       const dmTemporalBlock = getTemporalBlock();
       const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
-      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.${dmImgInstruction}`;
+      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.${dmImgInstruction}`;
       const userTextOnlyPrompt = `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"`;
       const userPrompt = buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
       await simulateTyping(message.channel, 1000 + Math.random() * 2000);

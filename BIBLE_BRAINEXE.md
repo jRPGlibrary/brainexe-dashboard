@@ -1,12 +1,12 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version** : `0.13.0`
+**Version** : `0.14.0`
 **Dernière mise à jour** : Mai 2026
 **Pour qui ?** : Pour la communauté BrainEXE — comprendre TOUT ce que fait Brainee, son dashboard, et comment le code est organisé. Pour les nouveaux qui rejoignent. Pour ceux qui veulent contribuer. Pour ceux qui veulent juste savoir.
 
 > 💜 Cette bible est faite pour être **partagée**. Elle est écrite en français, sans jargon inutile, avec des exemples concrets. Tu peux la lire d'un bout à l'autre, ou sauter direct au chapitre qui t'intéresse.
 >
-> **Range de versions documentées :** `v0.0.1` → `v0.13.0` (version actuelle — 87 versions, de la naissance du projet à aujourd'hui). L'historique complet et la table des changements sont dans [CHANGELOG.md](./CHANGELOG.md).
+> **Range de versions documentées :** `v0.0.1` → `v0.14.0` (version actuelle — 88 versions, de la naissance du projet à aujourd'hui). L'historique complet et la table des changements sont dans [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -1263,7 +1263,7 @@ brainexe-dashboard/
 ├── package-lock.json
 ├── README.md                       📄 Présentation projet
 ├── BIBLE_BRAINEXE.md               📚 Cette bible
-├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v0.13.0
+├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v0.14.0
 └── SOUTIEN.md                      💜 Coûts + soutien + mot de Brainee
 ```
 
@@ -1443,7 +1443,7 @@ Parce que Brain (Matthieu) en est un, et parce que les communautés de gamers ne
 
 <div align="center">
 
-🧠✨ **Bible BrainEXE — v0.13.0 — Mai 2026** ✨🧠
+🧠✨ **Bible BrainEXE — v0.14.0 — Mai 2026** ✨🧠
 
 *Pour la communauté, par la communauté.*
 *Si tu lis ces lignes, t'es déjà des nôtres.*
