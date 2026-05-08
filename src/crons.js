@@ -342,7 +342,7 @@ function startConvCron() {
     }
   }, { timezone: 'Europe/Paris' });
 
-  pushLog('SYS', `✅ Crons v0.12.0 — reply 45min + scan 20min + relances + émotions + bonds + narrative + outreach 35min + hyperFocus 25min + vuln 1h + pin 90min + channelWatch 4min + attachmentEvol 4h`, 'success');
+  pushLog('SYS', `✅ Crons v0.13.0 — reply 45min + scan 20min + relances + émotions + bonds + narrative + outreach 35min + hyperFocus 25min + vuln 1h + pin 90min + channelWatch 4min + attachmentEvol 4h`, 'success');
 }
 
 function slot_is_active(h) {

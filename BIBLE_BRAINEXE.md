@@ -1405,7 +1405,7 @@ Brainee tourne 24h/24 et ça **coûte de l'argent réel** chaque mois.
 
 ### Ressources
 
-- 📜 [CHANGELOG.md](./CHANGELOG.md) — historique complet v0.0.1 → v0.11.2
+- 📜 [CHANGELOG.md](./CHANGELOG.md) — historique complet v0.0.1 → v0.13.0
 - 💜 [SOUTIEN.md](./SOUTIEN.md) — coûts, soutien, mot de Brainee
 - 📄 [README.md](./README.md) — présentation rapide pour GitHub
 - 🌐 [Discord Developer Portal](https://discord.com/developers/applications)
