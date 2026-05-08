@@ -294,8 +294,8 @@ function startConvCron() {
     }
   }, { timezone: 'Europe/Paris' });
 
-  // Proactive outreach — toutes les 35 min, déclenchement probabiliste
-  outreachCron = cron.schedule('*/35 * * * *', () => {
+  // Proactive outreach — toutes les 25 min, déclenchement probabiliste
+  outreachCron = cron.schedule('*/25 * * * *', () => {
     if (!slot_is_active(getParisHour())) return;
     if (!rollOutreach()) return;
     pushLog('SYS', `⚡ Tick outreach déclenché`);

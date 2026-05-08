@@ -34,7 +34,7 @@ const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { logMessageForBridge } = require('./dmServerBridge');
 const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
 
-const MAX_CONV_ATTEMPTS = 5;
+const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
 
 /**

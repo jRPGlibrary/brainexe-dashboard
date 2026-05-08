@@ -43,17 +43,17 @@ function resetWeeklyPostCount(channelId) {
   map[channelId] = 0;
 }
 
-const WEEKLY_DEAD_LIMIT = 1;
+const WEEKLY_DEAD_LIMIT = 2;
 const MONOLOGUE_BOT_RATIO_THRESHOLD = 0.5;
 const MONOLOGUE_LOOKBACK = 15;
-const NO_INSIST_WINDOW_MS = 24 * 60 * 60 * 1000;
+const NO_INSIST_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 function getConvDailyCount() {
   return shared.botConfig.conversations.dailyCount || 0;
 }
 
 function getConvMaxPerDay() {
-  return shared.botConfig.conversations.maxPerDay || 16;
+  return shared.botConfig.conversations.maxPerDay || 22;
 }
 
 async function resetDailyCountIfNeeded() {

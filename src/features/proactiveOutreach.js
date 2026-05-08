@@ -33,7 +33,7 @@ const { detectMissedVips } = require('../db/vipSystem');
 const { getMemberStories, touchStory } = require('../db/memberStories');
 const { fireProactiveDmToVip } = require('./dmOutreach');
 
-const COOLDOWN_MS = 90 * 60 * 1000;
+const COOLDOWN_MS = 60 * 60 * 1000;
 let lastOutreachAt = 0;
 let lastOutreachType = null;
 
@@ -46,7 +46,7 @@ function isEligibleNow() {
   if (slot.maxConv === 0) return { ok: false, reason: `slot ${slot.label} sans conv` };
 
   const vibe = getDailyVibe();
-  if (['introvert', 'withdrawn', 'lazy', 'grumpy'].includes(vibe.name)) {
+  if (['introvert', 'withdrawn', 'lazy'].includes(vibe.name)) {
     return { ok: false, reason: `vibe ${vibe.name}` };
   }
 
@@ -142,9 +142,13 @@ function pickChannelsForType(type) {
 
   let preferred = [];
   if (type === 'challenge') {
-    preferred = nonGeneral.filter(c => /memes|off-topic|chaos|cerveau|partage/i.test(c.channelName));
+    preferred = nonGeneral.filter(c => /memes|off-topic|chaos|cerveau|partage|gaming|jrpg|retro|indie|next-gen/i.test(c.channelName));
   } else if (type === 'group_observation') {
-    preferred = nonGeneral.filter(c => /chaos|off-topic|cerveau/i.test(c.channelName));
+    preferred = nonGeneral.filter(c => /chaos|off-topic|cerveau|qg|lounge|daily|vie/i.test(c.channelName));
+  } else if (type === 'random_thought') {
+    preferred = nonGeneral.filter(c => /cerveau|hyperfocus|3h|musique|playlist|films|s.ries|manga|anim|bouffe|cuisine|code|ia|dev/i.test(c.channelName));
+  } else if (type === 'vip_callback') {
+    preferred = nonGeneral.filter(c => /qg|lounge|daily|off-topic|cerveau/i.test(c.channelName));
   }
   const rest = nonGeneral.filter(c => !preferred.includes(c));
   return [...shuffle(preferred), ...shuffle(rest)];
@@ -316,12 +320,12 @@ async function fireOutreach(forcedType = null) {
 function rollOutreach() {
   const vibe = getDailyVibe();
   const state = getInternalState();
-  let proba = 0.03;
+  let proba = 0.05;
   if (vibe.chattiness >= 0.7) proba += 0.03;
   if (state.socialNeed > 70) proba += 0.02;
   if (state.stimulation > 70) proba += 0.01;
   if (state.energy > 70) proba += 0.01;
-  proba = Math.min(0.08, proba);
+  proba = Math.min(0.12, proba);
   return Math.random() < proba;
 }
 

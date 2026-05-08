@@ -53,9 +53,12 @@ const { HYPER_FOCUS_TOPICS } = require('../bot/hyperFocus');
 
 // ─── COOLDOWNS INTERNES ───────────────────────────────────────────
 const channelLastJump = new Map(); // channelId → lastJumpTs
-const CHANNEL_MIN_GAP_MS = 45 * 60 * 1000;  // 45 min par salon/thread
+const CHANNEL_MIN_GAP_MS = 30 * 60 * 1000;  // 30 min par salon/thread (était 45)
 let globalLastJump = 0;
-const GLOBAL_MIN_GAP_MS = 8 * 60 * 1000;   // 8 min entre tous les sauts
+const GLOBAL_MIN_GAP_MS = 5 * 60 * 1000;   // 5 min entre tous les sauts (était 8)
+
+// Suivi de la dernière visite par catégorie Discord (nom de catégorie → timestamp)
+const categoryLastVisit = new Map();
 
 // Catégories Discord à ignorer
 const SKIP_CHANNEL_TYPES = [4, 5]; // GUILD_CATEGORY, GUILD_ANNOUNCEMENT
@@ -109,9 +112,24 @@ async function computeInterestScore(messages, channelName, parentName = '') {
   const recentMsgs = messages.slice(0, 12);
   const combinedContent = recentMsgs.map(m => m.content || '').join(' ').toLowerCase();
 
-  // Topics qui l'intéressent (hors hyperfocus)
-  const INTEREST_KW = ['jrpg', 'rpg', 'persona', 'final fantasy', 'indie', 'jeu', 'gaming',
-    'tdah', 'neuro', 'musique', 'ost', 'philosophie', 'débat', 'soulslike', 'metroidvania'];
+  // Topics qui l'intéressent (hors hyperfocus) — couvre toutes les catégories du serveur
+  const INTEREST_KW = [
+    // Gaming
+    'jrpg', 'rpg', 'persona', 'final fantasy', 'indie', 'jeu', 'gaming', 'soulslike',
+    'metroidvania', 'retro', 'pixel', 'level', 'boss', 'speedrun', 'lore', 'build',
+    // Social / neurodivergent
+    'tdah', 'neuro', 'hyperfocus', 'focus', 'anxiété', 'anxiete', 'cerveau', 'fatigue',
+    'burn', 'routine', 'motivation', 'procrastination',
+    // Créatif / Art
+    'dessin', 'création', 'créer', 'art', 'fanart', 'musique', 'ost', 'playlist',
+    'composition', 'pixel art', 'design',
+    // Culture / débats
+    'philosophie', 'débat', 'film', 'série', 'anime', 'manga', 'livre', 'lecture',
+    // Tech / dev
+    'code', 'dev', 'python', 'javascript', 'ia', 'modèle', 'llm', 'outil', 'api',
+    // Vie quotidienne
+    'cuisine', 'recette', 'dormir', 'sommeil', 'weekend', 'vacances', 'sortie',
+  ];
   if (INTEREST_KW.some(kw => combinedContent.includes(kw))) score += 0.14;
 
   // Activité récente de la conversation
@@ -132,6 +150,15 @@ async function computeInterestScore(messages, channelName, parentName = '') {
         else if (stage >= 2) score += 0.05;
       }
     } catch (_) {}
+  }
+
+  // Bonus de diversité catégorie : si cette catégorie n'a pas été visitée depuis 3h,
+  // boost le score pour encourager Brainee à couvrir toutes les catégories.
+  if (parentName) {
+    const catKey = parentName.toLowerCase();
+    const lastCatVisit = categoryLastVisit.get(catKey) || 0;
+    const THREE_HOURS = 3 * 60 * 60 * 1000;
+    if (Date.now() - lastCatVisit > THREE_HOURS) score += 0.12;
   }
 
   return Math.max(0, Math.min(1, score));
@@ -156,14 +183,14 @@ async function shouldWatchJump(channel) {
   const lastJump = channelLastJump.get(channel.id) || 0;
   if (Date.now() - lastJump < CHANNEL_MIN_GAP_MS) return false;
 
-  // Vibe bloquante (mais pas absolue — 10-15% de chance quand même)
-  if (vibe.name === 'withdrawn' && Math.random() > 0.08) return false;
-  if (vibe.name === 'melancholic' && Math.random() > 0.12) return false;
-  if (vibe.name === 'introvert' && Math.random() > 0.15) return false;
-  if (vibe.name === 'lazy' && Math.random() > 0.10) return false;
+  // Vibe bloquante (probabiliste — taux légèrement relevés pour plus d'autonomie)
+  if (vibe.name === 'withdrawn' && Math.random() > 0.15) return false;
+  if (vibe.name === 'melancholic' && Math.random() > 0.20) return false;
+  if (vibe.name === 'introvert' && Math.random() > 0.25) return false;
+  if (vibe.name === 'lazy' && Math.random() > 0.18) return false;
 
-  // Énergie très basse
-  if (state.energy < 18) return false;
+  // Énergie très basse (seuil légèrement abaissé)
+  if (state.energy < 14) return false;
 
   return true;
 }
@@ -282,7 +309,7 @@ async function runChannelWatch() {
       // Pas de messages récents ou canal inactif
       if (!channelMsgs.length) continue;
       const newestMsg = channelMsgs[0];
-      const AGE_MAX = 90 * 60 * 1000; // Conversation pas trop vieille (90 min)
+      const AGE_MAX = 150 * 60 * 1000; // Conversation pas trop vieille (150 min, était 90)
       if (Date.now() - newestMsg.createdTimestamp > AGE_MAX) continue;
 
       // Vérifier qu'on n'a pas déjà posté récemment dans ce salon
@@ -291,12 +318,15 @@ async function runChannelWatch() {
         // Quand même regarder les threads
       } else {
         if (await shouldWatchJump(channel)) {
-          const score = await computeInterestScore(channelMsgs, channel.name, '');
-          if (score >= 0.42) {
-            // Passer channelFetched (avec messages bot) pour que formatContext
-            // puisse résoudre les reply-references vers les messages de Brainee
+          const parentCatName = channel.parent?.name || '';
+          const score = await computeInterestScore(channelMsgs, channel.name, parentCatName);
+          if (score >= 0.34) { // seuil abaissé (était 0.42) pour plus d'autonomie
             const jumped = await performWatchJump(channel, channelMsgs, false, channelFetched);
-            if (jumped) return; // Un seul saut par tick
+            if (jumped) {
+              // Enregistrer la visite de catégorie pour le bonus de diversité
+              if (parentCatName) categoryLastVisit.set(parentCatName.toLowerCase(), Date.now());
+              return; // Un seul saut par tick
+            }
           }
         }
       }
@@ -319,9 +349,13 @@ async function runChannelWatch() {
 
           if (await shouldWatchJump(thread)) {
             const score = await computeInterestScore(threadMsgs, thread.name, channel.name);
-            if (score >= 0.47) { // Seuil légèrement plus haut pour les threads
+            if (score >= 0.38) { // Seuil threads abaissé (était 0.47)
               const jumped = await performWatchJump(thread, threadMsgs, true, threadFetched);
-              if (jumped) return;
+              if (jumped) {
+                const catName = channel.parent?.name || channel.name;
+                if (catName) categoryLastVisit.set(catName.toLowerCase(), Date.now());
+                return;
+              }
             }
           }
         }

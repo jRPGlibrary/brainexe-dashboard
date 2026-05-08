@@ -7,7 +7,7 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.14.0-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.14.1-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
@@ -192,15 +192,15 @@ npm test
 
 ## 📝 Versions
 
-> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.14.0** (88 versions, de la naissance à aujourd'hui).
+> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.14.1** (89 versions, de la naissance à aujourd'hui).
 
-### Dernière release — `v0.14.0` — 🔁 Anti-répétition · Pont DM↔Serveur · Dashboard fixes
+### Dernière release — `v0.14.1` — 🚀 Autonomie maximale · Exploration tous salons · Anti-répétition
 
-- **Anti-répétition lexicale** : Brainee détecte les mots qu'elle vient d'utiliser et les évite dans ses réponses suivantes
-- **Pont DM↔Serveur renforcé** : contexte narratif serveur injecté dans les DMs, et inversement — meilleure continuité
-- **Dashboard tokens fonctionnel** : section Tokens correctement câblée dans la navigation (re-render + reset chart)
-- **Barre d'affinité membres** : remplacée par une progress bar propre avec couleur dynamique (rouge/orange/vert)
-- **Navigation being/tokens** : titres et sous-titres corrigés dans la barre latérale
+- **Exploration tous salons** : channelWatcher couvre désormais toutes les catégories avec bonus diversité (+0.12 si catégorie non visitée depuis 3h)
+- **Outreach boosté** : probabilité 3%→5% (cap 8%→12%), cooldown 90→60 min, cron 35→25 min, vibe `grumpy` débloqué
+- **Quota journalier** : 16→22 posts/jour, no-insist réduit 24h→12h, WEEKLY_DEAD_LIMIT 1→2
+- **MAX_CONV_ATTEMPTS** : 5→10 tentatives de salons avant abandon
+- **Seuils d'intérêt assouplis** : salons 0.42→0.34, threads 0.47→0.38, AGE_MAX 90→150 min, cooldowns 45→30 min
 
 ### Phases du projet
 
@@ -220,7 +220,8 @@ npm test
 | 0.11 | `v0.11.0` → `v0.11.2` | 🧬 BRAINEE-LIVING — conscience numérique (12 modules) |
 | 0.12 | `v0.12.0` → `v0.12.6` | 🤝 Liens d'attachement + refus émotionnel + conviction |
 | 0.13 | `v0.13.0` | 🚀 Release Candidate — stabilisation complète avant 1.0.0 |
-| **0.14** | `v0.14.0` | 🔁 **Anti-répétition · Pont DM↔Serveur · Dashboard fixes** *(actuelle)* |
+| 0.14 | `v0.14.0` | 🔁 Anti-répétition · Pont DM↔Serveur · Dashboard fixes |
+| **0.14** | `v0.14.1` | 🚀 **Autonomie maximale · Exploration tous salons · Outreach boosté** *(actuelle)* |
 
 ---
 
