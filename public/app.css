@@ -2204,3 +2204,56 @@ a:hover { text-decoration: underline; }
   font-size: 11px;
   opacity: 0.9;
 }
+
+/* ─── TOKENS SECTION — TABS ─── */
+.tabs-container {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+  padding-bottom: 0;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  border-radius: 6px 6px 0 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  cursor: pointer;
+}
+
+.tab-btn:hover { color: var(--text); }
+
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Grille générique (alias de grid-2) */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ─── MISC ─── */
+.flex-col { display: flex; flex-direction: column; }
+.gap-1 { gap: 6px; }
+.btn-block { width: 100%; }
+.btn-sm.btn-block { width: 100%; }
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}

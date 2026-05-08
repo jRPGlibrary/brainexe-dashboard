@@ -27,6 +27,7 @@ function navigate(section) {
     s.classList.toggle('active', s.id === `section-${section}`);
   });
   document.querySelector('.main')?.scrollTo(0, 0);
+  updateBottomTabs(section);
   const titles = {
     overview: ['Vue d\'ensemble', 'Dashboard temps réel · toute modification est appliquée instantanément'],
     admin:    ['🎛️ Admin live', 'Contrôle chaque paramètre du bot en direct — aucune sauvegarde requise'],
@@ -51,6 +52,12 @@ function navigate(section) {
   document.getElementById('page-title').textContent = title;
   document.getElementById('page-subtitle').textContent = sub;
   renderCurrentSection();
+}
+
+function updateBottomTabs(section) {
+  document.querySelectorAll('.bottom-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === section);
+  });
 }
 
 function renderCurrentSection() {

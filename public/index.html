@@ -148,8 +148,33 @@
   <div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
   <div id="modal-bg" class="modal-bg" role="dialog" aria-modal="true"></div>
 
+  <!-- ── Bottom Tab Bar (mobile ≤520px) ── -->
+  <nav class="bottom-tabs" id="bottom-tabs" aria-label="Navigation rapide">
+    <button class="bottom-tab active" data-section="overview" onclick="navigate('overview'); updateBottomTabs('overview')">
+      <span class="bottom-tab-icon">📊</span>
+      <span>Accueil</span>
+    </button>
+    <button class="bottom-tab" data-section="admin" onclick="navigate('admin'); updateBottomTabs('admin')">
+      <span class="bottom-tab-icon">🎛️</span>
+      <span>Admin</span>
+    </button>
+    <button class="bottom-tab" data-section="emotions" onclick="navigate('emotions'); updateBottomTabs('emotions')">
+      <span class="bottom-tab-icon">💗</span>
+      <span>Émotions</span>
+    </button>
+    <button class="bottom-tab" data-section="logs" onclick="navigate('logs'); updateBottomTabs('logs')">
+      <span class="bottom-tab-icon">📜</span>
+      <span>Logs</span>
+    </button>
+    <button class="bottom-tab" data-section="settings" onclick="navigate('settings'); updateBottomTabs('settings')">
+      <span class="bottom-tab-icon">⚙️</span>
+      <span>Réglages</span>
+    </button>
+  </nav>
+
   <!-- ── Libraries ── -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- ── Core ── -->
   <script src="js/auth.js"></script>
   <script src="js/core.js"></script>
