@@ -8,6 +8,9 @@ module.exports = {
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
   GNEWS_API_KEY: process.env.GNEWS_API_KEY,
+  NEWSAPI_API_KEY: process.env.NEWSAPI_API_KEY,
+  IGDB_API_KEY: process.env.IGDB_API_KEY,
+  IGDB_CLIENT_ID: process.env.IGDB_CLIENT_ID,
   MONGODB_URI: process.env.MONGODB_URI,
   MIN_GAP_ANY_POST: 15 * 60 * 1000,
 };
