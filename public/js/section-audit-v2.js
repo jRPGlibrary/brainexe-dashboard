@@ -1,6 +1,6 @@
 /* Audit Avancé v0.14.1 - Journal sécurité détaillé */
 
-async function renderAuditV2() {
+async function renderAudit() {
   const sec = document.getElementById('section-audit');
   sec.innerHTML = '<div class="empty">Chargement audit avancé…</div>';
 

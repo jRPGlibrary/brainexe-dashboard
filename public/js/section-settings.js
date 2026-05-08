@@ -110,8 +110,9 @@ function debouncedSaveAutoRole(value) {
 
 function showTotpSetup() {
   const modal = document.getElementById('modal-bg');
+  modal.innerHTML = '';
   const content = document.createElement('div');
-  content.className = 'modal-content';
+  content.className = 'modal';
   content.style.cssText = 'max-width: 500px; max-height: 80vh; overflow-y: auto;';
   content.innerHTML = `
     <div class="modal-header">
@@ -193,8 +194,7 @@ async function generateTotpQr() {
       document.getElementById('totp-secret').textContent = data.secret;
       document.getElementById('totp-backup').textContent = data.backupCodes.join('\n');
 
-      const qrCode = await QRCode.toDataURL(data.qrCode);
-      document.getElementById('totp-qr').innerHTML = `<img src="${qrCode}" alt="QR Code">`;
+      document.getElementById('totp-qr').innerHTML = `<img src="${data.qrCode}" alt="QR Code" style="display:block;margin:8px auto;border-radius:4px">`;
 
       window.totpSetup = { secret: data.secret, backupCodes: data.backupCodes };
     }

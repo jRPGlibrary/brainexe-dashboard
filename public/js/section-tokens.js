@@ -232,7 +232,7 @@ async function loadMemberTokenStats(userId, username) {
     const daily = await dailyRes.json();
 
     if (!stats.ok) {
-      showToast('Erreur lors du chargement', 'error');
+      toast('Erreur lors du chargement', 'error');
       return;
     }
 
@@ -290,7 +290,7 @@ async function loadMemberTokenStats(userId, username) {
 async function loadDailyStats() {
   const input = document.getElementById('daily-member-search').value.trim();
   if (!input) {
-    showToast('Entrez un ID Discord ou un nom', 'warning');
+    toast('Entrez un ID Discord ou un nom', 'warning');
     return;
   }
 
@@ -299,7 +299,7 @@ async function loadDailyStats() {
     const data = await res.json();
 
     if (!data.ok || !data.stats || data.stats.length === 0) {
-      showToast('Aucune donnée trouvée', 'warning');
+      toast('Aucune donnée trouvée', 'warning');
       return;
     }
 
@@ -330,10 +330,10 @@ async function loadDailyStats() {
       window.tokensDailyChartInstance.update();
     }
 
-    showToast('Données chargées', 'success');
+    toast('Données chargées', 'success');
   } catch (e) {
     console.error('Erreur:', e);
-    showToast('Erreur lors du chargement', 'error');
+    toast('Erreur lors du chargement', 'error');
   }
 }
 
@@ -343,9 +343,3 @@ function formatNumber(n) {
   return n.toLocaleString('fr-FR');
 }
 
-function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
