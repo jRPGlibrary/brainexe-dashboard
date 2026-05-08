@@ -1,6 +1,6 @@
 const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
-const { GUILD_ID, ANTHROPIC_API_KEY, GNEWS_API_KEY, NEWSAPI_API_KEY, RAWG_API_KEY, IGDB_API_KEY, IGDB_CLIENT_ID, REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET } = require('../config');
+const { GUILD_ID, ANTHROPIC_API_KEY, GNEWS_API_KEY, NEWSAPI_API_KEY, IGDB_API_KEY, IGDB_CLIENT_ID } = require('../config');
 const { callClaude } = require('../ai/claude');
 const { getBotState, setBotState } = require('../db/botState');
 const { BOT_PERSONA } = require('../bot/persona');
@@ -93,45 +93,40 @@ async function fetchNewsAPIArticles(topic, postedUrls = []) {
 }
 
 async function fetchRedditArticles(topic, postedUrls = []) {
-  if (!REDDIT_CLIENT_ID || !REDDIT_CLIENT_SECRET) return [];
-
   try {
     const { controller, cleanup } = withTimeout(8000);
 
     pushLog('DBG', `Reddit: fetching "${topic}"`, 'debug');
 
-    const subreddits = ['gaming', 'Games', 'pcgaming', 'PS5', 'xbox', 'Nintendo_Switch', 'retrogaming'];
-    const queries = [`${topic}`, `"${topic}"`];
-
+    const subreddits = ['gaming', 'Games', 'pcgaming'];
     const posts = [];
 
-    for (const subreddit of subreddits.slice(0, 3)) {
-      for (const query of queries) {
-        try {
-          const searchUrl = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&sort=new&limit=10&restrict_sr=on`;
-          const res = await fetch(searchUrl, {
-            signal: controller.signal,
-            headers: { 'User-Agent': 'Brainee-GameNews/1.0' }
-          });
+    for (const subreddit of subreddits) {
+      try {
+        const searchUrl = `https://www.reddit.com/r/${subreddit}/new.json?limit=20`;
+        const res = await fetch(searchUrl, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Brainee-GameNews/1.0' }
+        });
 
-          if (res.ok) {
-            const data = await res.json();
-            const newPosts = (data.data?.children || [])
-              .map(p => p.data)
-              .filter(p => p?.title && p?.url && !postedUrls.includes(p.url))
-              .map(p => ({
-                title: p.title,
-                description: `Discussion Reddit • ${p.subreddit}`,
-                url: `https://reddit.com${p.permalink}`,
-                publishedAt: new Date(p.created_utc * 1000).toISOString(),
-                source: `r/${p.subreddit}`,
-                source_id: 'reddit'
-              }));
-            posts.push(...newPosts);
-          }
-        } catch (e) {
-          // Continue with next query/subreddit
+        if (res.ok) {
+          const data = await res.json();
+          const newPosts = (data.data?.children || [])
+            .map(p => p.data)
+            .filter(p => p?.title && p?.url && !postedUrls.includes(p.url))
+            .filter(p => !p.stickied)
+            .map(p => ({
+              title: p.title,
+              description: `Discussion Reddit • ${p.subreddit}`,
+              url: `https://reddit.com${p.permalink}`,
+              publishedAt: new Date(p.created_utc * 1000).toISOString(),
+              source: `r/${p.subreddit}`,
+              source_id: 'reddit'
+            }));
+          posts.push(...newPosts);
         }
+      } catch (e) {
+        // Continue with next subreddit
       }
     }
 
