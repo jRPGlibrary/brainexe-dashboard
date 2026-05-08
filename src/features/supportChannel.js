@@ -9,6 +9,9 @@ const { normalizeName } = require('../bot/messaging');
 const CHANNEL_NAME = '❤️-soutien-brainee';
 const CHANNEL_DESCRIPTION = 'Aide Brainee à grandir 💙 · Découvre pourquoi le bot a besoin de soutien et comment contribuer';
 
+// ID fixe du salon de soutien — ne jamais recréer
+const FIXED_SUPPORT_CHANNEL_ID = '1495357717718503605';
+
 async function ensureSupportChannel() {
   try {
     if (!shared.discord) return;
@@ -17,45 +20,40 @@ async function ensureSupportChannel() {
 
     await guild.channels.fetch();
 
-    let channel = null;
-    const storedId = getSupportChannelId();
+    // Priorité 1 : ID fixe hardcodé (jamais recréer si déjà existant)
+    let channel = guild.channels.cache.get(FIXED_SUPPORT_CHANNEL_ID);
+    if (channel && channel.type === ChannelType.GuildText) {
+      setSupportChannelId(FIXED_SUPPORT_CHANNEL_ID);
+      pushLog('SYS', `Salon de soutien récupéré (ID fixe) ✓`, 'info');
+      await postSupportEmbed(channel);
+      return;
+    }
 
+    // Priorité 2 : ID stocké en config
+    const storedId = getSupportChannelId();
     if (storedId) {
       channel = guild.channels.cache.get(storedId);
       if (channel && channel.type === ChannelType.GuildText) {
-        pushLog('SYS', `Salon de soutien récupéré par ID ✓`, 'info');
-      } else {
-        channel = null;
+        pushLog('SYS', `Salon de soutien récupéré par ID config ✓`, 'info');
+        await postSupportEmbed(channel);
+        return;
       }
     }
 
-    if (!channel) {
-      const normChannel = normalizeName(CHANNEL_NAME);
-      channel = guild.channels.cache.find(c =>
-        c.type === ChannelType.GuildText &&
-        normalizeName(c.name) === normChannel
-      );
-
-      if (channel) {
-        setSupportChannelId(channel.id);
-        pushLog('SYS', `Salon de soutien trouvé par nom normalisé ✓`, 'info');
-      }
-    }
-
-    if (!channel) {
-      channel = await guild.channels.create({
-        name: CHANNEL_NAME,
-        type: ChannelType.GuildText,
-        topic: CHANNEL_DESCRIPTION,
-        reason: 'Auto-création du salon de soutien Brainee',
-      });
+    // Priorité 3 : recherche par nom normalisé (sans création)
+    const normChannel = normalizeName(CHANNEL_NAME);
+    channel = guild.channels.cache.find(c =>
+      c.type === ChannelType.GuildText &&
+      normalizeName(c.name) === normChannel
+    );
+    if (channel) {
       setSupportChannelId(channel.id);
-      pushLog('SYS', `Salon de soutien créé ✓`, 'success');
-    } else {
-      pushLog('SYS', `Salon de soutien prêt ✓`, 'info');
+      pushLog('SYS', `Salon de soutien trouvé par nom ✓`, 'info');
+      await postSupportEmbed(channel);
+      return;
     }
 
-    await postSupportEmbed(channel);
+    pushLog('WARN', `Salon de soutien introuvable (ID ${FIXED_SUPPORT_CHANNEL_ID} inaccessible) — aucune création`, 'warn');
   } catch (e) {
     pushLog('ERR', `Support channel error: ${e.message}`, 'error');
   }
