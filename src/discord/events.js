@@ -309,6 +309,15 @@ async function handleMentionReply(message, userQuery) {
       tryPromoteSingularBond(message.author.id, updatedBond).catch(() => {});
     }
 
+    // 💞 Sync deepBonds (BRAINEE-LIVING) — jamais écrit depuis les @mentions sinon
+    if (shared.relationships) {
+      const mentionEventType = detectSupport(userQuery) ? 'support' : 'interaction';
+      shared.relationships.updateBond(message.author.id, {
+        type: mentionEventType,
+        description: `@mention de ${message.author.username}`,
+      }).catch(() => {});
+    }
+
     // v0.12.0 : Mettre à jour les besoins sociaux dans le module desires
     if (shared.desires) {
       shared.desires.updateNeeds().catch(() => {});
@@ -419,6 +428,9 @@ function registerMessageHandlers() {
       // Enrichir le DM avec le contexte serveur (faire la liaison DM ↔ Serveur)
       const enrichedUserContent = await enrichDMWithServerContext(message.author.id, message.author.username, userContent);
 
+      // 🏷️ Topic fatigue — tracké aussi en DM (manquait)
+      try { await recordMessageTopic(enrichedUserContent || userContent); } catch (_) {}
+
       const dmTemporalBlock = getTemporalBlock();
       const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
       const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.${dmImgInstruction}`;
@@ -468,6 +480,15 @@ function registerMessageHandlers() {
       await appendDmMessage(message.author.id, message.author.username, 'assistant', reply);
       await updateMemberProfile(message.author.id, message.author.username, userContent);
       await applyInteractionToBond(message.author.id, message.author.username, userContent);
+
+      // 💞 Sync deepBonds (BRAINEE-LIVING) — collection vide sinon car jamais écrite en DM
+      if (shared.relationships) {
+        const deepEventType = (vulnWindow && detectSupport(userContent)) ? 'support' : 'interaction';
+        shared.relationships.updateBond(message.author.id, {
+          type: deepEventType,
+          description: `DM avec ${message.author.username}`,
+        }).catch(() => {});
+      }
 
       // 📚 Détection narrative en DM aussi
       try {

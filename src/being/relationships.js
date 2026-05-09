@@ -63,6 +63,7 @@ class RelationshipSystem {
     if (event.type === 'support') impact += 15;
     if (event.type === 'vulnerability_shared') impact += 20;
     if (event.type === 'inside_joke') impact += 5;
+    if (event.type === 'interaction') impact += 2;
     if (event.type === 'conflict') impact -= 10;
     if (event.type === 'neglect') impact -= 5;
 
