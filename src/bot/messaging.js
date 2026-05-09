@@ -107,6 +107,25 @@ async function simulateTyping(channel, durationMs = 2000) {
   } catch (_) {}
 }
 
+// Typing réaliste pour les DM : proportionnel à la longueur de la réponse.
+// Renouvelle sendTyping() toutes les 7.5s pour les longues réponses.
+async function simulateDmTyping(channel, replyLength) {
+  const charsPerSec = 5 + Math.random() * 2;           // 5-7 chars/sec ≈ 40-55 wpm
+  const readMs      = 800 + Math.random() * 1200;       // 0.8-2s "lecture"
+  const typeMs      = (replyLength / charsPerSec) * 1000;
+  const totalMs     = Math.min(Math.floor(readMs + typeMs), 20000); // cap 20s
+
+  const start = Date.now();
+  try {
+    while (Date.now() - start < totalMs - 300) {
+      await channel.sendTyping();
+      const remaining = totalMs - (Date.now() - start);
+      if (remaining <= 0) break;
+      await sleep(Math.min(7500, remaining));
+    }
+  } catch (_) {}
+}
+
 async function sendHuman(channel, content, replyTo = null, opts = {}) {
   const guild = channel?.guild || replyTo?.guild || null;
   content = stripEmDash(resolveMentionsInText(content, guild));
@@ -160,4 +179,4 @@ async function sendHuman(channel, content, replyTo = null, opts = {}) {
   return channel.send(part2);
 }
 
-module.exports = { resolveMentionsInText, simulateTyping, sendHuman, normalizeName, stripEmDash };
+module.exports = { resolveMentionsInText, simulateTyping, simulateDmTyping, sendHuman, normalizeName, stripEmDash };

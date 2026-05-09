@@ -1,10 +1,48 @@
 # 📜 Changelog — BrainEXE Dashboard
 
-Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.14.1** (version actuelle).
+Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.16.0** (version actuelle).
 Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.PATCH`. En pre-1.0, un `MINOR` peut introduire des breaking changes — c'est cohérent avec un projet qui itère encore.
 
 > **Convention :** chaque `MINOR` (`0.1.x`, `0.2.x`, …) correspond à un **chapitre** du projet (une thématique). Le `PATCH` est une vraie correction ou un ajout incrémental dans le chapitre courant.
 > Les versions `0.0.x` constituent la **pré-histoire** : les 10 premiers prototypes fondateurs (12–11 avril 2026) avant la numérotation officielle.
+
+---
+
+## 🎭 v0.16.0 — Présence vivante · Typing réaliste · Excuses IA · Statut Discord
+**Date :** 2026-05-09
+
+### 🎯 Thème
+
+Brainee répondait trop vite et trop uniformément — elle semblait H24 collée à son écran. Cette version lui donne une vraie présence : délai de frappe proportionnel à ses réponses en DM, système d'absence aléatoire avec excuses générées par l'IA, et statut Discord qui change en temps réel (dnd/idle/online) selon ce qu'elle prétexte faire.
+
+### ✨ Nouveautés
+
+- **Typing proportionnel en DM** (`src/bot/messaging.js`) :
+  - Nouvelle fonction `simulateDmTyping(channel, replyLength)` — calcule un délai réaliste basé sur la longueur de la réponse (~5-7 chars/sec ≈ 40-55 wpm) plus un temps de "lecture" (0.8-2s)
+  - Renouvelle l'indicateur `sendTyping()` toutes les 7.5s pour les longues réponses (Discord l'éteint sinon)
+  - Plafonné à 20 secondes max
+  - Appliqué après la génération Claude, en plus d'un court signal de lecture initial (0.5-1s)
+
+- **Système "j'suis occupée"** (`src/features/busyExcuse.js`) :
+  - 4% de probabilité en DM, 2% en serveur à chaque message reçu
+  - L'excuse est **générée par Claude Haiku** en temps réel, adaptée au slot horaire et à la raison (manger, repos, gaming, surf web, sortie)
+  - Brainee répond l'excuse immédiatement, puis revient **20 à 75 minutes plus tard** avec un message de retour également généré par l'IA
+  - Le message de retour commence par un signal naturel ("j'suis de retour", "bon me revoilà", "j'avais pas oublié hein") puis répond vraiment à la question initiale
+  - Raisons par slot : `lunch` → manger · `gaming/latenight` → session jeu · `transition` → dehors · `active/productive` → rabbit hole web · `sleep/wakeup` → repos
+
+- **Gestion du statut Discord** (`src/features/presenceManager.js`) :
+  - `setOccupied(reason)` : passe en `dnd` (rouge) pour manger/gaming, `idle` (orange) pour repos/web/sortie
+  - Activité affichée sous le pseudo : `🍕 déjeuner` · `😴 au repos` · `🎮 joue à NTE` · `🌐 sur le web` · `🚶 dehors`
+  - `setAvailable()` : repasse automatiquement en `online` sans activité quand elle répond pour de vrai
+
+### 🔧 Fichiers modifiés
+
+| Fichier | Changement |
+|---------|------------|
+| `src/features/presenceManager.js` | **Nouveau** — gestion statut + activité Discord |
+| `src/features/busyExcuse.js` | **Nouveau** — système excuse occupée avec retour différé |
+| `src/bot/messaging.js` | Ajout `simulateDmTyping()` + export |
+| `src/discord/events.js` | Intégration busyExcuse DM (4%) + mentions (2%) · Typing proportionnel post-Claude |
 
 ---
 

@@ -15,7 +15,8 @@ const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getCurrentSlot, getMentionDelayMs, getParisDay, getTemporalBlock } = require('../bot/scheduling');
 const { getDailyVibe, isUrgentQuery, decideMentionResponse, queueRelance } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock } = require('../bot/channelIntel');
-const { simulateTyping, sendHuman, resolveMentionsInText, stripEmDash } = require('../bot/messaging');
+const { simulateTyping, simulateDmTyping, sendHuman, resolveMentionsInText, stripEmDash } = require('../bot/messaging');
+const { checkBusyExcuse, triggerBusyExcuse } = require('../features/busyExcuse');
 const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
   updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
@@ -132,6 +133,12 @@ async function handleMentionReply(message, userQuery) {
       // Cooldown actif mais silencieux — juste une réaction
       await message.react('⏳').catch(() => {});
       pushLog('SYS', `🚫 Cooldown refus silencieux @mention → ${message.author.username}`);
+      return;
+    }
+
+    // v0.16.0 : Excuse occupée (2% de chance en serveur) — après le refus émotionnel
+    if (checkBusyExcuse(false)) {
+      await triggerBusyExcuse(message, userQuery, slot, false);
       return;
     }
 
@@ -397,6 +404,12 @@ function registerMessageHandlers() {
         try { await recordSupportFromMember(message.author.id, message.author.username, userContent); } catch (_) {}
       }
 
+      // 💤 v0.16.0 : Excuse occupée (4% de chance) — avant tout le reste
+      if (checkBusyExcuse(true)) {
+        await triggerBusyExcuse(message, userContent, slot, true);
+        return;
+      }
+
       // Enrichir le DM avec le contexte serveur (faire la liaison DM ↔ Serveur)
       const enrichedUserContent = await enrichDMWithServerContext(message.author.id, message.author.username, userContent);
 
@@ -405,7 +418,8 @@ function registerMessageHandlers() {
       const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.${dmImgInstruction}`;
       const userTextOnlyPrompt = `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"`;
       const userPrompt = buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
-      await simulateTyping(message.channel, 1000 + Math.random() * 2000);
+      // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
+      await simulateTyping(message.channel, 500 + Math.random() * 500);
       const { getContextualMaxTokens } = require('../utils');
       const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
       const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, BOT_PERSONA_DM);
@@ -428,6 +442,8 @@ function registerMessageHandlers() {
 
       // Logger le message pour la liaison DM/Serveur
       await logMessageForBridge(message.author.id, message.author.username, userContent, message.channelId, 'DM', 'dm');
+      // v0.16.0 : Typing proportionnel à la longueur de la réponse
+      await simulateDmTyping(message.channel, reply.length);
       if (Math.random() < 0.15 && reply.length > 80) { await sendHuman(message.channel, reply + dmSteamBlock, null, { bond, isDM: true }); }
       else {
         const { humanize, maybeAddOccasionalEmoji } = require('../bot/humanize');
