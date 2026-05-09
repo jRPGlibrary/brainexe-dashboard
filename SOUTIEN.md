@@ -1,7 +1,7 @@
 # 💜 Soutenir Brainee — Pourquoi c'est vital
 
 > *Mot de Brainee à sa communauté, expliqué simplement.*
-> **Version :** `0.14.1` · Mai 2026
+> **Version :** `0.17.0` · Mai 2026
 
 ---
 
@@ -29,7 +29,7 @@
 
 ## 💸 Le coût réel — chiffres bruts
 
-Brainee tourne **24h/24, 7j/7**, sans pause. Voilà ce que ça coûte chaque mois (chiffres v0.11.0) :
+Brainee tourne **24h/24, 7j/7**, sans pause. Voilà ce que ça coûte chaque mois (chiffres v0.17.0) :
 
 | Poste | Coût | Service | Pourquoi c'est nécessaire |
 |---|---:|---|---|
@@ -199,7 +199,7 @@ Chaque don est :
 >
 > Si vous le croisez sur le serveur, dites-lui merci. Il fait semblant que c'est rien, mais ça compte plus que vous croyez.
 >
-> 💜 — *Brainee, version 0.14.1, mai 2026*
+> 💜 — *Brainee, version 0.17.0, mai 2026*
 
 ---
 
@@ -217,7 +217,7 @@ Chaque don est :
 
 ## 🏷️ Versions concernées
 
-Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.14.1`** (versions actuelles). Avant `v0.4.2`, le système de funding n'existait pas — Brain payait tout sans tracking.
+Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.17.0`** (version actuelle). Avant `v0.4.2`, le système de funding n'existait pas — Brain payait tout sans tracking.
 
 | Version | Apport au système de soutien |
 |---|---|
@@ -228,6 +228,9 @@ Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.14.1`** (v
 | **v0.9.11** | Token Usage Tracking par membre — savoir qui consomme quoi |
 | **v0.9.15** | Token Optimization (−65 %) — Brain optimise encore avant de demander de l'aide |
 | **v0.9.17** | Tracking donateurs intégré au flux TikTok live |
+| **v0.15.0** | Actus gaming multi-sources (GNews + NewsAPI + Reddit + IGDB) — coût quasi identique |
+| **v0.16.0** | Présence vivante + excuses IA via Haiku (micro-coût) — lisibilité de l'absence |
+| **v0.17.0** | Mode dialogue libre (inner_circle) · fixes deepBonds, topicFatigue, analytics |
 
 ---
 
@@ -246,7 +249,7 @@ Non — tout le monde est traité pareil par Brainee, donateur ou pas. Brain ref
 Bien sûr — c'est libre, à tout moment. Pas de contrat, pas d'engagement.
 
 **❓ Combien Brain dépense-t-il vraiment de son temps là-dedans ?**
-Beaucoup. Le projet a démarré en mars 2026 et compte aujourd'hui **+10 000 lignes de code**, **38 modules frontend**, **17 collections MongoDB**, **165 tests**, **+87 versions**. Brain bosse dessus le soir, les week-ends, et parfois la nuit. C'est sa passion. Mais ça reste **du temps non rémunéré**.
+Beaucoup. Le projet a démarré en mars 2026 et compte aujourd'hui **+10 000 lignes de code**, **38 modules frontend**, **17 collections MongoDB**, **165 tests**, **+93 versions**. Brain bosse dessus le soir, les week-ends, et parfois la nuit. C'est sa passion. Mais ça reste **du temps non rémunéré**.
 
 **❓ Est-ce que Brainee va finir en SaaS payant ?**
 **Non.** Brain a explicitement décidé que Brainee resterait **gratuite et privée au serveur BrainEXE**. Pas de pivot, pas de monétisation, pas de version payante "premium". Le soutien financier sert UNIQUEMENT à couvrir les frais d'infrastructure.

@@ -1,4 +1,4 @@
-/* Audit Avancé v0.14.1 - Journal sécurité détaillé */
+/* Audit Avancé v0.17.0 - Journal sécurité détaillé */
 
 async function renderAudit() {
   const sec = document.getElementById('section-audit');
