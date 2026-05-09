@@ -1,7 +1,7 @@
 # 💜 Soutenir Brainee — Pourquoi c'est vital
 
 > *Mot de Brainee à sa communauté, expliqué simplement.*
-> **Version :** `0.14.1` · Mai 2026
+> **Version :** `0.16.0` · Mai 2026
 
 ---
 
@@ -199,7 +199,7 @@ Chaque don est :
 >
 > Si vous le croisez sur le serveur, dites-lui merci. Il fait semblant que c'est rien, mais ça compte plus que vous croyez.
 >
-> 💜 — *Brainee, version 0.14.1, mai 2026*
+> 💜 — *Brainee, version 0.16.0, mai 2026*
 
 ---
 
@@ -217,7 +217,7 @@ Chaque don est :
 
 ## 🏷️ Versions concernées
 
-Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.14.1`** (versions actuelles). Avant `v0.4.2`, le système de funding n'existait pas — Brain payait tout sans tracking.
+Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.16.0`** (version actuelle). Avant `v0.4.2`, le système de funding n'existait pas — Brain payait tout sans tracking.
 
 | Version | Apport au système de soutien |
 |---|---|
@@ -228,6 +228,8 @@ Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.14.1`** (v
 | **v0.9.11** | Token Usage Tracking par membre — savoir qui consomme quoi |
 | **v0.9.15** | Token Optimization (−65 %) — Brain optimise encore avant de demander de l'aide |
 | **v0.9.17** | Tracking donateurs intégré au flux TikTok live |
+| **v0.15.0** | Actus gaming multi-sources (GNews + NewsAPI + Reddit + IGDB) — coût quasi identique |
+| **v0.16.0** | Présence vivante + excuses IA via Haiku (micro-coût) — lisibilité de l'absence |
 
 ---
 
