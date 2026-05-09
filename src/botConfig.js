@@ -84,6 +84,9 @@ const DEFAULT_CONFIG = {
     enabled: true, username: process.env.TIKTOK_USERNAME || 'brain.exe_modded',
     channelId: '1481028204897501273', channelName: '🔴・alertes-live', pingRoleName: '🔔 Notif Lives',
   },
+  dialogueLibre: {
+    enabled: false,
+  },
 };
 
 function loadConfig() {
@@ -99,6 +102,7 @@ function loadConfig() {
         conversations: { ...DEFAULT_CONFIG.conversations, ...(raw.conversations || {}) },
         reactionRoles: { ...DEFAULT_CONFIG.reactionRoles, ...(raw.reactionRoles || {}) },
         tiktokLive: { ...DEFAULT_CONFIG.tiktokLive, ...(raw.tiktokLive || {}) },
+        dialogueLibre: { ...DEFAULT_CONFIG.dialogueLibre, ...(raw.dialogueLibre || {}) },
       };
     }
   } catch (e) { pushLog('ERR', `loadConfig : ${e.message}`, 'error'); }

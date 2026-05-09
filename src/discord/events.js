@@ -10,7 +10,7 @@ const { getMemberProfile, updateMemberProfile, getToneInstruction } = require('.
 const { getChannelMemory, formatChannelMemoryBlock } = require('../db/channelMem');
 const { getChannelDirectory } = require('../db/channelDir');
 const { getDmHistory, appendDmMessage, formatDmHistory } = require('../db/dmHistory');
-const { BOT_PERSONA_CONVERSATION, BOT_PERSONA_DM } = require('../bot/persona');
+const { BOT_PERSONA_CONVERSATION, BOT_PERSONA_DM, BOT_PERSONA_DM_LIBRE } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getCurrentSlot, getMentionDelayMs, getParisDay, getTemporalBlock } = require('../bot/scheduling');
 const { getDailyVibe, isUrgentQuery, decideMentionResponse, queueRelance } = require('../bot/adaptiveSchedule');
@@ -390,6 +390,12 @@ function registerMessageHandlers() {
       const vipTier = getVipTier(bond);
       const vipBlock = getVipBlockForPrompt(vipTier, bond, message.author.username);
 
+      // 🔓 Mode dialogue libre — DM uniquement, inner_circle uniquement
+      const isLibreMode = shared.botConfig.dialogueLibre?.enabled === true
+        && vipTier?.key === 'inner_circle';
+      const dmPersona = isLibreMode ? `${BOT_PERSONA_DM}\n\n${BOT_PERSONA_DM_LIBRE}` : BOT_PERSONA_DM;
+      if (isLibreMode) pushLog('SYS', `🔓 Mode libre actif → DM ${message.author.username}`);
+
       // 🎯 Taste profile
       const tasteProfile = await getTasteProfile(message.author.id);
       const tasteBlock = formatTasteBlock(tasteProfile, message.author.username);
@@ -422,7 +428,7 @@ function registerMessageHandlers() {
       await simulateTyping(message.channel, 500 + Math.random() * 500);
       const { getContextualMaxTokens } = require('../utils');
       const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
-      const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, BOT_PERSONA_DM);
+      const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona);
       if (dmImages.length) pushLog('SYS', `🖼️ ${dmImages.length} image(s) lues (DM ${message.author.username})`);
       await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'dm_reply');
 
