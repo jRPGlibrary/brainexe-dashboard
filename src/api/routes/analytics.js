@@ -17,17 +17,22 @@ router.get('/analytics', async (req, res) => {
       }
     });
 
-    const memberActivity = {};
-    logs.forEach(log => {
-      if (log.member) {
-        memberActivity[log.member] = (memberActivity[log.member] || 0) + 1;
-      }
-    });
-
-    const topMembers = Object.entries(memberActivity)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([name, count]) => ({ name, count }));
+    // Top membres depuis memberProfiles (interactionCount réel)
+    // Les logs n'ont pas de champ member — on utilise MongoDB
+    let topMembers = [];
+    if (shared.mongoDb) {
+      try {
+        const profiles = await shared.mongoDb.collection('memberProfiles')
+          .find({ interactionCount: { $gt: 0 } })
+          .sort({ interactionCount: -1 })
+          .limit(10)
+          .toArray();
+        topMembers = profiles.map(p => ({
+          name: p.username || p.userId || 'Inconnu',
+          count: p.interactionCount || 0,
+        }));
+      } catch (_) {}
+    }
 
     res.json({
       ok: true,
