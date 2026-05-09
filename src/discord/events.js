@@ -10,7 +10,7 @@ const { getMemberProfile, updateMemberProfile, getToneInstruction } = require('.
 const { getChannelMemory, formatChannelMemoryBlock } = require('../db/channelMem');
 const { getChannelDirectory } = require('../db/channelDir');
 const { getDmHistory, appendDmMessage, formatDmHistory } = require('../db/dmHistory');
-const { BOT_PERSONA_CONVERSATION, BOT_PERSONA_DM } = require('../bot/persona');
+const { BOT_PERSONA_CONVERSATION, BOT_PERSONA_DM, BOT_PERSONA_DM_LIBRE } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getCurrentSlot, getMentionDelayMs, getParisDay, getTemporalBlock } = require('../bot/scheduling');
 const { getDailyVibe, isUrgentQuery, decideMentionResponse, queueRelance } = require('../bot/adaptiveSchedule');
@@ -148,12 +148,9 @@ async function handleMentionReply(message, userQuery) {
     const internalState = getInternalState();
     const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, userQuery, false);
 
-    if (!decision.should && internalState.mentalLoad > 85) {
-      // Only skip if VERY overloaded
-      try {
-        await message.react('😴').catch(() => {});
-      } catch (_) {}
-      pushLog('SYS', `🙅 Skip @mention (${decision.reason}): trop fatiguée`);
+    if (!decision.should) {
+      try { await message.react('😴').catch(() => {}); } catch (_) {}
+      pushLog('SYS', `🙅 Skip @mention (${decision.reason}): ${decision.message || ''}`);
       return;
     }
 
@@ -309,6 +306,15 @@ async function handleMentionReply(message, userQuery) {
       tryPromoteSingularBond(message.author.id, updatedBond).catch(() => {});
     }
 
+    // 💞 Sync deepBonds (BRAINEE-LIVING) — jamais écrit depuis les @mentions sinon
+    if (shared.relationships) {
+      const mentionEventType = detectSupport(userQuery) ? 'support' : 'interaction';
+      shared.relationships.updateBond(message.author.id, {
+        type: mentionEventType,
+        description: `@mention de ${message.author.username}`,
+      }).catch(() => {});
+    }
+
     // v0.12.0 : Mettre à jour les besoins sociaux dans le module desires
     if (shared.desires) {
       shared.desires.updateNeeds().catch(() => {});
@@ -390,6 +396,12 @@ function registerMessageHandlers() {
       const vipTier = getVipTier(bond);
       const vipBlock = getVipBlockForPrompt(vipTier, bond, message.author.username);
 
+      // 🔓 Mode dialogue libre — DM uniquement, inner_circle uniquement
+      const isLibreMode = shared.botConfig.dialogueLibre?.enabled === true
+        && vipTier?.key === 'inner_circle';
+      const dmPersona = isLibreMode ? `${BOT_PERSONA_DM}\n\n${BOT_PERSONA_DM_LIBRE}` : BOT_PERSONA_DM;
+      if (isLibreMode) pushLog('SYS', `🔓 Mode libre actif → DM ${message.author.username}`);
+
       // 🎯 Taste profile
       const tasteProfile = await getTasteProfile(message.author.id);
       const tasteBlock = formatTasteBlock(tasteProfile, message.author.username);
@@ -404,7 +416,19 @@ function registerMessageHandlers() {
         try { await recordSupportFromMember(message.author.id, message.author.username, userContent); } catch (_) {}
       }
 
-      // 💤 v0.16.0 : Excuse occupée (4% de chance) — avant tout le reste
+      // 🚫 Refus émotionnel en DM (manquait — ne s'appliquait qu'aux @mentions)
+      const dmRefusal = checkEmotionalRefusal(true); // true = interaction directe, seuils plus tolérants
+      if (dmRefusal.shouldRefuse && !dmRefusal.isSilent) {
+        try { await message.reply(dmRefusal.message); } catch (_) {}
+        pushLog('SYS', `🚫 Refus émotionnel DM [${dmRefusal.type}] → ${message.author.username}`);
+        return;
+      }
+      if (dmRefusal.shouldRefuse && dmRefusal.isSilent) {
+        pushLog('SYS', `🚫 Cooldown refus silencieux DM → ${message.author.username}`);
+        return;
+      }
+
+      // 💤 v0.16.0 : Excuse occupée (4% de chance) — après le refus émotionnel
       if (checkBusyExcuse(true)) {
         await triggerBusyExcuse(message, userContent, slot, true);
         return;
@@ -412,6 +436,9 @@ function registerMessageHandlers() {
 
       // Enrichir le DM avec le contexte serveur (faire la liaison DM ↔ Serveur)
       const enrichedUserContent = await enrichDMWithServerContext(message.author.id, message.author.username, userContent);
+
+      // 🏷️ Topic fatigue — tracké aussi en DM (manquait)
+      try { await recordMessageTopic(enrichedUserContent || userContent); } catch (_) {}
 
       const dmTemporalBlock = getTemporalBlock();
       const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
@@ -422,7 +449,7 @@ function registerMessageHandlers() {
       await simulateTyping(message.channel, 500 + Math.random() * 500);
       const { getContextualMaxTokens } = require('../utils');
       const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
-      const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, BOT_PERSONA_DM);
+      const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona);
       if (dmImages.length) pushLog('SYS', `🖼️ ${dmImages.length} image(s) lues (DM ${message.author.username})`);
       await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'dm_reply');
 
@@ -462,6 +489,15 @@ function registerMessageHandlers() {
       await appendDmMessage(message.author.id, message.author.username, 'assistant', reply);
       await updateMemberProfile(message.author.id, message.author.username, userContent);
       await applyInteractionToBond(message.author.id, message.author.username, userContent);
+
+      // 💞 Sync deepBonds (BRAINEE-LIVING) — collection vide sinon car jamais écrite en DM
+      if (shared.relationships) {
+        const deepEventType = (vulnWindow && detectSupport(userContent)) ? 'support' : 'interaction';
+        shared.relationships.updateBond(message.author.id, {
+          type: deepEventType,
+          description: `DM avec ${message.author.username}`,
+        }).catch(() => {});
+      }
 
       // 📚 Détection narrative en DM aussi
       try {
