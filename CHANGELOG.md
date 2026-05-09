@@ -1,10 +1,44 @@
 # 📜 Changelog — BrainEXE Dashboard
 
-Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.16.0** (version actuelle).
+Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.17.0** (version actuelle).
 Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.PATCH`. En pre-1.0, un `MINOR` peut introduire des breaking changes — c'est cohérent avec un projet qui itère encore.
 
 > **Convention :** chaque `MINOR` (`0.1.x`, `0.2.x`, …) correspond à un **chapitre** du projet (une thématique). Le `PATCH` est une vraie correction ou un ajout incrémental dans le chapitre courant.
 > Les versions `0.0.x` constituent la **pré-histoire** : les 10 premiers prototypes fondateurs (12–11 avril 2026) avant la numérotation officielle.
+
+---
+
+## 💬 v0.17.0 — Mode dialogue libre · Fixes DB & émotionnels
+**Date :** 2026-05-09
+
+### 🎯 Thème
+
+Nouvelle modalité d'interaction DM réservée au cercle intime, correction de trois bugs silencieux qui vidaient la mémoire (deepBonds, topicFatigue) et bloquaient les refus émotionnels en DM, et fix du tableau analytics toujours vide.
+
+### ✨ Nouveautés
+
+- **Mode dialogue libre** (`src/bot/persona.js` · `src/botConfig.js` · `src/discord/events.js`) :
+  - Segment `BOT_PERSONA_DM_LIBRE` injecté en DM uniquement pour les membres `inner_circle` (score VIP ≥ 75)
+  - Désactivé par défaut (`dialogueLibre.enabled: false` dans `brainexe-config.json`)
+  - Permet une expression sans filtre sur la sexualité, le désir, la libido en DM privé
+  - Les garde-fous éthiques (détresse réelle → 3114, anti-dépendance) restent actifs en toutes circonstances
+
+### 🔧 Corrections
+
+- **topicFatigue invisible en DM** (`src/discord/events.js`) : `recordMessageTopic` manquait dans le handler DM → le tracker de fatigue était aveugle à tous les DM. Fix : appel après `enrichDMWithServerContext`.
+- **deepBonds jamais peuplés** (`src/being/relationships.js` · `src/discord/events.js`) : `updateBond()` n'était appelé nulle part hors du module lui-même → la collection `deepBonds` était systématiquement vide, rendant les modules `existence`, `fears`, `expression` inopérants. Fix : appel après chaque DM et @mention, avec type `support` ou `interaction` (+2).
+- **Top membres analytics toujours vide** (`src/api/routes/analytics.js`) : `log.member` n'existe pas dans les entrées `pushLog()` → requête remplacée par un tri direct sur `memberProfiles.interactionCount`.
+- **Skips émotionnels inactifs en DM** (`src/discord/events.js`) : `checkEmotionalRefusal` manquait dans le handler DM (s'appliquait uniquement aux @mentions). Double condition `mentalLoad > 85` supprimée dans `handleMentionReply` (conflit avec `shouldRespond`).
+
+### 🔧 Fichiers modifiés
+
+| Fichier | Changement |
+|---------|------------|
+| `src/bot/persona.js` | Ajout `BOT_PERSONA_DM_LIBRE` + injection conditionnelle |
+| `src/botConfig.js` | Ajout section `dialogueLibre { enabled: false }` |
+| `src/discord/events.js` | Mode dialogue libre · topicFatigue DM · deepBonds · skips émotionnels DM |
+| `src/being/relationships.js` | Ajout type `interaction` dans `calculateImpact` |
+| `src/api/routes/analytics.js` | Fix top membres via `memberProfiles.interactionCount` |
 
 ---
 
@@ -43,6 +77,34 @@ Brainee répondait trop vite et trop uniformément — elle semblait H24 collée
 | `src/features/busyExcuse.js` | **Nouveau** — système excuse occupée avec retour différé |
 | `src/bot/messaging.js` | Ajout `simulateDmTyping()` + export |
 | `src/discord/events.js` | Intégration busyExcuse DM (4%) + mentions (2%) · Typing proportionnel post-Claude |
+
+---
+
+## 📰 v0.15.0 — Actus gaming multi-sources (GNews · NewsAPI · Reddit · IGDB)
+**Date :** 2026-05-08
+
+### 🎯 Thème
+
+L'unique source GNews ne suffisait plus — articles dupliqués, couverture limitée. Cette version intègre 3 nouvelles sources avec déduplication automatique.
+
+### ✨ Nouveautés
+
+- **4 sources d'actualités gaming** (`src/features/actus.js`) :
+  - **GNews** (corrigé : paramètre `token` au lieu de `apikey`)
+  - **NewsAPI** — articles gaming globaux (`NEWSAPI_API_KEY`)
+  - **Reddit** — r/gaming, r/Games, r/pcgaming sans authentification
+  - **IGDB** — base de données jeux optionnelle (`IGDB_API_KEY` + `IGDB_CLIENT_ID`)
+- **Agrégation avec déduplication** : fusion des résultats, suppression des doublons par titre similaire
+- **Emojis source distincts** : 📰 GNews · 📺 NewsAPI · 🤖 Reddit · 🏆 IGDB
+- **Nouvelles variables env** : `NEWSAPI_API_KEY`, `IGDB_API_KEY`, `IGDB_CLIENT_ID` (toutes optionnelles)
+
+### 🔧 Fichiers modifiés
+
+| Fichier | Changement |
+|---------|------------|
+| `src/features/actus.js` | Refonte complète — 4 sources + agrégation |
+| `src/config.js` | Ajout `NEWSAPI_API_KEY`, `IGDB_API_KEY`, `IGDB_CLIENT_ID` |
+| `.env.example` | Variables optionnelles documentées |
 
 ---
 
@@ -258,6 +320,54 @@ Préparation de la **release candidate 1.0.0** : nettoyage systématique de tout
 - **3 fichiers modifiés** (`events.js`, `channelWatcher.js`, `tiktok.js`)
 - **4 bugs corrigés**
 - **100% backward compatible**
+
+---
+
+## 🐛 v0.12.1 — Bump + fix ponctuation persona
+**Date :** 2026-05-02
+
+### 🔧 Corrections
+
+- Bump de version (`7283353`)
+- Remplace les tirets em dash (—) par un saut de ligne dans la persona pour éviter les signatures IA dans les réponses Discord (`3d59ce8`)
+
+---
+
+## 🧬 v0.12.0 — Conscience autonome · Refus émotionnel · Conviction · Attachement · Channel Watcher
+**Date :** 2026-05-02
+
+### 🎯 Thème
+
+Brainee cesse d'être un bot passif. Elle dit pourquoi elle ne répond pas, elle tient ses positions, elle s'attache qualitativement, et elle rejoint les conversations d'elle-même.
+
+### ✨ Nouveautés
+
+- **Refus émotionnel** (`src/features/emotionalRefusal.js`) :
+  - 4 seuils déclencheurs : `energy < 20%` (fatigue) · `anger > 65%` (énervée) · `mentalLoad > 85%` (saturation) · `socialNeed < 10%` (retrait)
+  - Cooldown dur 15-45 min après chaque refus selon l'intensité
+  - Les @mentions directes ont des seuils plus tolérants — impossible d'ignorer quelqu'un complètement
+  - Brainee explique pourquoi elle ne répond pas, elle ne se tait plus
+
+- **Système de conviction** (`src/features/conviction.js`) :
+  - 3 stades d'escalade si quelqu'un insiste sur un désaccord : désaccord poli → position ferme → shutdown (cooldown 60 min)
+  - Toujours justifié par ses valeurs, jamais du caprice
+  - Reset quotidien à minuit via `resetConvictionTracker()`
+
+- **Stades d'attachement** (`src/features/attachmentStages.js`) :
+  - 5 stades qualitatifs : Étranger / Familier / À l'aise / Attachée / Lien singulier
+  - Stade 5 exclusif : 1 seul slot, conditions strictes (att > 85 sur 14+ jours, 3+ moments significatifs)
+  - Expression d'appréciation spontanée depuis le stade 2
+  - Arc de rejet complet si rupture au stade 5 : deuil, ceiling permanent stade 3, cooldown 48h
+
+- **Channel Watcher** (`src/features/channelWatcher.js`) :
+  - Cron toutes les 4 min — scanne tous les salons configurés + leurs threads actifs
+  - Score d'intérêt calculé (vibe, énergie, liens, hyperfocus, activité récente)
+  - Brainee rejoint les conversations d'elle-même si le seuil est atteint
+  - Cooldown 45 min par salon, 8 min global
+
+### 🔧 Fichiers créés
+
+`src/features/emotionalRefusal.js` · `src/features/conviction.js` · `src/features/attachmentStages.js` · `src/features/channelWatcher.js`
 
 ---
 

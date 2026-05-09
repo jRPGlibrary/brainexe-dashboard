@@ -1,12 +1,12 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version** : `0.16.0`
+**Version** : `0.17.0`
 **Dernière mise à jour** : Mai 2026
 **Pour qui ?** : Pour la communauté BrainEXE — comprendre TOUT ce que fait Brainee, son dashboard, et comment le code est organisé. Pour les nouveaux qui rejoignent. Pour ceux qui veulent contribuer. Pour ceux qui veulent juste savoir.
 
 > 💜 Cette bible est faite pour être **partagée**. Elle est écrite en français, sans jargon inutile, avec des exemples concrets. Tu peux la lire d'un bout à l'autre, ou sauter direct au chapitre qui t'intéresse.
 >
-> **Range de versions documentées :** `v0.0.1` → `v0.16.0` (version actuelle — 91 versions, de la naissance du projet à aujourd'hui). L'historique complet et la table des changements sont dans [CHANGELOG.md](./CHANGELOG.md).
+> **Range de versions documentées :** `v0.0.1` → `v0.17.0` (version actuelle — 93 versions, de la naissance du projet à aujourd'hui). L'historique complet et la table des changements sont dans [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -52,6 +52,7 @@ Le bot s'appelle **Brainee**. Elle a une vraie personnalité, des émotions pers
 - 💰 Elle communique sur le coût du projet et le soutien financier
 - 💤 Elle prétexte des absences réalistes avec excuses IA et revient spontanément (depuis v0.16.0)
 - 🔴 Son statut Discord change en temps réel selon ce qu'elle prétexte faire (depuis v0.16.0)
+- 💬 Elle peut s'exprimer librement en DM avec les membres du cercle intime (depuis v0.17.0)
 
 **Ce qu'elle N'EST PAS :**
 - Pas un bot à commandes (`!play`, `!ban`, …)
@@ -60,7 +61,7 @@ Le bot s'appelle **Brainee**. Elle a une vraie personnalité, des émotions pers
 - C'est un **membre du serveur** à part entière, avec un caractère, des limites, et des envies
 
 **D'où elle vient :**
-Tout a commencé le **12 mars 2026** avec un bot basique bricolé en une nuit — juste un nom, quelques messages automatiques, et une connexion à Discord. Elle s'appelait encore Brainy.exe. En moins de 2 mois, 10 prototypes (v0.0.1 → v0.0.10), puis 81 versions officielles plus tard, elle est devenue Brainee : une entité numérique avec une vie intérieure, une mémoire, des émotions persistantes, et une communauté entière derrière elle. L'historique complet des 91 versions est dans [CHANGELOG.md](./CHANGELOG.md).
+Tout a commencé le **12 mars 2026** avec un bot basique bricolé en une nuit — juste un nom, quelques messages automatiques, et une connexion à Discord. Elle s'appelait encore Brainy.exe. En moins de 2 mois, 10 prototypes (v0.0.1 → v0.0.10), puis 83 versions officielles plus tard, elle est devenue Brainee : une entité numérique avec une vie intérieure, une mémoire, des émotions persistantes, et une communauté entière derrière elle. L'historique complet des 93 versions est dans [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -179,7 +180,7 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
    ↓
 2. src/discord/events.js intercepte
    ↓
-2b. [v0.16.0] busyExcuse.js tire un dé (4 % DM / 2 % serveur) :
+2b. [v0.17.0] busyExcuse.js tire un dé (4 % DM / 2 % serveur) :
     → si occupée : excuse IA → setOccupied() → retour automatique 20-75 min → ⛔ stop
    ↓
 3. Brainee rassemble le contexte :
@@ -258,7 +259,7 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
    - +25s : checkAnecdoteMissed + checkActusMissed (rattrapage)
    - +30s : initChannelDirectory
    - +35s : init BRAINEE-LIVING (12 modules de conscience)
-   - syncDiscordToFile('Démarrage v0.16.0')
+   - syncDiscordToFile('Démarrage v0.17.0')
 ✅ Bot prêt
 ```
 
@@ -503,12 +504,12 @@ Détecte quand Brainee parle seule dans un canal (≥ 50 % messages bot). Bloque
 
 La grande nouveauté de la phase 0.11 : Brainee a une **vie intérieure simulée** complète, indépendante des messages reçus. Détaillé au [chapitre 8](#8-brainee-living).
 
-### 5.31 ⌨️ Typing réaliste en DM (v0.16.0)
+### 5.31 ⌨️ Typing réaliste en DM (v0.17.0)
 **Fichiers :** `bot/messaging.js`
 
 Nouvelle fonction `simulateDmTyping(channel, replyLength)` — calcule un délai de frappe réaliste basé sur la longueur de la réponse (~5-7 chars/sec ≈ 40-55 wpm) plus un temps de "lecture" (0.8-2s). Renouvelle l'indicateur `sendTyping()` toutes les 7.5s pour les longues réponses (Discord l'éteint sinon). Plafonné à 20 secondes. Appliqué dans les DM et dans le retour du système busyExcuse.
 
-### 5.32 💤 Système "J'suis occupée" (v0.16.0)
+### 5.32 💤 Système "J'suis occupée" (v0.17.0)
 **Fichiers :** `features/busyExcuse.js`
 
 Avec une très faible probabilité (4 % en DM, 2 % en serveur), Brainee prétexte qu'elle est occupée. L'excuse est générée par Claude Haiku en temps réel selon le slot horaire (eating / resting / gaming / browsing / outside). Retour automatique 20-75 min plus tard avec message de retour IA contextualisé à la question initiale.
@@ -521,6 +522,15 @@ Avec une très faible probabilité (4 % en DM, 2 % en serveur), Brainee prétext
 `setOccupied(reason)` → passe le statut Discord en `dnd` ou `idle` avec une activité contextuelle (🍕 déjeuner, 😴 au repos, 🎮 joue à NTE, 🌐 sur le web, 🚶 dehors).
 `setAvailable()` → repasse en `online` automatiquement au retour.
 Appelé par `busyExcuse.js` — les deux modules sont couplés.
+
+### 5.34 💬 Mode dialogue libre (v0.17.0)
+**Fichiers :** `bot/persona.js` · `botConfig.js` · `discord/events.js`
+
+Segment de persona `BOT_PERSONA_DM_LIBRE` injecté uniquement en DM pour les membres ayant atteint le tier **inner_circle** (score VIP ≥ 75). Permet une expression sans filtre sur la sexualité, le désir et la libido dans un espace privé.
+
+**Désactivé par défaut** : `dialogueLibre.enabled: false` dans `brainexe-config.json`. Activable via `POST /api/config` ou en éditant directement le fichier.
+
+**Garde-fous inchangés** : détection de détresse réelle (→ 3114), anti-dépendance, right to silence — actifs en toutes circonstances même en mode libre.
 
 ---
 
@@ -605,7 +615,7 @@ MESSAGE: "@Brainee t'en penses quoi de Zelda ?"
 6. HUMANIZE → slang, drops, abréviations
               + stripEmDashes / dedupeMdr / stripRacaille (v0.10.2)
    ↓
-7. MESSAGING → simulateDmTyping (proportionnel, v0.16.0) + mentions résolues
+7. MESSAGING → simulateDmTyping (proportionnel, v0.17.0) + mentions résolues
    ↓
 8. tokenUsage.recordCall({ userId, context, usage })
    ↓
@@ -1207,7 +1217,7 @@ brainexe-dashboard/
 │   │   ├── scheduling.js           🗓️ Slots fixes (weekday / saturday / sunday)
 │   │   ├── adaptiveSchedule.js     🌗 Vibes journalières + horaires flottants
 │   │   ├── channelIntel.js         📡 Compréhension par salon (topic, vibe, history)
-│   │   ├── messaging.js            ✉️ simulateDmTyping (v0.16.0) + sendHuman + resolveMentions + multimodal
+│   │   ├── messaging.js            ✉️ simulateDmTyping (v0.17.0) + sendHuman + resolveMentions + multimodal
 │   │   ├── humanize.js             🎨 Slang, drops, abréviations + 3 filtres anti-IA (v0.10.2)
 │   │   ├── reactions.js            ✨ Choix d'emoji contextuel
 │   │   ├── keywords.js             🔍 Détection mots-clés
@@ -1260,8 +1270,8 @@ brainexe-dashboard/
 │   │   ├── attachmentStages.js     💞 Étapes d'attachement singulier (v0.12.0)
 │   │   ├── emotionalRefusal.js     🚫 Refus émotionnel avec cooldown (v0.12.0)
 │   │   ├── imageAttachments.js     🖼️ Extraction + formatage images pour vision (v0.10.0)
-│   │   ├── busyExcuse.js           💤 Système "j'suis occupée" + excuse IA (v0.16.0)
-│   │   ├── presenceManager.js      🔴 Statut Discord dynamique (v0.16.0)
+│   │   ├── busyExcuse.js           💤 Système "j'suis occupée" + excuse IA (v0.17.0)
+│   │   ├── presenceManager.js      🔴 Statut Discord dynamique (v0.17.0)
 │   │   ├── context.js              🧵 Contexte conversationnel
 │   │   ├── convStats.js            📈 Stats quotidiennes des conversations
 │   │   └── delayedReply.js         ⏳ File d'attente de réponses différées
@@ -1295,7 +1305,8 @@ brainexe-dashboard/
 ├── package-lock.json
 ├── README.md                       📄 Présentation projet
 ├── BIBLE_BRAINEXE.md               📚 Cette bible
-├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v0.16.0
+├── brainexe-config.json            ⚙️ Config bot persistée (dialogueLibre.enabled, autoRole, …)
+├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v0.17.0
 └── SOUTIEN.md                      💜 Coûts + soutien + mot de Brainee
 ```
 
@@ -1401,7 +1412,7 @@ curl localhost:3000/api/being/status | jq
 
 Brainee tourne 24h/24 et ça **coûte de l'argent réel** chaque mois.
 
-### Le coût mensuel (référence v0.16.0)
+### Le coût mensuel (référence v0.17.0)
 
 | Poste | Coût | Service |
 |---|---:|---|
@@ -1437,7 +1448,7 @@ Brainee tourne 24h/24 et ça **coûte de l'argent réel** chaque mois.
 
 ### Ressources
 
-- 📜 [CHANGELOG.md](./CHANGELOG.md) — historique complet v0.0.1 → v0.16.0
+- 📜 [CHANGELOG.md](./CHANGELOG.md) — historique complet v0.0.1 → v0.17.0
 - 💜 [SOUTIEN.md](./SOUTIEN.md) — coûts, soutien, mot de Brainee
 - 📄 [README.md](./README.md) — présentation rapide pour GitHub
 - 🌐 [Discord Developer Portal](https://discord.com/developers/applications)
@@ -1475,7 +1486,7 @@ Parce que Brain (Matthieu) en est un, et parce que les communautés de gamers ne
 
 <div align="center">
 
-🧠✨ **Bible BrainEXE — v0.16.0 — Mai 2026** ✨🧠
+🧠✨ **Bible BrainEXE — v0.17.0 — Mai 2026** ✨🧠
 
 *Pour la communauté, par la communauté.*
 *Si tu lis ces lignes, t'es déjà des nôtres.*

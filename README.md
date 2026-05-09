@@ -7,7 +7,7 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.16.0-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.17.0-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
@@ -198,19 +198,21 @@ npm test
 
 ## 📝 Versions
 
-> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.16.0** (91 versions, de la naissance à aujourd'hui).
+> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.17.0** (93 versions, de la naissance à aujourd'hui).
 
-### Dernière release — `v0.16.0` — 🎭 Présence vivante · Typing réaliste · Excuses IA · Statut Discord
+### Dernière release — `v0.17.0` — 💬 Mode dialogue libre · Fixes DB & émotionnels
 
-- **Typing proportionnel en DM** (`messaging.js`) : `simulateDmTyping()` calcule un délai réaliste basé sur la longueur de la réponse (~5-7 chars/sec), plafonné à 20s, avec renouvellement du `sendTyping()` toutes les 7.5s
-- **Système "j'suis occupée"** (`busyExcuse.js`) : 4% en DM / 2% en serveur — excuse générée par Claude Haiku en temps réel selon le slot horaire, retour automatique 20-75 min plus tard
-- **Présence Discord dynamique** (`presenceManager.js`) : `setOccupied()` → dnd/idle + activité contextuelle (🍕 déjeuner, 🎮 joue à NTE…), `setAvailable()` → repasse online automatiquement au retour
+- **Mode dialogue libre** : segment `BOT_PERSONA_DM_LIBRE` injecté en DM pour les membres `inner_circle` (VIP ≥ 75), désactivé par défaut (`dialogueLibre.enabled: false`). Garde-fous éthiques actifs en toutes circonstances.
+- **Fix deepBonds** : `updateBond()` n'était jamais appelé hors du module — la collection était systématiquement vide. Corrigé après chaque DM et @mention.
+- **Fix topicFatigue DM** : `recordMessageTopic` manquait dans le handler DM, le tracker était aveugle aux échanges privés.
+- **Fix analytics** : top membres toujours vide — remplacé par une requête directe sur `memberProfiles.interactionCount`.
+- **Fix skips émotionnels** : `checkEmotionalRefusal` ajouté dans le handler DM + double condition `mentalLoad` supprimée dans `handleMentionReply`.
 
-### Release précédente — `v0.15.0` — 📰 Actus gaming multi-sources
+### Release précédente — `v0.16.0` — 🎭 Présence vivante · Typing réaliste · Excuses IA
 
-- **4 sources d'actualités gaming** : GNews, NewsAPI, Reddit (r/gaming, r/Games, r/pcgaming), IGDB — agrégation avec déduplication
-- **Emojis sources distincts** : 📰 GNews · 📺 NewsAPI · 🤖 Reddit · 🏆 IGDB
-- **Nouvelles variables optionnelles** : `NEWSAPI_API_KEY`, `IGDB_API_KEY`, `IGDB_CLIENT_ID`
+- **Typing proportionnel en DM** (`messaging.js`) : `simulateDmTyping()` délai réaliste ~5-7 chars/sec, plafonné à 20s
+- **Système "j'suis occupée"** (`busyExcuse.js`) : 4% DM / 2% serveur, excuse Haiku + retour automatique 20-75 min
+- **Présence Discord dynamique** (`presenceManager.js`) : `setOccupied()` → dnd/idle + activité, `setAvailable()` → online automatique
 
 ### Phases du projet
 
@@ -233,7 +235,8 @@ npm test
 | 0.14 | `v0.14.0` | 🔁 Anti-répétition · Pont DM↔Serveur · Dashboard fixes |
 | 0.14 | `v0.14.1` | 🚀 Autonomie maximale · Exploration tous salons · Outreach boosté |
 | 0.15 | `v0.15.0` | 📰 Actus gaming multi-sources (GNews · NewsAPI · Reddit · IGDB) |
-| **0.16** | `v0.16.0` | 🎭 **Présence vivante · Typing réaliste DM · Excuses IA · Statut Discord** *(actuelle)* |
+| 0.16 | `v0.16.0` | 🎭 Présence vivante · Typing réaliste DM · Excuses IA · Statut Discord |
+| **0.17** | `v0.17.0` | 💬 **Mode dialogue libre · Fixes DB (deepBonds, topicFatigue, analytics, skips)** *(actuelle)* |
 
 ---
 
