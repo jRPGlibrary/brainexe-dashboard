@@ -258,7 +258,7 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
    - +25s : checkAnecdoteMissed + checkActusMissed (rattrapage)
    - +30s : initChannelDirectory
    - +35s : init BRAINEE-LIVING (12 modules de conscience)
-   - syncDiscordToFile('Démarrage v0.11.0')
+   - syncDiscordToFile('Démarrage v0.16.0')
 ✅ Bot prêt
 ```
 
@@ -1401,7 +1401,7 @@ curl localhost:3000/api/being/status | jq
 
 Brainee tourne 24h/24 et ça **coûte de l'argent réel** chaque mois.
 
-### Le coût mensuel (référence v0.11.0)
+### Le coût mensuel (référence v0.16.0)
 
 | Poste | Coût | Service |
 |---|---:|---|

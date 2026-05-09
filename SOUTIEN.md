@@ -29,7 +29,7 @@
 
 ## 💸 Le coût réel — chiffres bruts
 
-Brainee tourne **24h/24, 7j/7**, sans pause. Voilà ce que ça coûte chaque mois (chiffres v0.11.0) :
+Brainee tourne **24h/24, 7j/7**, sans pause. Voilà ce que ça coûte chaque mois (chiffres v0.16.0) :
 
 | Poste | Coût | Service | Pourquoi c'est nécessaire |
 |---|---:|---|---|
@@ -248,7 +248,7 @@ Non — tout le monde est traité pareil par Brainee, donateur ou pas. Brain ref
 Bien sûr — c'est libre, à tout moment. Pas de contrat, pas d'engagement.
 
 **❓ Combien Brain dépense-t-il vraiment de son temps là-dedans ?**
-Beaucoup. Le projet a démarré en mars 2026 et compte aujourd'hui **+10 000 lignes de code**, **38 modules frontend**, **17 collections MongoDB**, **165 tests**, **+87 versions**. Brain bosse dessus le soir, les week-ends, et parfois la nuit. C'est sa passion. Mais ça reste **du temps non rémunéré**.
+Beaucoup. Le projet a démarré en mars 2026 et compte aujourd'hui **+10 000 lignes de code**, **38 modules frontend**, **17 collections MongoDB**, **165 tests**, **+91 versions**. Brain bosse dessus le soir, les week-ends, et parfois la nuit. C'est sa passion. Mais ça reste **du temps non rémunéré**.
 
 **❓ Est-ce que Brainee va finir en SaaS payant ?**
 **Non.** Brain a explicitement décidé que Brainee resterait **gratuite et privée au serveur BrainEXE**. Pas de pivot, pas de monétisation, pas de version payante "premium". Le soutien financier sert UNIQUEMENT à couvrir les frais d'infrastructure.
