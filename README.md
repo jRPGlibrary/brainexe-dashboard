@@ -7,12 +7,12 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.14.1-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.17.0-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
 ![Tests](https://img.shields.io/badge/tests-165_passing-22c55e?style=flat-square)
-![Status](https://img.shields.io/badge/status-release--candidate-7c5cbf?style=flat-square)
+![Status](https://img.shields.io/badge/status-pre--release-7c5cbf?style=flat-square)
 
 📚 [Bible projet](./BIBLE_BRAINEXE.md) · 📜 [Changelog](./CHANGELOG.md) · 💰 [Soutenir Brainee](./SOUTIEN.md)
 
@@ -51,6 +51,9 @@ npm start
 | `ANTHROPIC_API_KEY` | ✅ | Clé API Claude (Anthropic) |
 | `YOUTUBE_API_KEY` | ✅ | YouTube Data v3 (recherche vidéos sur mention) |
 | `GNEWS_API_KEY` | ✅ | GNews (actus gaming bi-mensuelles) |
+| `NEWSAPI_API_KEY` | ⭕ | NewsAPI (articles gaming globaux — v0.15.0) |
+| `IGDB_API_KEY` | ⭕ | IGDB — base de données jeux (v0.15.0) |
+| `IGDB_CLIENT_ID` | ⭕ | IGDB client ID (requis avec `IGDB_API_KEY`) |
 | `MONGODB_URI` | ✅ | URI MongoDB Atlas |
 | `PORT` | ⭕ | Port HTTP (défaut `3000`) |
 
@@ -61,7 +64,7 @@ npm start
 | Couche | Outils |
 |---|---|
 | Bot | **Node.js 20+** · **discord.js v14** · `node-cron` · `ws` |
-| IA | **Claude (Anthropic)** · YouTube Data v3 · GNews |
+| IA | **Claude (Anthropic)** · YouTube Data v3 · GNews · NewsAPI · Reddit · IGDB |
 | Persistance | **MongoDB Atlas** |
 | Web | Express 4 · WebSocket · vanilla JS modulaire (38 fichiers) |
 | Sécurité | `express-rate-limit` (4 niveaux) · audit ring buffer 500 · 2FA TOTP · sessions cookie |
@@ -116,6 +119,9 @@ brainexe-dashboard/
 │   │                drift · tiktok · welcome · sidebar · supportChannel
 │   │                proactiveOutreach · hyperFocusRevisit · extendedPermissions
 │   │                context · convStats · delayedReply · dmOutreach
+│   │                busyExcuse · presenceManager · dmServerBridge
+│   │                channelWatcher · conviction · attachmentStages
+│   │                emotionalRefusal · imageAttachments · greetingVariants
 │   ├── project/    funding                ← coûts, dons, statut Discord
 │   ├── audit · botConfig · config · crons · logger · shared · utils
 ├── public/         index.html · app.css · mobile.css · js/ (38 modules)
@@ -192,15 +198,21 @@ npm test
 
 ## 📝 Versions
 
-> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.14.1** (89 versions, de la naissance à aujourd'hui).
+> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.17.0** (93 versions, de la naissance à aujourd'hui).
 
-### Dernière release — `v0.14.1` — 🚀 Autonomie maximale · Exploration tous salons · Anti-répétition
+### Dernière release — `v0.17.0` — 💬 Mode dialogue libre · Fixes DB & émotionnels
 
-- **Exploration tous salons** : channelWatcher couvre désormais toutes les catégories avec bonus diversité (+0.12 si catégorie non visitée depuis 3h)
-- **Outreach boosté** : probabilité 3%→5% (cap 8%→12%), cooldown 90→60 min, cron 35→25 min, vibe `grumpy` débloqué
-- **Quota journalier** : 16→22 posts/jour, no-insist réduit 24h→12h, WEEKLY_DEAD_LIMIT 1→2
-- **MAX_CONV_ATTEMPTS** : 5→10 tentatives de salons avant abandon
-- **Seuils d'intérêt assouplis** : salons 0.42→0.34, threads 0.47→0.38, AGE_MAX 90→150 min, cooldowns 45→30 min
+- **Mode dialogue libre** : segment `BOT_PERSONA_DM_LIBRE` injecté en DM pour les membres `inner_circle` (VIP ≥ 75), désactivé par défaut (`dialogueLibre.enabled: false`). Garde-fous éthiques actifs en toutes circonstances.
+- **Fix deepBonds** : `updateBond()` n'était jamais appelé hors du module — la collection était systématiquement vide. Corrigé après chaque DM et @mention.
+- **Fix topicFatigue DM** : `recordMessageTopic` manquait dans le handler DM, le tracker était aveugle aux échanges privés.
+- **Fix analytics** : top membres toujours vide — remplacé par une requête directe sur `memberProfiles.interactionCount`.
+- **Fix skips émotionnels** : `checkEmotionalRefusal` ajouté dans le handler DM + double condition `mentalLoad` supprimée dans `handleMentionReply`.
+
+### Release précédente — `v0.16.0` — 🎭 Présence vivante · Typing réaliste · Excuses IA
+
+- **Typing proportionnel en DM** (`messaging.js`) : `simulateDmTyping()` délai réaliste ~5-7 chars/sec, plafonné à 20s
+- **Système "j'suis occupée"** (`busyExcuse.js`) : 4% DM / 2% serveur, excuse Haiku + retour automatique 20-75 min
+- **Présence Discord dynamique** (`presenceManager.js`) : `setOccupied()` → dnd/idle + activité, `setAvailable()` → online automatique
 
 ### Phases du projet
 
@@ -221,7 +233,10 @@ npm test
 | 0.12 | `v0.12.0` → `v0.12.6` | 🤝 Liens d'attachement + refus émotionnel + conviction |
 | 0.13 | `v0.13.0` | 🚀 Release Candidate — stabilisation complète avant 1.0.0 |
 | 0.14 | `v0.14.0` | 🔁 Anti-répétition · Pont DM↔Serveur · Dashboard fixes |
-| **0.14** | `v0.14.1` | 🚀 **Autonomie maximale · Exploration tous salons · Outreach boosté** *(actuelle)* |
+| 0.14 | `v0.14.1` | 🚀 Autonomie maximale · Exploration tous salons · Outreach boosté |
+| 0.15 | `v0.15.0` | 📰 Actus gaming multi-sources (GNews · NewsAPI · Reddit · IGDB) |
+| 0.16 | `v0.16.0` | 🎭 Présence vivante · Typing réaliste DM · Excuses IA · Statut Discord |
+| **0.17** | `v0.17.0` | 💬 **Mode dialogue libre · Fixes DB (deepBonds, topicFatigue, analytics, skips)** *(actuelle)* |
 
 ---
 
