@@ -148,12 +148,9 @@ async function handleMentionReply(message, userQuery) {
     const internalState = getInternalState();
     const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, userQuery, false);
 
-    if (!decision.should && internalState.mentalLoad > 85) {
-      // Only skip if VERY overloaded
-      try {
-        await message.react('😴').catch(() => {});
-      } catch (_) {}
-      pushLog('SYS', `🙅 Skip @mention (${decision.reason}): trop fatiguée`);
+    if (!decision.should) {
+      try { await message.react('😴').catch(() => {}); } catch (_) {}
+      pushLog('SYS', `🙅 Skip @mention (${decision.reason}): ${decision.message || ''}`);
       return;
     }
 
@@ -419,7 +416,19 @@ function registerMessageHandlers() {
         try { await recordSupportFromMember(message.author.id, message.author.username, userContent); } catch (_) {}
       }
 
-      // 💤 v0.16.0 : Excuse occupée (4% de chance) — avant tout le reste
+      // 🚫 Refus émotionnel en DM (manquait — ne s'appliquait qu'aux @mentions)
+      const dmRefusal = checkEmotionalRefusal(true); // true = interaction directe, seuils plus tolérants
+      if (dmRefusal.shouldRefuse && !dmRefusal.isSilent) {
+        try { await message.reply(dmRefusal.message); } catch (_) {}
+        pushLog('SYS', `🚫 Refus émotionnel DM [${dmRefusal.type}] → ${message.author.username}`);
+        return;
+      }
+      if (dmRefusal.shouldRefuse && dmRefusal.isSilent) {
+        pushLog('SYS', `🚫 Cooldown refus silencieux DM → ${message.author.username}`);
+        return;
+      }
+
+      // 💤 v0.16.0 : Excuse occupée (4% de chance) — après le refus émotionnel
       if (checkBusyExcuse(true)) {
         await triggerBusyExcuse(message, userContent, slot, true);
         return;
