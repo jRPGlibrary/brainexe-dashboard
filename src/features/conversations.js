@@ -33,6 +33,7 @@ const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory
 const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { logMessageForBridge } = require('./dmServerBridge');
 const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
+const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossChannelMem');
 
 const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
@@ -125,6 +126,7 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
     const ctx = formatContext(msgs, null, 40);
     if (ctx.length > 20) contextBlock = `\nContexte récent:\n${ctx}`;
   } catch (_) {}
+  const crossChannelBlock = await getCrossChannelContext(ch.channelId);
   const verbosity = await getChannelVerbosity(ch.channelId);
   const verbosityInstruct = verbosity.shouldBePavé
     ? `\nCe salon aime les messages détaillés (engagement: ${verbosity.avgEngagement}/5). Va-y, sois bavarde si tu veux.`
@@ -143,7 +145,7 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
     : adjustMaxTokens(isDeep ? 130 : 85);
 
   const { text: content } = await callClaude(
-    `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${fallbackInject}${verbosityInstruct}\n${NO_TAG_CLAUSE}` + contextBlock,
+    `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${fallbackInject}${verbosityInstruct}\n${crossChannelBlock ? crossChannelBlock + '\n' : ''}${NO_TAG_CLAUSE}` + contextBlock,
     `Direct. Adapte-toi au salon. Pas de @ — c'est un lance-conv ambiant.`,
     maxTokens,
     BOT_PERSONA
@@ -152,6 +154,7 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
   await simulateTyping(channel, 1000 + Math.random() * 2000);
   const sentMsg = await channel.send(contentResolved);
   shared.lastAnyBotPostTime = Date.now();
+  recordCrossChannelPost(ch.channelId, ch.channelName, contentResolved).catch(() => {});
   await updateConvStats(ch.channelId);
   recordBotMessage(sentMsg.id, ch.channelId, mode.name, contentResolved.length).catch(() => {});
   const tag = fallback ? '🔁 Conv (fallback général)' : '💬 Conv';
@@ -322,7 +325,8 @@ async function replyToConversations() {
     const baseReplyTokens = getContextualMaxTokens(msgContent, { defaultShort: 100, extended: 200 });
     const replyMaxTokens = adjustMaxTokens(verbosity.shouldBePavé ? Math.round(baseReplyTokens * 1.3) : baseReplyTokens);
 
-    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
+    const crossReplyBlock = await getCrossChannelContext(ch.channelId);
+    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -365,6 +369,7 @@ async function replyToConversations() {
       pushLog('SYS', `💬 Reply → ${lastMsg.author.username} (mood: ${mood})`, 'success');
       broadcast('conversation', { channel: ch.channelName, type: 'reply' });
     }
+    recordCrossChannelPost(ch.channelId, ch.channelName, replyResolved).catch(() => {});
     shared.lastAnyBotPostTime = Date.now();
     await updateConvStats(ch.channelId);
     await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);

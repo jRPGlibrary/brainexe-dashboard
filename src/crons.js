@@ -32,12 +32,15 @@ const fs = require('fs');
 const { runChannelWatch } = require('./features/channelWatcher');
 const { resetConvictionTracker } = require('./features/conviction');
 const { tryPromoteSingularBond } = require('./features/attachmentStages');
+const { setSlotPresence } = require('./features/presenceManager');
+const { sendOwnerBriefing } = require('./features/ownerBriefing');
 
 let convCron = null, replyCron = null, floatingEventsCron = null;
 let moodResetCron = null, driftCron = null, relanceCron = null;
 let emotionHourlyCron = null, emotionDailyCron = null, narrativeCron = null;
 let reactionScanCron = null, outreachCron = null, hyperFocusCron = null;
 let vulnerabilityCron = null, pinScanCron = null;
+let slotPresenceCron = null;
 // v0.12.0
 let channelWatchCron = null, attachmentEvolutionCron = null;
 
@@ -49,7 +52,7 @@ function parisDateISO() {
 }
 
 function startConvCron() {
-  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron, narrativeCron, reactionScanCron, outreachCron, hyperFocusCron, vulnerabilityCron, pinScanCron, channelWatchCron, attachmentEvolutionCron]
+  [convCron, replyCron, floatingEventsCron, moodResetCron, driftCron, relanceCron, emotionHourlyCron, emotionDailyCron, narrativeCron, reactionScanCron, outreachCron, hyperFocusCron, vulnerabilityCron, pinScanCron, slotPresenceCron, channelWatchCron, attachmentEvolutionCron]
     .forEach(c => { if (c) { try { c.stop(); } catch {} } });
 
   // Initialise la vibe et le planning flottant dès le boot
@@ -311,6 +314,19 @@ function startConvCron() {
   // Vulnerability — tick toutes les heures, ouvre rarement (~6%/tick si conditions remplies)
   vulnerabilityCron = cron.schedule('15 * * * *', () => {
     tickVulnerabilityCheck().catch(err => pushLog('ERR', `vulnerability: ${err.message}`, 'error'));
+  }, { timezone: 'Europe/Paris' });
+
+  // Owner briefing — dimanche 20h, Brainee DM Brain avec des idées de features
+  cron.schedule('0 20 * * 0', () => {
+    pushLog('SYS', `💡 Owner briefing hebdo déclenché`);
+    sendOwnerBriefing().catch(err => pushLog('ERR', `ownerBriefing: ${err.message}`, 'error'));
+  }, { timezone: 'Europe/Paris' });
+
+  // Slot presence — sync statut Discord avec le slot toutes les 10 min
+  slotPresenceCron = cron.schedule('*/10 * * * *', () => {
+    if (!shared.discord?.isReady()) return;
+    const slot = getCurrentSlot();
+    setSlotPresence(slot.status);
   }, { timezone: 'Europe/Paris' });
 
   // Pin scan — toutes les 2h, repère un message vraiment marquant à épingler
