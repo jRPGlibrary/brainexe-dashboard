@@ -19,8 +19,8 @@ const { pushLog } = require('../logger');
 const { setOccupied, setAvailable } = require('./presenceManager');
 const shared = require('../shared');
 
-const BUSY_PROB_DM     = 0.04; // 4% en DM
-const BUSY_PROB_SERVER = 0.02; // 2% en serveur
+const BUSY_PROB_DM     = 0.08; // 8% en DM
+const BUSY_PROB_SERVER = 0.06; // 6% en serveur (vraies absences plus fréquentes)
 
 const REASON_BY_SLOT = {
   sleep:      'resting',

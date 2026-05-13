@@ -29,10 +29,11 @@ const {
   isMonologueChannel, countConsecutiveBotPosts,
 } = require('./convStats');
 const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
-const { getNarrativeContext } = require('../db/narrativeMemory');
+const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { logMessageForBridge } = require('./dmServerBridge');
 const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
+const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossChannelMem');
 
 const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
@@ -70,9 +71,18 @@ async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } =
   if (await isMonologueChannel(ch.channelId, channelResolver)) {
     return { ok: false, reason: 'salon monologue (Brainee parle seule)' };
   }
+  // Skip si le salon n'a aucun message humain récent (évite tokens vides)
+  try {
+    const channel = await channelResolver(ch.channelId);
+    if (channel?.messages) {
+      const msgs = await channel.messages.fetch({ limit: 20 });
+      const hasHuman = [...msgs.values()].some(m => !m.author?.bot);
+      if (!hasHuman) return { ok: false, reason: 'aucun message humain récent (skip tokens vides)' };
+    }
+  } catch (_) {}
   const consecutive = await countConsecutiveBotPosts(ch.channelId, channelResolver);
-  if (consecutive >= 2) {
-    return { ok: false, reason: `${consecutive} posts consécutifs sans humain` };
+  if (consecutive >= 1) {
+    return { ok: false, reason: `Brainee a déjà parlé en dernier (${consecutive} post(s) non répondu(s))` };
   }
   if (!relaxed && await isChannelDeadThisWeek(ch.channelId, channelResolver)) {
     return { ok: false, reason: 'calme plat (limite atteinte)' };
@@ -106,6 +116,8 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
     emotionBlock = getEmotionalInjection();
     temperamentBlock = getTemperamentInjection();
     narrativeBlock = await getNarrativeContext();
+    const weeklyBlock = await getWeeklyContext();
+    if (weeklyBlock) narrativeBlock = `${weeklyBlock}\n${narrativeBlock}`;
     setCacheBlocks(emotionBlock, temperamentBlock, narrativeBlock);
   }
   let contextBlock = '';
@@ -114,6 +126,7 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
     const ctx = formatContext(msgs, null, 40);
     if (ctx.length > 20) contextBlock = `\nContexte récent:\n${ctx}`;
   } catch (_) {}
+  const crossChannelBlock = await getCrossChannelContext(ch.channelId);
   const verbosity = await getChannelVerbosity(ch.channelId);
   const verbosityInstruct = verbosity.shouldBePavé
     ? `\nCe salon aime les messages détaillés (engagement: ${verbosity.avgEngagement}/5). Va-y, sois bavarde si tu veux.`
@@ -132,7 +145,7 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
     : adjustMaxTokens(isDeep ? 130 : 85);
 
   const { text: content } = await callClaude(
-    `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${fallbackInject}${verbosityInstruct}\n${NO_TAG_CLAUSE}` + contextBlock,
+    `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${fallbackInject}${verbosityInstruct}\n${crossChannelBlock ? crossChannelBlock + '\n' : ''}${NO_TAG_CLAUSE}` + contextBlock,
     `Direct. Adapte-toi au salon. Pas de @ — c'est un lance-conv ambiant.`,
     maxTokens,
     BOT_PERSONA
@@ -141,6 +154,7 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
   await simulateTyping(channel, 1000 + Math.random() * 2000);
   const sentMsg = await channel.send(contentResolved);
   shared.lastAnyBotPostTime = Date.now();
+  recordCrossChannelPost(ch.channelId, ch.channelName, contentResolved).catch(() => {});
   await updateConvStats(ch.channelId);
   recordBotMessage(sentMsg.id, ch.channelId, mode.name, contentResolved.length).catch(() => {});
   const tag = fallback ? '🔁 Conv (fallback général)' : '💬 Conv';
@@ -158,6 +172,8 @@ async function postRandomConversation() {
   if (getConvDailyCount() >= getConvMaxPerDay()) return;
   if (Date.now() - shared.lastAnyBotPostTime < getSlotIntervalMs(slot)) return;
   if (!ANTHROPIC_API_KEY) return;
+  // Vraie absence aléatoire — 25% de chance de sauter le lance-conv (pas H24)
+  if (Math.random() < 0.25) { pushLog('SYS', `🌫️ Vraie absence (skip lance-conv 25%)`); return; }
 
   try {
     const guild = await shared.discord.guilds.fetch(GUILD_ID);
@@ -221,7 +237,8 @@ async function replyToConversations() {
   if (!cfg.enabled || !cfg.canReply || !ANTHROPIC_API_KEY) return;
   const slot = getCurrentSlot();
   if (slot.maxConv === 0) return;
-  if (Math.random() < 0.05) { pushLog('SYS', `💬 Ignore spontané 5%`); return; }
+  // Vraie absence aléatoire — 35% de chance de simplement ignorer la slot (pas H24)
+  if (Math.random() < 0.35) { pushLog('SYS', `🌫️ Vraie absence (skip silencieux 35%)`); return; }
   const active = cfg.channels.filter(c => c.enabled);
   if (!active.length) return;
   const ch = active[Math.floor(Math.random() * active.length)];
@@ -249,6 +266,12 @@ async function replyToConversations() {
     const alone = await hasUnansweredLastPost(ch.channelId, channelResolver);
     if (alone) {
       pushLog('SYS', `🔇 Skip reply ${ch.channelName} — dernier post sans réponse (no-insist)`);
+      return;
+    }
+    // Anti-2-en-suite strict : si Brainee a parlé en dernier (même via un autre path), skip
+    const consecBots = await countConsecutiveBotPosts(ch.channelId, channelResolver);
+    if (consecBots >= 1) {
+      pushLog('SYS', `🔇 Skip reply ${ch.channelName} — Brainee a déjà parlé en dernier`);
       return;
     }
     // Skip si salon monologue
@@ -302,7 +325,8 @@ async function replyToConversations() {
     const baseReplyTokens = getContextualMaxTokens(msgContent, { defaultShort: 100, extended: 200 });
     const replyMaxTokens = adjustMaxTokens(verbosity.shouldBePavé ? Math.round(baseReplyTokens * 1.3) : baseReplyTokens);
 
-    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\nContexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
+    const crossReplyBlock = await getCrossChannelContext(ch.channelId);
+    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -345,6 +369,7 @@ async function replyToConversations() {
       pushLog('SYS', `💬 Reply → ${lastMsg.author.username} (mood: ${mood})`, 'success');
       broadcast('conversation', { channel: ch.channelName, type: 'reply' });
     }
+    recordCrossChannelPost(ch.channelId, ch.channelName, replyResolved).catch(() => {});
     shared.lastAnyBotPostTime = Date.now();
     await updateConvStats(ch.channelId);
     await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);

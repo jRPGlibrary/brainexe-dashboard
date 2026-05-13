@@ -1,12 +1,12 @@
 # 🧠 BIBLE BRAINEXE — Guide COMPLET du Projet
 
-**Version** : `0.17.0`
+**Version** : `1.0.0-rc.1`
 **Dernière mise à jour** : Mai 2026
 **Pour qui ?** : Pour la communauté BrainEXE — comprendre TOUT ce que fait Brainee, son dashboard, et comment le code est organisé. Pour les nouveaux qui rejoignent. Pour ceux qui veulent contribuer. Pour ceux qui veulent juste savoir.
 
 > 💜 Cette bible est faite pour être **partagée**. Elle est écrite en français, sans jargon inutile, avec des exemples concrets. Tu peux la lire d'un bout à l'autre, ou sauter direct au chapitre qui t'intéresse.
 >
-> **Range de versions documentées :** `v0.0.1` → `v0.17.0` (version actuelle — 93 versions, de la naissance du projet à aujourd'hui). L'historique complet et la table des changements sont dans [CHANGELOG.md](./CHANGELOG.md).
+> **Range de versions documentées :** `v0.0.1` → `v1.0.0-rc.1` (version actuelle — Release Candidate 1, première version candidate stable). L'historique complet et la table des changements sont dans [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 

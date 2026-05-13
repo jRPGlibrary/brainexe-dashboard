@@ -25,11 +25,13 @@ const SAFE_ACCENTED = new Set([
 
 const SLANG_OPENERS = [
   'franchement', 'nan mais', 'ouais nan', 'genre', 'sérieux',
-  'attends', 'du coup', 'en vrai', 'bah',
+  'attends', 'du coup', 'bah', 'ah ouais',
+  'nan sérieux', 'ouf', 'lol attends', 'wait', 'mdr non',
 ];
 
 const SLANG_CLOSERS = [
   'tu vois', 'enfin', 'je sais pas', 'voilà', 'osef',
+  'nan mais voilà', 'jsp', 'bref', 'on va dire',
 ];
 
 const RELAX_SUBSTITUTIONS = [

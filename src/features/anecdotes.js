@@ -10,12 +10,31 @@ const cron = require('node-cron');
 const { saveConfig } = require('../botConfig');
 const { sanitizeForJson } = require('../utils');
 
+const ANECDOTE_HISTORY_MAX = 30;
+
 let anecdoteCron = null;
+
+async function getAnecdoteHistory() {
+  const state = await getBotState();
+  return state.anecdoteHistory || [];
+}
+
+async function recordAnecdote(text) {
+  const history = await getAnecdoteHistory();
+  // Stocke un fingerprint court (premiers 120 chars) pour éviter de repasser le même sujet
+  const fingerprint = text.slice(0, 120).replace(/\s+/g, ' ').trim();
+  const updated = [fingerprint, ...history].slice(0, ANECDOTE_HISTORY_MAX);
+  await setBotState({ anecdoteHistory: updated });
+}
 
 async function generateAnecdote(ch) {
   const mood = refreshDailyMood();
+  const history = await getAnecdoteHistory();
+  const historyBlock = history.length
+    ? `\nAnecdotes déjà racontées (à NE PAS répéter, même thème ou même jeu) :\n${history.slice(0, 15).map((h, i) => `${i + 1}. ${h}`).join('\n')}`
+    : '';
   const { text } = await callClaude(
-    `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nTu génères des anecdotes gaming courtes, vraies, surprenantes.`,
+    `\nHumeur : ${mood}. ${getMoodInjection(mood)}\nTu génères des anecdotes gaming courtes, vraies, surprenantes. Chaque anecdote doit être sur un jeu ou sujet DIFFÉRENT des précédentes.${historyBlock}`,
     `Anecdote gaming sur : ${sanitizeForJson(ch.topic)}. 2-3 phrases max. Direct. Fin : 🕹️ *[Jeu concerné]*`,
     400,
     BOT_PERSONA
@@ -44,77 +63,14 @@ async function postDailyAnecdote() {
       .setDescription(text)
       .setFooter({ text: `${today.charAt(0).toUpperCase() + today.slice(1)} • Brainee` })
       .setTimestamp();
-    const sentMsg = await channel.send({ content: '**🧠 Le saviez-vous ?**', embeds: [embed] });
-    try {
-      const { text: tName } = await callClaude('Génères un nom de fil Discord court (max 60 car, pas de guillemets, emoji gaming).', `Nom de fil pour : ${sanitizeForJson(text.slice(0, 200))}`, 60);
-      await sentMsg.startThread({ name: tName.replace(/"/g, '').trim().slice(0, 100), autoArchiveDuration: 1440, reason: 'Fil anecdote Brainee' });
-      pushLog('SYS', `🧵 Fil anecdote créé`, 'success');
-    } catch (_) {}
+    await channel.send({ content: '**🧠 Le saviez-vous ?**', embeds: [embed] });
+    await recordAnecdote(text);
     shared.botConfig.anecdote.lastPostedDate = todayStr;
     saveConfig();
     await setBotState({ anecdoteLastPostedDate: todayStr });
     pushLog('SYS', `✅ Anecdote → #${ch.channelName}`, 'success');
     broadcast('anecdote', { status: 'posted', channel: ch.channelName });
   } catch (err) { pushLog('ERR', `Anecdote échouée : ${err.message}`, 'error'); }
-}
-
-async function checkAnecdoteThreads() {
-  const cfg = shared.botConfig.anecdote;
-  if (!cfg?.enabled) return;
-  const active = (cfg.channels || []).filter(c => c.enabled);
-  if (!active.length) return;
-
-  const DEAD_MS = 4 * 60 * 60 * 1000;    // thread mort si pas d'activité depuis 4h
-  const TOO_FRESH_MS = 20 * 60 * 1000;   // pas de réponse si message il y a < 20min
-
-  try {
-    const guild = await shared.discord.guilds.fetch(GUILD_ID);
-    await guild.channels.fetch();
-
-    for (const ch of active) {
-      const channel = guild.channels.cache.get(ch.channelId);
-      if (!channel) continue;
-
-      const fetched = await channel.threads.fetchActive();
-      for (const [, thread] of fetched.threads) {
-        // Seulement les threads créés par le bot
-        if (thread.ownerId !== shared.discord.user?.id) continue;
-
-        const msgs = await thread.messages.fetch({ limit: 15 });
-        if (!msgs.size) continue;
-
-        const lastMsg = msgs.first();
-        const ageMs = Date.now() - lastMsg.createdTimestamp;
-
-        // Thread mort ou trop frais → skip
-        if (ageMs > DEAD_MS) continue;
-        if (ageMs < TOO_FRESH_MS) continue;
-        // Brainee a déjà parlé en dernier → skip
-        if (lastMsg.author.id === shared.discord.user?.id) continue;
-
-        // 35% de chance de rejoindre spontanément
-        if (Math.random() > 0.35) continue;
-
-        const threadContext = [...msgs.values()]
-          .reverse()
-          .slice(-8)
-          .map(m => `[${m.author.username}] ${m.content.slice(0, 120)}`)
-          .join('\n');
-
-        const { text } = await callClaude(
-          `Tu rejoins spontanément un fil de discussion gaming sur Discord. Quelqu'un a répondu à ton anecdote du jour. Rentre direct dans la conversation, 1-2 phrases max, style Brainee. Pas de "bonjour", pas de présentation.`,
-          `Fil : ${thread.name}\nÉchanges récents :\n${threadContext}`,
-          180,
-          BOT_PERSONA
-        );
-
-        await thread.send(text);
-        pushLog('SYS', `🧵 Retour spontané dans le fil "${thread.name}"`, 'success');
-      }
-    }
-  } catch (err) {
-    pushLog('ERR', `checkAnecdoteThreads: ${err.message}`, 'error');
-  }
 }
 
 function startAnecdoteCron() {
@@ -124,14 +80,7 @@ function startAnecdoteCron() {
     const d = Math.floor(Math.random() * (shared.botConfig.anecdote.randomDelayMax || 30) * 60 * 1000);
     setTimeout(postDailyAnecdote, d);
   }, { timezone: 'Europe/Paris' });
-
-  // Vérification spontanée des fils anecdote — 3 fois par jour en heures actives
-  cron.schedule('0 14,17,20 * * *', () => {
-    if (!shared.discord?.isReady()) return;
-    checkAnecdoteThreads();
-  }, { timezone: 'Europe/Paris' });
-
-  pushLog('SYS', `✅ Cron anecdote → ${h}h + vérif threads 14h/17h/20h`);
+  pushLog('SYS', `✅ Cron anecdote → ${h}h`);
 }
 
 async function checkAnecdoteMissed() {
@@ -146,4 +95,4 @@ async function checkAnecdoteMissed() {
   }
 }
 
-module.exports = { generateAnecdote, postDailyAnecdote, startAnecdoteCron, checkAnecdoteMissed, checkAnecdoteThreads };
+module.exports = { generateAnecdote, postDailyAnecdote, startAnecdoteCron, checkAnecdoteMissed };

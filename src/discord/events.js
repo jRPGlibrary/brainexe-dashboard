@@ -46,7 +46,7 @@ const {
 } = require('../features/imageAttachments');
 const { YOUTUBE_KEYWORDS, GAMING_KEYWORDS } = require('../bot/keywords');
 const { shouldRespond, recordMessageTopic } = require('../features/decisionLogic');
-const { getNarrativeContext } = require('../db/narrativeMemory');
+const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { checkEmotionalRefusal, isInRefusalCooldown } = require('../features/emotionalRefusal');
 const { analyzeConviction } = require('../features/conviction');
 const {
@@ -172,7 +172,9 @@ async function handleMentionReply(message, userQuery) {
     const bondToneInstruction = getBondToneInstruction(bond, message.author.username);
     const emotionBlock = getEmotionalInjection();
     const temperamentBlock = getTemperamentInjection();
-    const narrativeBlock = await getNarrativeContext();
+    let narrativeBlock = await getNarrativeContext();
+    const weeklyBlock = await getWeeklyContext();
+    if (weeklyBlock) narrativeBlock = `${weeklyBlock}\n${narrativeBlock}`;
 
     // v0.12.0 : Système de conviction — détecte l'insistance/contradiction
     const convictionResult = analyzeConviction(message.author.id, userQuery);

@@ -1,5 +1,6 @@
 module.exports = {
   TOKEN: process.env.DISCORD_TOKEN,
+  OWNER_USER_ID: process.env.OWNER_USER_ID || '',
   GUILD_ID: process.env.GUILD_ID || '1481022956816830669',
   PORT: process.env.PORT || 3000,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
