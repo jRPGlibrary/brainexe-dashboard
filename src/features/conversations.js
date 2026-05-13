@@ -80,8 +80,8 @@ async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } =
     }
   } catch (_) {}
   const consecutive = await countConsecutiveBotPosts(ch.channelId, channelResolver);
-  if (consecutive >= 2) {
-    return { ok: false, reason: `${consecutive} posts consécutifs sans humain` };
+  if (consecutive >= 1) {
+    return { ok: false, reason: `Brainee a déjà parlé en dernier (${consecutive} post(s) non répondu(s))` };
   }
   if (!relaxed && await isChannelDeadThisWeek(ch.channelId, channelResolver)) {
     return { ok: false, reason: 'calme plat (limite atteinte)' };
@@ -169,6 +169,8 @@ async function postRandomConversation() {
   if (getConvDailyCount() >= getConvMaxPerDay()) return;
   if (Date.now() - shared.lastAnyBotPostTime < getSlotIntervalMs(slot)) return;
   if (!ANTHROPIC_API_KEY) return;
+  // Vraie absence aléatoire — 25% de chance de sauter le lance-conv (pas H24)
+  if (Math.random() < 0.25) { pushLog('SYS', `🌫️ Vraie absence (skip lance-conv 25%)`); return; }
 
   try {
     const guild = await shared.discord.guilds.fetch(GUILD_ID);
@@ -232,7 +234,8 @@ async function replyToConversations() {
   if (!cfg.enabled || !cfg.canReply || !ANTHROPIC_API_KEY) return;
   const slot = getCurrentSlot();
   if (slot.maxConv === 0) return;
-  if (Math.random() < 0.05) { pushLog('SYS', `💬 Ignore spontané 5%`); return; }
+  // Vraie absence aléatoire — 35% de chance de simplement ignorer la slot (pas H24)
+  if (Math.random() < 0.35) { pushLog('SYS', `🌫️ Vraie absence (skip silencieux 35%)`); return; }
   const active = cfg.channels.filter(c => c.enabled);
   if (!active.length) return;
   const ch = active[Math.floor(Math.random() * active.length)];
@@ -260,6 +263,12 @@ async function replyToConversations() {
     const alone = await hasUnansweredLastPost(ch.channelId, channelResolver);
     if (alone) {
       pushLog('SYS', `🔇 Skip reply ${ch.channelName} — dernier post sans réponse (no-insist)`);
+      return;
+    }
+    // Anti-2-en-suite strict : si Brainee a parlé en dernier (même via un autre path), skip
+    const consecBots = await countConsecutiveBotPosts(ch.channelId, channelResolver);
+    if (consecBots >= 1) {
+      pushLog('SYS', `🔇 Skip reply ${ch.channelName} — Brainee a déjà parlé en dernier`);
       return;
     }
     // Skip si salon monologue
