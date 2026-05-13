@@ -98,7 +98,7 @@ function getTemporalBlock() {
   const year = paris.getFullYear();
   const hh = String(paris.getHours()).padStart(2, '0');
   const mm = String(paris.getMinutes()).padStart(2, '0');
-  return `📅 Aujourd'hui : ${day} ${date} ${month} ${year}, ${hh}h${mm} (heure Paris). Utilise ces infos pour situer les messages dans le temps.`;
+  return `📅 Contexte temporel (usage INTERNE uniquement) : ${day} ${date} ${month} ${year}, ${hh}h${mm} Paris. Sers-toi de cette info pour interpréter les messages (ex : "ce matin", "hier soir") MAIS NE LA CITE JAMAIS dans ta réponse. Ne dis JAMAIS "il est Xh", "on est lundi", "c'est samedi matin" — les gens le savent déjà.`;
 }
 
 module.exports = {

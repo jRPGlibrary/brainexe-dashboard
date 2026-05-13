@@ -88,6 +88,28 @@ async function archiveNarrativeArc(arcId) {
 }
 
 /**
+ * Contexte de la semaine en cours (7 derniers jours)
+ * Injecté séparément du contexte narratif mensuel pour donner un ancrage temporel court
+ */
+async function getWeeklyContext() {
+  if (!shared.mongoDb) return '';
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const arcs = await shared.mongoDb
+      .collection('narrativeMemory')
+      .find({ date: { $gte: sevenDaysAgo }, active: true })
+      .sort({ date: -1 })
+      .toArray();
+    if (!arcs.length) return '';
+    const lines = arcs.slice(0, 3).map(a => `• ${a.title} — ${a.description}`);
+    return `📅 CETTE SEMAINE :\n${lines.join('\n')}`;
+  } catch (err) {
+    pushLog('ERR', `getWeeklyContext: ${err.message}`, 'error');
+    return '';
+  }
+}
+
+/**
  * Réinitialise les arcs (utilisation interne si nécessaire)
  */
 async function resetNarrativeMemory() {
@@ -104,6 +126,7 @@ module.exports = {
   getNarrativeMemory,
   addNarrativeArc,
   getNarrativeContext,
+  getWeeklyContext,
   archiveNarrativeArc,
   resetNarrativeMemory,
 };

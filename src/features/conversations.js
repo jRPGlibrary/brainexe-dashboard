@@ -29,7 +29,7 @@ const {
   isMonologueChannel, countConsecutiveBotPosts,
 } = require('./convStats');
 const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
-const { getNarrativeContext } = require('../db/narrativeMemory');
+const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { logMessageForBridge } = require('./dmServerBridge');
 const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
@@ -70,6 +70,15 @@ async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } =
   if (await isMonologueChannel(ch.channelId, channelResolver)) {
     return { ok: false, reason: 'salon monologue (Brainee parle seule)' };
   }
+  // Skip si le salon n'a aucun message humain récent (évite tokens vides)
+  try {
+    const channel = await channelResolver(ch.channelId);
+    if (channel?.messages) {
+      const msgs = await channel.messages.fetch({ limit: 20 });
+      const hasHuman = [...msgs.values()].some(m => !m.author?.bot);
+      if (!hasHuman) return { ok: false, reason: 'aucun message humain récent (skip tokens vides)' };
+    }
+  } catch (_) {}
   const consecutive = await countConsecutiveBotPosts(ch.channelId, channelResolver);
   if (consecutive >= 2) {
     return { ok: false, reason: `${consecutive} posts consécutifs sans humain` };
@@ -106,6 +115,8 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
     emotionBlock = getEmotionalInjection();
     temperamentBlock = getTemperamentInjection();
     narrativeBlock = await getNarrativeContext();
+    const weeklyBlock = await getWeeklyContext();
+    if (weeklyBlock) narrativeBlock = `${weeklyBlock}\n${narrativeBlock}`;
     setCacheBlocks(emotionBlock, temperamentBlock, narrativeBlock);
   }
   let contextBlock = '';
