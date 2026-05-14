@@ -104,7 +104,7 @@ const { getCurrentSlot } = require('./src/bot/scheduling');
 const { getDailyVibe } = require('./src/bot/adaptiveSchedule');
 const { registerRoutes } = require('./src/api/routes');
 const { getFundingData, calculateTotalCosts, updateBotStatus } = require('./src/project/funding');
-const { ensureSupportChannel } = require('./src/features/supportChannel');
+const { ensureSupportChannel, postCostUpdateEmbed } = require('./src/features/supportChannel');
 
 // ── BRAINEE-LIVING : 12 modules de conscience ────────────────────
 const { initializeBraineeAsLivingBeing } = require('./src/being');
@@ -161,6 +161,8 @@ discord.once('clientReady', async () => {
       pushLog('SYS', 'Status Discord mis à jour ✓', 'success');
       await ensureSupportChannel();
       pushLog('SYS', 'Salon de soutien prêt ✓', 'success');
+      await postCostUpdateEmbed();
+      pushLog('SYS', 'Embed hausse coûts vérifié ✓', 'success');
     } catch (e) {
       pushLog('ERR', `Soutien Brainee init : ${e.message}`, 'error');
     }
