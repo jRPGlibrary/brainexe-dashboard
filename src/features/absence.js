@@ -1,25 +1,9 @@
 const { pushLog } = require('../logger');
+const { callClaude } = require('../ai/claude');
+const { BOT_PERSONA } = require('../bot/persona');
 
 let _state = { active: false, until: 0 };
 let _lastSlotStatus = '';
-
-const PHRASES = [
-  "pas là avant {time}, gérez sans moi",
-  "dispo vers {time}, à tout",
-  "j'ai un truc, je reviens vers {time}",
-  "absente jusqu'à {time} à peu près",
-  "on se retrouve vers {time}",
-  "je passe, retour vers {time}",
-  "occupée là, {time} max",
-  "à {time} les gens",
-  "je disparais jusqu'à {time}",
-  "j'ai à faire, retour genre {time}",
-  "je suis off jusqu'à {time}",
-  "pas dispo de l'aprem, retour vers {time}",
-  "quelque chose à gérer, {time} au plus tôt",
-  "je suis pas là, revenez vers {time}",
-  "back vers {time}, à plus",
-];
 
 function isAbsent() {
   if (!_state.active) return false;
@@ -31,10 +15,31 @@ function isAbsent() {
   return true;
 }
 
+async function _generatePhrase(untilTime) {
+  try {
+    const { text } = await callClaude(
+      BOT_PERSONA,
+      `Génère UNE seule phrase ultra courte (5-10 mots max, style texto français, pas de guillemets) pour dire que tu es absente et de retour vers ${untilTime}. Style Brainee : direct, naturel, pas de politesse forcée. Exemples : "pas là avant ${untilTime}", "back vers ${untilTime} à plus", "occupée, retour ${untilTime}". Réponds uniquement avec la phrase.`,
+      35,
+      BOT_PERSONA
+    );
+    return text.trim().replace(/^["'«»]|["'«»]$/g, '');
+  } catch (_) {
+    const fallbacks = [
+      `pas là avant ${untilTime}`,
+      `dispo vers ${untilTime}, à tout`,
+      `retour vers ${untilTime}`,
+      `back vers ${untilTime}`,
+      `absente jusqu'à ${untilTime}`,
+    ];
+    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+  }
+}
+
 // Retourne une phrase d'annonce ou null si pas d'absence déclenchée
-function maybeStartAbsence(slotStatus) {
+async function maybeStartAbsence(slotStatus) {
   if (_state.active) return null;
-  if (_lastSlotStatus === slotStatus) return null; // déjà évalué pour ce slot
+  if (_lastSlotStatus === slotStatus) return null;
   _lastSlotStatus = slotStatus;
 
   const PROBA = {
@@ -55,13 +60,8 @@ function maybeStartAbsence(slotStatus) {
     hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris',
   });
 
-  const phrase = PHRASES[Math.floor(Math.random() * PHRASES.length)].replace('{time}', untilTime);
   pushLog('SYS', `🌙 Absence déclenchée jusqu'à ${untilTime} (slot: ${slotStatus})`);
-  return phrase;
+  return await _generatePhrase(untilTime);
 }
 
-function getAbsenceUntil() {
-  return _state.until;
-}
-
-module.exports = { isAbsent, maybeStartAbsence, getAbsenceUntil };
+module.exports = { isAbsent, maybeStartAbsence };

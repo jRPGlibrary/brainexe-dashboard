@@ -46,6 +46,7 @@ const {
 } = require('../features/imageAttachments');
 const { YOUTUBE_KEYWORDS, GAMING_KEYWORDS } = require('../bot/keywords');
 const { shouldRespond, recordMessageTopic } = require('../features/decisionLogic');
+const { isAbsent } = require('../features/absence');
 const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { checkEmotionalRefusal, isInRefusalCooldown } = require('../features/emotionalRefusal');
 const { analyzeConviction } = require('../features/conviction');
@@ -526,6 +527,13 @@ function registerMessageHandlers() {
     // Si pas de texte ET pas d'image jointe → on ignore. Sinon on continue (image seule = ok)
     const hasImageAttachment = extractImageAttachments(message).length > 0;
     if (!userQuery && !hasImageAttachment) return;
+
+    // Absence : répond seulement 35% du temps (comme jeter un œil à son tel en passant)
+    if (isAbsent() && Math.random() > 0.35) {
+      pushLog('SYS', `📱 @mention pendant absence → ignorée (${message.author.username})`);
+      return;
+    }
+
     const slot = getCurrentSlot();
     const urgent = isUrgentQuery(userQuery);
     const decision = decideMentionResponse(slot, urgent);

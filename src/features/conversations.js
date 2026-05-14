@@ -307,8 +307,25 @@ async function replyToConversations() {
     if (lastMsg.author.bot) return;
     const age = Date.now() - lastMsg.createdTimestamp;
     if (age < 30 * 60 * 1000 || age > 90 * 60 * 1000) return;
-    if (Date.now() - (cfg.lastPostByChannel?.[ch.channelId] || 0) < Math.max(getSlotIntervalMs(slot), 90 * 60 * 1000)) return;
     if (Date.now() - shared.lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
+
+    // Gap 2h in-memory par canal avec exception canal actif
+    const chHistory = _channelPostHistory[ch.channelId] || [];
+    const chLastPost = chHistory.length > 0 ? Math.max(...chHistory) : 0;
+    let softReply = false;
+    if (chLastPost && Date.now() - chLastPost < CHANNEL_COOLDOWN_MS) {
+      const msgArr = [...msgs.values()];
+      const cutoff30 = Date.now() - 30 * 60 * 1000;
+      const botId = shared.discord?.user?.id;
+      const recentHumans = msgArr.filter(m => !m.author?.bot && m.author?.id !== botId && m.createdTimestamp > cutoff30).length;
+      if (recentHumans >= 3 && Math.random() < 0.40) {
+        softReply = true;
+        pushLog('SYS', `💬 Override cooldown 2h reply (${recentHumans} msgs/30min) → ${ch.channelName} [soft]`);
+      } else {
+        pushLog('SYS', `🔇 Skip reply ${ch.channelName} — cooldown 2h (${Math.round((Date.now()-chLastPost)/60000)}min)`);
+        return;
+      }
+    }
 
     // No-insist check : si Brainee a déjà posté dans ce salon sans réponse, ne pas relancer
     const channelResolver = async (id) => {
@@ -384,11 +401,15 @@ async function replyToConversations() {
 
     // Adapter selon la verbosité du salon
     const verbosity = await getChannelVerbosity(ch.channelId);
-    const verbosityReplyInstruct = verbosity.shouldBePavé
-      ? `Tu peux te permettre 3-4 phrases si le sujet le mérite (ce salon aime l'engagement).`
-      : `Réponse courte (1-2 phrases). Les gens ici préfèrent les réponses concises.`;
+    const verbosityReplyInstruct = softReply
+      ? `1 phrase max, tu passes vite, reste légère.`
+      : verbosity.shouldBePavé
+        ? `Tu peux te permettre 3-4 phrases si le sujet le mérite (ce salon aime l'engagement).`
+        : `Réponse courte (1-2 phrases). Les gens ici préfèrent les réponses concises.`;
     const baseReplyTokens = getContextualMaxTokens(msgContent, { defaultShort: 100, extended: 200 });
-    const replyMaxTokens = adjustMaxTokens(verbosity.shouldBePavé ? Math.round(baseReplyTokens * 1.3) : baseReplyTokens);
+    const replyMaxTokens = softReply
+      ? adjustMaxTokens(55)
+      : adjustMaxTokens(verbosity.shouldBePavé ? Math.round(baseReplyTokens * 1.3) : baseReplyTokens);
 
     const crossReplyBlock = await getCrossChannelContext(ch.channelId);
     const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
