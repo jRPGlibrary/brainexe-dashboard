@@ -157,7 +157,7 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
 | `src/ai/youtube.js` | Recherche vidéos |
 | `src/api/rateLimits.js` | 4 niveaux de limitation |
 | `src/api/routes/*` | Endpoints HTTP éclatés par thème |
-| `src/being/*` | 12 modules de conscience numérique simulée (v0.11.0) |
+| `src/being/*` | 12 modules + 5 infra = 17 fichiers de conscience numérique simulée (v0.11.0) |
 | `src/bot/*` | Personnalité, émotions, mood, scheduling, humanize, messaging |
 | `src/db/*` | Couche MongoDB |
 | `src/discord/*` | Events Discord + sync template ↔ Discord |
@@ -1176,10 +1176,15 @@ brainexe-dashboard/
 │   │
 │   ├── ai/
 │   │   ├── claude.js               🤖 Client Anthropic + santé instrumentée + tokenUsage
-│   │   └── youtube.js              📺 Recherche YouTube Data v3
+│   │   ├── youtube.js              📺 Recherche YouTube Data v3
+│   │   └── steam.js                🎮 Steam API (jeux tendance, promos)
 │   │
 │   ├── api/
 │   │   ├── rateLimits.js           🚦 4 niveaux (claude/discord/backup/general)
+│   │   ├── auth.js                 🔒 Middleware auth session (cookie + TOTP)
+│   │   ├── totp.js                 🔑 2FA TOTP (speakeasy + qrcode)
+│   │   ├── audit-advanced.js       📋 Audit avancé (filtres, CSV export)
+│   │   ├── monitoring.js           📊 Métriques système (mémoire, uptime, CPU)
 │   │   └── routes/
 │   │       ├── index.js            🎯 Chef d'orchestre + montage des sous-routeurs
 │   │       ├── discord.js          💬 Canaux, rôles, sync, post, welcome, tiktok test
@@ -1188,6 +1193,9 @@ brainexe-dashboard/
 │   │       ├── admin.js            🎛️ slot, mood, sliders, tiktok, sidebar
 │   │       ├── data.js             📊 health, planning, mémoires, émotions, audit, funding
 │   │       ├── backups.js          💾 create / list / download / delete / restore
+│   │       ├── analytics.js        📈 Analytics dashboard (top membres, tokens, stats)
+│   │       ├── audit.js            📋 Ring buffer audit — lecture + export CSV
+│   │       ├── monitoring.js       📊 Routes métriques système
 │   │       └── being.js            🧬 14 endpoints vie intérieure (v0.11.0)
 │   │
 │   ├── being/                      🧬 BRAINEE-LIVING (v0.11.0, ~3700 lignes)
@@ -1222,7 +1230,8 @@ brainexe-dashboard/
 │   │   ├── reactions.js            ✨ Choix d'emoji contextuel
 │   │   ├── keywords.js             🔍 Détection mots-clés
 │   │   ├── hyperFocus.js           🎯 Détection + suivi des obsessions temporaires
-│   │   └── vulnerability.js        🤍 Fenêtres de vulnérabilité (fatigue, surcharge)
+│   │   ├── vulnerability.js        🤍 Fenêtres de vulnérabilité (fatigue, surcharge)
+│   │   └── dailyCache.js           📅 Cache quotidien (reset à minuit)
 │   │
 │   ├── config/
 │   │   ├── channelManager.js       🗂️ Persistance des IDs de salons importants
@@ -1242,7 +1251,9 @@ brainexe-dashboard/
 │   │   ├── channelDir.js           📑 Directory des salons
 │   │   ├── dmHistory.js            ✉️ Historique DM
 │   │   ├── botState.js             💾 État émotionnel persistant
-│   │   └── intelligentMemory.js    🧬 Mémoire intelligente (cross-collection)
+│   │   ├── intelligentMemory.js    🧬 Mémoire intelligente (cross-collection)
+│   │   ├── crossChannelMem.js      🔀 Mémoire croisée inter-salons
+│   │   └── messageEngagement.js    💬 Tracking engagement par message (réactions, replies)
 │   │
 │   ├── discord/
 │   │   ├── events.js               🎮 messageCreate, memberJoin, reactionAdd, …
@@ -1274,7 +1285,8 @@ brainexe-dashboard/
 │   │   ├── presenceManager.js      🔴 Statut Discord dynamique (v0.17.0)
 │   │   ├── context.js              🧵 Contexte conversationnel
 │   │   ├── convStats.js            📈 Stats quotidiennes des conversations
-│   │   └── delayedReply.js         ⏳ File d'attente de réponses différées
+│   │   ├── delayedReply.js         ⏳ File d'attente de réponses différées
+│   │   └── ownerBriefing.js        📬 Briefing quotidien owner (résumé activité)
 │   │
 │   └── project/
 │       └── funding.js              💰 Coûts mensuels, dons, statut Discord

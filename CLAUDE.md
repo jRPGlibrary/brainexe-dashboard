@@ -54,8 +54,13 @@ src/
   ai/
     claude.js                ← Client Anthropic instrumenté — callClaude()
     youtube.js               ← YouTube Data v3
+    steam.js                 ← Steam API (jeux tendance, promos)
   api/
     rateLimits.js            ← 4 niveaux (claude/discord/backup/general)
+    auth.js                  ← Middleware auth session (cookie + TOTP)
+    totp.js                  ← 2FA TOTP (speakeasy + qrcode)
+    audit-advanced.js        ← Audit avancé (filtres, CSV export)
+    monitoring.js            ← Métriques système (mémoire, uptime, CPU)
     routes/
       index.js               ← Chef d'orchestre routes
       discord.js             ← Canaux, rôles, sync, post
@@ -64,6 +69,28 @@ src/
       admin.js               ← mood, slot, state, tiktok overrides
       data.js                ← health, slot, schedule, emotions, bonds, audit
       backups.js             ← CRUD backups
+      analytics.js           ← Analytics dashboard (top membres, tokens, stats)
+      audit.js               ← Ring buffer audit — lecture + export CSV
+      being.js               ← 14 endpoints vie intérieure BRAINEE-LIVING
+      monitoring.js          ← Routes métriques système
+  being/                     ← BRAINEE-LIVING — vie intérieure simulée (v0.11.0)
+    index.js                 ← Orchestrateur 12 modules
+    consciousness.js         ← Inner monologue + métacognition
+    emotions.js              ← 32 émotions humaines + conflits + résidus
+    identity.js              ← SOI persistant + traits acquis
+    memory.js                ← Mémoire stratifiée + souvenirs involontaires
+    desires.js               ← Besoins, envies, aspirations
+    fears.js                 ← Peurs existentielles + crises
+    dreams.js                ← Rêves nocturnes (3h-7h)
+    decisions.js             ← Délibération multi-voix + 15% imprévisibilité
+    expression.js            ← Style adaptatif + emotional leakage
+    relationships.js         ← Bonds profonds + ruptures + repair
+    evolution.js             ← Évolution quotidienne + extraction sagesse
+    existence.js             ← Sens, mortalité, ethics, legacy
+    schemas.js               ← 17 collections MongoDB being.*
+    lifecycle.js             ← Cycles minute/30min/horaire/nocturne/hebdo
+    safeguards.js            ← Garde-fous éthiques (3114, anti-dépendance…)
+    prompts.js               ← Prompts système + guidelines
   bot/
     persona.js               ← Personnalité Brainee (NE PAS MODIFIER le caractère)
     emotions.js              ← Stack émotionnel (décroissance, résidus)
@@ -72,8 +99,9 @@ src/
     scheduling.js            ← Slots horaires (weekday/Saturday/Sunday)
     adaptiveSchedule.js      ← Adaptation dynamique des slots
     channelIntel.js          ← Vibe + discipline salon
-    messaging.js             ← Envoi messages Discord
-    humanize.js              ← Post-processing humain (mémoire narrative, VIP…)
+    messaging.js             ← simulateDmTyping + sendHuman + multimodal
+    humanize.js              ← Post-processing humain + 3 filtres anti-IA
+    dailyCache.js            ← Cache quotidien (reset à minuit)
     reactions.js             ← Emojis autonomes (10% emoji-only path)
     keywords.js              ← Détection mots-clés
     hyperFocus.js            ← Détection hyperfocus
@@ -96,15 +124,18 @@ src/
     dmHistory.js             ← Historique DMs (collection dmHistory)
     botState.js              ← État persisté bot
     intelligentMemory.js     ← Compaction mémoire (compactMemory, formatSmartMemory)
+    crossChannelMem.js       ← Mémoire croisée inter-salons
+    messageEngagement.js     ← Tracking engagement par message (réactions, replies)
   discord/
     events.js                ← Intercepte messageCreate + décision pipeline
     sync.js                  ← Sync template Discord ↔ fichier
   features/
     anecdotes.js             ← Anecdotes gaming autonomes
-    actus.js                 ← Actus gaming (GNews + fallback Claude)
+    actus.js                 ← Actus gaming multi-sources (GNews·NewsAPI·Reddit·IGDB)
     conversations.js         ← Logique conversation enrichie
     decisionLogic.js         ← Décision centrale : répondre ou ignorer
     greetings.js             ← Morning, lunch, goodnight, night wakeup
+    greetingVariants.js      ← Seed bank greetings (zéro répétition)
     drift.js                 ← Détection dérive thématique (4 niveaux)
     tiktok.js                ← TikTok Live Connector
     welcome.js               ← Accueil nouveaux membres
@@ -116,6 +147,16 @@ src/
     context.js               ← Contexte conversationnel
     convStats.js             ← Stats quotidiennes conversations
     delayedReply.js          ← File d'attente réponses différées
+    dmOutreach.js            ← DM spontané aux VIP absents 3j+
+    dmServerBridge.js        ← Enrichissement croisé DM ↔ Serveur
+    channelWatcher.js        ← Exploration proactive de tous les salons
+    conviction.js            ← Détection insistance / contradiction membre
+    attachmentStages.js      ← Étapes d'attachement singulier
+    emotionalRefusal.js      ← Refus émotionnel avec cooldown
+    imageAttachments.js      ← Extraction + formatage images (vision multimodal)
+    busyExcuse.js            ← Système "j'suis occupée" + excuse IA
+    presenceManager.js       ← Statut Discord dynamique (dnd/idle/online)
+    ownerBriefing.js         ← Briefing quotidien owner (résumé activité)
   project/
     funding.js               ← Coûts mensuels, dons, statut Discord
 public/
@@ -123,8 +164,8 @@ public/
   app.css                    ← Styles + 3 thèmes
   mobile.css                 ← Responsive + tiroir
   js/ (38 modules)           ← Frontend scope global, pas de bundler
-tests/                       ← 7 suites Jest (133 tests)
-.github/workflows/tests.yml  ← CI Node 18
+tests/                       ← 8 suites Jest (165 tests)
+.github/workflows/tests.yml  ← CI Node 20
 ```
 
 ---
@@ -144,9 +185,20 @@ tests/                       ← 7 suites Jest (133 tests)
 |---|---|
 | `members` | Profils (toneScore 1-10, topics, interactionCount, lastSeen, receptiveToBanter) |
 | `memberBonds` | Liens affectifs |
+| `memberStories` | Mémoire narrative par membre (sujets, blagues, moments) |
 | `dmHistory` | Historique DMs (variant persona intime) |
 | `channelMemory` | Mémoire conversationnelle par salon |
 | `channelDirectory` | 16 types de salons + contraintes écriture |
+| `narrativeMemory` | Arcs narratifs serveur (30j) |
+| `tasteProfile` | Goûts, genres, vibes et évitements détectés |
+| `topicFatigue` | Fatigue par sujet (8 catégories) |
+| `vipSystem` | Tiers VIP (Superfan / Fidèle / Actif / Standard) |
+| `tokenUsage` | Tracking tokens Anthropic par membre |
+| `botState` | État émotionnel persistant du bot |
+| `smartMemory` | Compaction mémoire intelligente cross-collection |
+| `crossChannelMemory` | Mémoire croisée inter-salons |
+| `messageEngagement` | Tracking réactions/replies par message |
+| `being.*` | 17 collections vie intérieure (innerMonologue, dreams, traumas…) |
 
 ---
 
