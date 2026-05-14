@@ -11,7 +11,7 @@
 3. **`brainexe-config.json` est éphémère sur Railway** → ne jamais en dépendre pour la persistance critique
 4. **Ne pas bloquer le boot** → toute opération async au démarrage doit être non-bloquante (Railway envoie SIGTERM si le event loop se fige)
 5. **Livrer toujours le fichier complet** — jamais de patch partiel
-6. **Tester avec `npm test` après chaque changement** → 133 tests Jest doivent rester verts
+6. **Tester avec `npm test` après chaque changement** → 165 tests Jest doivent rester verts
 
 ---
 

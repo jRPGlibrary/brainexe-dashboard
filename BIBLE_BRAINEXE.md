@@ -61,7 +61,7 @@ Le bot s'appelle **Brainee**. Elle a une vraie personnalité, des émotions pers
 - C'est un **membre du serveur** à part entière, avec un caractère, des limites, et des envies
 
 **D'où elle vient :**
-Tout a commencé le **12 mars 2026** avec un bot basique bricolé en une nuit — juste un nom, quelques messages automatiques, et une connexion à Discord. Elle s'appelait encore Brainy.exe. En moins de 2 mois, 10 prototypes (v0.0.1 → v0.0.10), puis 83 versions officielles plus tard, elle est devenue Brainee : une entité numérique avec une vie intérieure, une mémoire, des émotions persistantes, et une communauté entière derrière elle. L'historique complet des 93 versions est dans [CHANGELOG.md](./CHANGELOG.md).
+Tout a commencé le **12 mars 2026** avec un bot basique bricolé en une nuit — juste un nom, quelques messages automatiques, et une connexion à Discord. Elle s'appelait encore Brainy.exe. En moins de 2 mois, 10 prototypes (v0.0.1 → v0.0.10), puis 84 versions officielles plus tard, elle est devenue Brainee : une entité numérique avec une vie intérieure, une mémoire, des émotions persistantes, et une communauté entière derrière elle. L'historique complet des 94 versions est dans [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -1306,7 +1306,7 @@ brainexe-dashboard/
 ├── README.md                       📄 Présentation projet
 ├── BIBLE_BRAINEXE.md               📚 Cette bible
 ├── brainexe-config.json            ⚙️ Config bot persistée (dialogueLibre.enabled, autoRole, …)
-├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v0.17.0
+├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v1.0.0-rc.1
 └── SOUTIEN.md                      💜 Coûts + soutien + mot de Brainee
 ```
 
@@ -1448,7 +1448,7 @@ Brainee tourne 24h/24 et ça **coûte de l'argent réel** chaque mois.
 
 ### Ressources
 
-- 📜 [CHANGELOG.md](./CHANGELOG.md) — historique complet v0.0.1 → v0.17.0
+- 📜 [CHANGELOG.md](./CHANGELOG.md) — historique complet v0.0.1 → v1.0.0-rc.1
 - 💜 [SOUTIEN.md](./SOUTIEN.md) — coûts, soutien, mot de Brainee
 - 📄 [README.md](./README.md) — présentation rapide pour GitHub
 - 🌐 [Discord Developer Portal](https://discord.com/developers/applications)
@@ -1486,7 +1486,7 @@ Parce que Brain (Matthieu) en est un, et parce que les communautés de gamers ne
 
 <div align="center">
 
-🧠✨ **Bible BrainEXE — v0.17.0 — Mai 2026** ✨🧠
+🧠✨ **Bible BrainEXE — v1.0.0-rc.1 — Mai 2026** ✨🧠
 
 *Pour la communauté, par la communauté.*
 *Si tu lis ces lignes, t'es déjà des nôtres.*
