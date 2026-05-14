@@ -4,10 +4,18 @@ const { GUILD_ID } = require('../config');
 const { callClaude } = require('../ai/claude');
 const { sleep, sanitizeForJson } = require('../utils');
 
+const _dirCache = new Map(); // channelId → { data, expiresAt }
+const DIR_CACHE_MS = 30 * 60 * 1000;
+
 async function getChannelDirectory(channelId) {
   if (!shared.mongoDb) return null;
-  try { return await shared.mongoDb.collection('channelDirectory').findOne({ channelId }); }
-  catch { return null; }
+  const cached = _dirCache.get(channelId);
+  if (cached && Date.now() < cached.expiresAt) return cached.data;
+  try {
+    const data = await shared.mongoDb.collection('channelDirectory').findOne({ channelId });
+    _dirCache.set(channelId, { data, expiresAt: Date.now() + DIR_CACHE_MS });
+    return data;
+  } catch { return null; }
 }
 
 async function initChannelDirectory() {
@@ -57,6 +65,7 @@ async function initChannelDirectory() {
           { upsert: true }
         );
 
+        _dirCache.delete(ch.channelId);
         initialized++;
         await sleep(500);
       } catch (chErr) {

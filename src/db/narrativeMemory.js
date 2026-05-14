@@ -13,6 +13,12 @@
 const shared = require('../shared');
 const { pushLog } = require('../logger');
 
+const NARRATIVE_CACHE_MS = 10 * 60 * 1000;
+let _narrativeCache = null;
+let _narrativeExpires = 0;
+let _weeklyCache = null;
+let _weeklyExpires = 0;
+
 /**
  * Récupère les arcs narratifs actifs du dernier mois
  */
@@ -53,6 +59,8 @@ async function addNarrativeArc(arc) {
       createdAt: new Date(),
     });
 
+    _narrativeCache = null;
+    _weeklyCache = null;
     pushLog('SYS', `📖 Arc narratif ajouté: "${title}" (importance ${normalizedImportance}/5)`);
   } catch (err) {
     pushLog('ERR', `addNarrativeArc: ${err.message}`, 'error');
@@ -63,13 +71,22 @@ async function addNarrativeArc(arc) {
  * Récupère une représentation textuelle des arcs actifs pour injection dans le prompt
  */
 async function getNarrativeContext() {
+  if (_narrativeCache !== null && Date.now() < _narrativeExpires) return _narrativeCache;
+
   const arcs = await getNarrativeMemory();
-  if (!arcs.length) return '';
+  if (!arcs.length) {
+    _narrativeCache = '';
+    _narrativeExpires = Date.now() + NARRATIVE_CACHE_MS;
+    return '';
+  }
 
   const sorted = arcs.sort((a, b) => b.importance - a.importance).slice(0, 5);
   const lines = sorted.map(a => `• ${a.title} — ${a.description} (importance ${a.importance}/5)`);
+  const result = `📖 CONTEXTE NARRATIF (arcs du dernier mois) :\n${lines.join('\n')}`;
 
-  return `📖 CONTEXTE NARRATIF (arcs du dernier mois) :\n${lines.join('\n')}`;
+  _narrativeCache = result;
+  _narrativeExpires = Date.now() + NARRATIVE_CACHE_MS;
+  return result;
 }
 
 /**
@@ -82,6 +99,8 @@ async function archiveNarrativeArc(arcId) {
       { _id: arcId },
       { $set: { active: false } }
     );
+    _narrativeCache = null;
+    _weeklyCache = null;
   } catch (err) {
     pushLog('ERR', `archiveNarrativeArc: ${err.message}`, 'error');
   }
@@ -92,6 +111,8 @@ async function archiveNarrativeArc(arcId) {
  * Injecté séparément du contexte narratif mensuel pour donner un ancrage temporel court
  */
 async function getWeeklyContext() {
+  if (_weeklyCache !== null && Date.now() < _weeklyExpires) return _weeklyCache;
+
   if (!shared.mongoDb) return '';
   try {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -100,9 +121,14 @@ async function getWeeklyContext() {
       .find({ date: { $gte: sevenDaysAgo }, active: true })
       .sort({ date: -1 })
       .toArray();
-    if (!arcs.length) return '';
-    const lines = arcs.slice(0, 3).map(a => `• ${a.title} — ${a.description}`);
-    return `📅 CETTE SEMAINE :\n${lines.join('\n')}`;
+
+    const result = arcs.length
+      ? `📅 CETTE SEMAINE :\n${arcs.slice(0, 3).map(a => `• ${a.title} — ${a.description}`).join('\n')}`
+      : '';
+
+    _weeklyCache = result;
+    _weeklyExpires = Date.now() + NARRATIVE_CACHE_MS;
+    return result;
   } catch (err) {
     pushLog('ERR', `getWeeklyContext: ${err.message}`, 'error');
     return '';
@@ -116,6 +142,8 @@ async function resetNarrativeMemory() {
   if (!shared.mongoDb) return;
   try {
     await shared.mongoDb.collection('narrativeMemory').deleteMany({});
+    _narrativeCache = null;
+    _weeklyCache = null;
     pushLog('SYS', `📖 Narrative memory réinitialisée`, 'info');
   } catch (err) {
     pushLog('ERR', `resetNarrativeMemory: ${err.message}`, 'error');
