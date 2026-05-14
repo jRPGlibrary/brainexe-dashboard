@@ -110,8 +110,8 @@ async function handleReaction(reaction, user, add) {
 async function handleMentionReply(message, userQuery) {
   try {
     const slot = getCurrentSlot();
-    const fetched = await message.channel.messages.fetch({ limit: 100 });
-    const contextLines = formatContext(fetched, message.id, 80);
+    const fetched = await message.channel.messages.fetch({ limit: 20 });
+    const contextLines = formatContext(fetched, message.id, 15);
     const profile = await getMemberProfile(message.author.id);
     const toneInstruction = getToneInstruction(profile, message.author.username);
     const mood = refreshDailyMood();

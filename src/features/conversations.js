@@ -300,7 +300,7 @@ async function replyToConversations() {
     await guild.channels.fetch();
     const channel = guild.channels.cache.get(ch.channelId);
     if (!channel) return;
-    const msgs = await channel.messages.fetch({ limit: 100 });
+    const msgs = await channel.messages.fetch({ limit: 10 });
     const msgArray = [...msgs.values()];
     if (!msgArray.length) return;
     const lastMsg = msgArray[0];
@@ -397,7 +397,7 @@ async function replyToConversations() {
     const memoryBlock = formatChannelMemoryBlock(channelMemory);
     const dirEntryR = await getChannelDirectory(ch.channelId);
     const intentBlockR = getChannelIntentBlock(channel.name, ch.topic, dirEntryR?.officialDescription || '');
-    const context = formatContext(msgs, null, 80);
+    const context = formatContext(msgs, null, 5);
 
     // Adapter selon la verbosité du salon
     const verbosity = await getChannelVerbosity(ch.channelId);
