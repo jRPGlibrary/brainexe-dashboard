@@ -38,6 +38,23 @@ const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossC
 const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
 
+// Tracking in-memory des posts par canal — immunisé contre les erreurs Discord API
+const _channelPostHistory = {}; // channelId → [timestamps]
+const CHANNEL_POST_WINDOW_MS = 3 * 60 * 60 * 1000; // 3h
+
+function _recordChannelPost(channelId) {
+  if (!_channelPostHistory[channelId]) _channelPostHistory[channelId] = [];
+  const now = Date.now();
+  _channelPostHistory[channelId].push(now);
+  _channelPostHistory[channelId] = _channelPostHistory[channelId].filter(t => now - t < CHANNEL_POST_WINDOW_MS);
+}
+
+function _getChannelPostCount(channelId) {
+  const history = _channelPostHistory[channelId] || [];
+  const now = Date.now();
+  return history.filter(t => now - t < CHANNEL_POST_WINDOW_MS).length;
+}
+
 /**
  * Évalue si un salon est postable maintenant (no-insist, monologue, posts consécutifs, dead).
  * Mode "relaxed" pour le fallback général : assouplit la fenêtre no-insist (6h au lieu de 24h)
@@ -45,6 +62,11 @@ const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
  * Retourne { ok: bool, reason: string|null }.
  */
 async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } = {}) {
+  // Garde in-memory synchrone — immunisée contre les erreurs Discord API
+  const recentCount = _getChannelPostCount(ch.channelId);
+  if (recentCount >= 2) {
+    return { ok: false, reason: `in-memory lâché prise (${recentCount} posts/3h)` };
+  }
   if (!relaxed) {
     if (await hasUnansweredLastPost(ch.channelId, channelResolver)) {
       return { ok: false, reason: 'dernier post sans réponse humaine (no-insist 24h)' };
@@ -154,6 +176,7 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
   await simulateTyping(channel, 1000 + Math.random() * 2000);
   const sentMsg = await channel.send(contentResolved);
   shared.lastAnyBotPostTime = Date.now();
+  _recordChannelPost(ch.channelId);
   recordCrossChannelPost(ch.channelId, ch.channelName, contentResolved).catch(() => {});
   await updateConvStats(ch.channelId);
   recordBotMessage(sentMsg.id, ch.channelId, mode.name, contentResolved.length).catch(() => {});
@@ -383,6 +406,7 @@ async function replyToConversations() {
     }
     recordCrossChannelPost(ch.channelId, ch.channelName, replyResolved).catch(() => {});
     shared.lastAnyBotPostTime = Date.now();
+    _recordChannelPost(ch.channelId);
     await updateConvStats(ch.channelId);
     await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
     await applyInteractionToBond(lastMsg.author.id, lastMsg.author.username, msgContent);
