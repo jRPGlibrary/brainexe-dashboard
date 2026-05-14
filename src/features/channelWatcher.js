@@ -366,4 +366,33 @@ async function runChannelWatch() {
   }
 }
 
-module.exports = { runChannelWatch };
+/**
+ * Participation réactive à un thread — déclenchée par un nouveau message.
+ * Respecte les mêmes cooldowns que runChannelWatch.
+ */
+async function maybeRespondToThreadMessage(thread) {
+  if (!ANTHROPIC_API_KEY || !shared.discord?.isReady()) return;
+  if (!shared.botConfig?.conversations?.enabled) return;
+
+  const enabledChannels = shared.botConfig.conversations.channels || [];
+  if (!enabledChannels.some(c => c.enabled && c.channelId === thread.parentId)) return;
+
+  if (!await shouldWatchJump(thread)) return;
+
+  try {
+    const fetched = await thread.messages.fetch({ limit: 20 });
+    const threadMsgs = [...fetched.values()]
+      .filter(m => !m.author.bot)
+      .sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+
+    if (!threadMsgs.length) return;
+    if (Date.now() - threadMsgs[0].createdTimestamp > 90 * 60 * 1000) return;
+
+    const score = await computeInterestScore(threadMsgs, thread.name, thread.parent?.name || '');
+    if (score < 0.28) return;
+
+    await performWatchJump(thread, threadMsgs, true, fetched);
+  } catch (_) {}
+}
+
+module.exports = { runChannelWatch, maybeRespondToThreadMessage };
