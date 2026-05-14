@@ -237,8 +237,8 @@ async function replyToConversations() {
   if (!cfg.enabled || !cfg.canReply || !ANTHROPIC_API_KEY) return;
   const slot = getCurrentSlot();
   if (slot.maxConv === 0) return;
-  // Vraie absence aléatoire — 35% de chance de simplement ignorer la slot (pas H24)
-  if (Math.random() < 0.35) { pushLog('SYS', `🌫️ Vraie absence (skip silencieux 35%)`); return; }
+  // Vraie absence aléatoire — 55% de chance de simplement ignorer la slot (pas H24)
+  if (Math.random() < 0.55) { pushLog('SYS', `🌫️ Vraie absence (skip silencieux 55%)`); return; }
   const active = cfg.channels.filter(c => c.enabled);
   if (!active.length) return;
   const ch = active[Math.floor(Math.random() * active.length)];
@@ -253,7 +253,7 @@ async function replyToConversations() {
     const lastMsg = msgArray[0];
     if (lastMsg.author.bot) return;
     const age = Date.now() - lastMsg.createdTimestamp;
-    if (age < 20 * 60 * 1000 || age > 3 * 60 * 60 * 1000) return;
+    if (age < 30 * 60 * 1000 || age > 90 * 60 * 1000) return;
     if (Date.now() - (cfg.lastPostByChannel?.[ch.channelId] || 0) < Math.max(getSlotIntervalMs(slot), 90 * 60 * 1000)) return;
     if (Date.now() - shared.lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
 
@@ -279,6 +279,18 @@ async function replyToConversations() {
       pushLog('SYS', `🔇 Skip reply ${ch.channelName} — salon monologue`);
       return;
     }
+
+    // Lâché prise : si Brainee a déjà posté 2+ fois dans ce canal en 3h, elle laisse souffler
+    try {
+      const recentArr = [...msgs.values()];
+      const cutoff = Date.now() - 3 * 60 * 60 * 1000;
+      const botId = shared.discord?.user?.id;
+      const recentBotPosts = recentArr.filter(m => m.author?.id === botId && m.createdTimestamp > cutoff).length;
+      if (recentBotPosts >= 2 && Math.random() < 0.85) {
+        pushLog('SYS', `🔇 Skip reply ${ch.channelName} — lâché prise (${recentBotPosts} posts/3h)`);
+        return;
+      }
+    } catch (_) {}
 
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;

@@ -33,7 +33,7 @@ async function shouldRespond(slot, vibe, mentalLoad, messageContent, isUrgent = 
     // Gate vibe : la responsiveness influe directement sur la décision de s'inviter dans une conv
     // lazy(0.50) → 28% de skip, introvert(0.55) → 25%, focus(0.65) → 19%, chatty(0.95) → 3%
     if (vibe?.responsiveness !== undefined) {
-      const skipThreshold = (1 - vibe.responsiveness) * 0.55;
+      const skipThreshold = (1 - vibe.responsiveness) * 0.80;
       if (Math.random() < skipThreshold) {
         return {
           should: false,
@@ -45,7 +45,7 @@ async function shouldRespond(slot, vibe, mentalLoad, messageContent, isUrgent = 
 
     // Logique fatigue mentale + vibe introvertie (seuil abaissé : 55 est réaliste)
     const isLazyVibe = ['lazy', 'introvert', 'melancholic', 'withdrawn'].includes(vibe?.name || '');
-    if (mentalLoad > 55 && isLazyVibe) {
+    if (mentalLoad > 40 && isLazyVibe) {
       return {
         should: false,
         reason: 'mental_overload',
