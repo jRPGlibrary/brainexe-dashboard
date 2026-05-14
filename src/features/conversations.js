@@ -34,6 +34,7 @@ const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { logMessageForBridge } = require('./dmServerBridge');
 const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
 const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossChannelMem');
+const { isAbsent, maybeStartAbsence } = require('./absence');
 
 const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
@@ -61,11 +62,15 @@ function _getChannelPostCount(channelId) {
  * et ignore le check "calme plat" (le général a toujours du trafic).
  * Retourne { ok: bool, reason: string|null }.
  */
+const CHANNEL_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2h dur par canal
+
 async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } = {}) {
-  // Garde in-memory synchrone — immunisée contre les erreurs Discord API
-  const recentCount = _getChannelPostCount(ch.channelId);
-  if (recentCount >= 2) {
-    return { ok: false, reason: `in-memory lâché prise (${recentCount} posts/3h)` };
+  // Gap 2h in-memory synchrone — immunisé contre erreurs Discord API
+  const history = _channelPostHistory[ch.channelId] || [];
+  const lastPost = history.length > 0 ? Math.max(...history) : 0;
+  if (lastPost && Date.now() - lastPost < CHANNEL_COOLDOWN_MS) {
+    const elapsed = Math.round((Date.now() - lastPost) / 60000);
+    return { ok: false, reason: `cooldown 2h canal (${elapsed}min écoulées)` };
   }
   if (!relaxed) {
     if (await hasUnansweredLastPost(ch.channelId, channelResolver)) {
@@ -195,6 +200,10 @@ async function postRandomConversation() {
   if (getConvDailyCount() >= getConvMaxPerDay()) return;
   if (Date.now() - shared.lastAnyBotPostTime < getSlotIntervalMs(slot)) return;
   if (!ANTHROPIC_API_KEY) return;
+
+  // Absence : si active → silence total
+  if (isAbsent()) return;
+
   // Vraie absence aléatoire — 25% de chance de sauter le lance-conv (pas H24)
   if (Math.random() < 0.25) { pushLog('SYS', `🌫️ Vraie absence (skip lance-conv 25%)`); return; }
 
@@ -206,6 +215,25 @@ async function postRandomConversation() {
       await g.channels.fetch();
       return g.channels.cache.get(id);
     };
+
+    // Absence annoncée : phrase randomisée dans le général puis silence
+    const absencePhrase = maybeStartAbsence(slot.status || slot.label || '');
+    if (absencePhrase) {
+      const general = getGeneralChannel();
+      if (general) {
+        const genCh = guild.channels.cache.get(general.channelId);
+        if (genCh) {
+          try {
+            await simulateTyping(genCh, 500 + Math.random() * 1000);
+            await genCh.send(absencePhrase);
+            shared.lastAnyBotPostTime = Date.now();
+            _recordChannelPost(general.channelId);
+            pushLog('SYS', `🌙 Absence annoncée dans #${general.channelName} : "${absencePhrase}"`, 'success');
+          } catch (_) {}
+        }
+      }
+      return;
+    }
 
     // 1. Boucler sur les candidats classiques (général exclu, gardé pour fallback)
     const candidates = getRankedChannels({ excludeGeneral: true }).slice(0, MAX_CONV_ATTEMPTS);
@@ -260,6 +288,8 @@ async function replyToConversations() {
   if (!cfg.enabled || !cfg.canReply || !ANTHROPIC_API_KEY) return;
   const slot = getCurrentSlot();
   if (slot.maxConv === 0) return;
+  // Absence active → silence total (les @mentions passent toujours via events.js)
+  if (isAbsent()) return;
   // Vraie absence aléatoire — 55% de chance de simplement ignorer la slot (pas H24)
   if (Math.random() < 0.55) { pushLog('SYS', `🌫️ Vraie absence (skip silencieux 55%)`); return; }
   const active = cfg.channels.filter(c => c.enabled);
