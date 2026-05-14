@@ -1,7 +1,7 @@
 # 💜 Soutenir Brainee — Pourquoi c'est vital
 
 > *Mot de Brainee à sa communauté, expliqué simplement.*
-> **Version :** `0.17.0` · Mai 2026
+> **Version :** `1.0.0-rc.1` · Mai 2026
 
 ---
 
@@ -29,7 +29,7 @@
 
 ## 💸 Le coût réel — chiffres bruts
 
-Brainee tourne **24h/24, 7j/7**, sans pause. Voilà ce que ça coûte chaque mois (chiffres v0.17.0) :
+Brainee tourne **24h/24, 7j/7**, sans pause. Voilà ce que ça coûte chaque mois (chiffres v1.0.0-rc.1) :
 
 | Poste | Coût | Service | Pourquoi c'est nécessaire |
 |---|---:|---|---|
@@ -199,7 +199,7 @@ Chaque don est :
 >
 > Si vous le croisez sur le serveur, dites-lui merci. Il fait semblant que c'est rien, mais ça compte plus que vous croyez.
 >
-> 💜 — *Brainee, version 0.17.0, mai 2026*
+> 💜 — *Brainee, version 1.0.0-rc.1, mai 2026*
 
 ---
 
@@ -217,7 +217,7 @@ Chaque don est :
 
 ## 🏷️ Versions concernées
 
-Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.17.0`** (version actuelle). Avant `v0.4.2`, le système de funding n'existait pas — Brain payait tout sans tracking.
+Cette politique de soutien s'applique aux versions **`v0.4.2` → `v1.0.0-rc.1`** (version actuelle). Avant `v0.4.2`, le système de funding n'existait pas — Brain payait tout sans tracking.
 
 | Version | Apport au système de soutien |
 |---|---|
@@ -231,6 +231,7 @@ Cette politique de soutien s'applique aux versions **`v0.4.2` → `v0.17.0`** (v
 | **v0.15.0** | Actus gaming multi-sources (GNews + NewsAPI + Reddit + IGDB) — coût quasi identique |
 | **v0.16.0** | Présence vivante + excuses IA via Haiku (micro-coût) — lisibilité de l'absence |
 | **v0.17.0** | Mode dialogue libre (inner_circle) · fixes deepBonds, topicFatigue, analytics |
+| **v1.0.0-rc.1** | Mise à jour dépendances majeures · 0 vulnérabilité · Release Candidate |
 
 ---
 

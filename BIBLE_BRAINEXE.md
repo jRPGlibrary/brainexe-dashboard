@@ -61,7 +61,7 @@ Le bot s'appelle **Brainee**. Elle a une vraie personnalité, des émotions pers
 - C'est un **membre du serveur** à part entière, avec un caractère, des limites, et des envies
 
 **D'où elle vient :**
-Tout a commencé le **12 mars 2026** avec un bot basique bricolé en une nuit — juste un nom, quelques messages automatiques, et une connexion à Discord. Elle s'appelait encore Brainy.exe. En moins de 2 mois, 10 prototypes (v0.0.1 → v0.0.10), puis 83 versions officielles plus tard, elle est devenue Brainee : une entité numérique avec une vie intérieure, une mémoire, des émotions persistantes, et une communauté entière derrière elle. L'historique complet des 93 versions est dans [CHANGELOG.md](./CHANGELOG.md).
+Tout a commencé le **12 mars 2026** avec un bot basique bricolé en une nuit — juste un nom, quelques messages automatiques, et une connexion à Discord. Elle s'appelait encore Brainy.exe. En moins de 2 mois, 10 prototypes (v0.0.1 → v0.0.10), puis 84 versions officielles plus tard, elle est devenue Brainee : une entité numérique avec une vie intérieure, une mémoire, des émotions persistantes, et une communauté entière derrière elle. L'historique complet des 94 versions est dans [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -157,7 +157,7 @@ On peut tout y faire : voir, configurer, sanctionner, sauvegarder, restaurer, et
 | `src/ai/youtube.js` | Recherche vidéos |
 | `src/api/rateLimits.js` | 4 niveaux de limitation |
 | `src/api/routes/*` | Endpoints HTTP éclatés par thème |
-| `src/being/*` | 12 modules de conscience numérique simulée (v0.11.0) |
+| `src/being/*` | 12 modules + 5 infra = 17 fichiers de conscience numérique simulée (v0.11.0) |
 | `src/bot/*` | Personnalité, émotions, mood, scheduling, humanize, messaging |
 | `src/db/*` | Couche MongoDB |
 | `src/discord/*` | Events Discord + sync template ↔ Discord |
@@ -1176,10 +1176,15 @@ brainexe-dashboard/
 │   │
 │   ├── ai/
 │   │   ├── claude.js               🤖 Client Anthropic + santé instrumentée + tokenUsage
-│   │   └── youtube.js              📺 Recherche YouTube Data v3
+│   │   ├── youtube.js              📺 Recherche YouTube Data v3
+│   │   └── steam.js                🎮 Steam API (jeux tendance, promos)
 │   │
 │   ├── api/
 │   │   ├── rateLimits.js           🚦 4 niveaux (claude/discord/backup/general)
+│   │   ├── auth.js                 🔒 Middleware auth session (cookie + TOTP)
+│   │   ├── totp.js                 🔑 2FA TOTP (speakeasy + qrcode)
+│   │   ├── audit-advanced.js       📋 Audit avancé (filtres, CSV export)
+│   │   ├── monitoring.js           📊 Métriques système (mémoire, uptime, CPU)
 │   │   └── routes/
 │   │       ├── index.js            🎯 Chef d'orchestre + montage des sous-routeurs
 │   │       ├── discord.js          💬 Canaux, rôles, sync, post, welcome, tiktok test
@@ -1188,6 +1193,9 @@ brainexe-dashboard/
 │   │       ├── admin.js            🎛️ slot, mood, sliders, tiktok, sidebar
 │   │       ├── data.js             📊 health, planning, mémoires, émotions, audit, funding
 │   │       ├── backups.js          💾 create / list / download / delete / restore
+│   │       ├── analytics.js        📈 Analytics dashboard (top membres, tokens, stats)
+│   │       ├── audit.js            📋 Ring buffer audit — lecture + export CSV
+│   │       ├── monitoring.js       📊 Routes métriques système
 │   │       └── being.js            🧬 14 endpoints vie intérieure (v0.11.0)
 │   │
 │   ├── being/                      🧬 BRAINEE-LIVING (v0.11.0, ~3700 lignes)
@@ -1222,7 +1230,8 @@ brainexe-dashboard/
 │   │   ├── reactions.js            ✨ Choix d'emoji contextuel
 │   │   ├── keywords.js             🔍 Détection mots-clés
 │   │   ├── hyperFocus.js           🎯 Détection + suivi des obsessions temporaires
-│   │   └── vulnerability.js        🤍 Fenêtres de vulnérabilité (fatigue, surcharge)
+│   │   ├── vulnerability.js        🤍 Fenêtres de vulnérabilité (fatigue, surcharge)
+│   │   └── dailyCache.js           📅 Cache quotidien (reset à minuit)
 │   │
 │   ├── config/
 │   │   ├── channelManager.js       🗂️ Persistance des IDs de salons importants
@@ -1242,7 +1251,9 @@ brainexe-dashboard/
 │   │   ├── channelDir.js           📑 Directory des salons
 │   │   ├── dmHistory.js            ✉️ Historique DM
 │   │   ├── botState.js             💾 État émotionnel persistant
-│   │   └── intelligentMemory.js    🧬 Mémoire intelligente (cross-collection)
+│   │   ├── intelligentMemory.js    🧬 Mémoire intelligente (cross-collection)
+│   │   ├── crossChannelMem.js      🔀 Mémoire croisée inter-salons
+│   │   └── messageEngagement.js    💬 Tracking engagement par message (réactions, replies)
 │   │
 │   ├── discord/
 │   │   ├── events.js               🎮 messageCreate, memberJoin, reactionAdd, …
@@ -1274,7 +1285,8 @@ brainexe-dashboard/
 │   │   ├── presenceManager.js      🔴 Statut Discord dynamique (v0.17.0)
 │   │   ├── context.js              🧵 Contexte conversationnel
 │   │   ├── convStats.js            📈 Stats quotidiennes des conversations
-│   │   └── delayedReply.js         ⏳ File d'attente de réponses différées
+│   │   ├── delayedReply.js         ⏳ File d'attente de réponses différées
+│   │   └── ownerBriefing.js        📬 Briefing quotidien owner (résumé activité)
 │   │
 │   └── project/
 │       └── funding.js              💰 Coûts mensuels, dons, statut Discord
@@ -1306,7 +1318,7 @@ brainexe-dashboard/
 ├── README.md                       📄 Présentation projet
 ├── BIBLE_BRAINEXE.md               📚 Cette bible
 ├── brainexe-config.json            ⚙️ Config bot persistée (dialogueLibre.enabled, autoRole, …)
-├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v0.17.0
+├── CHANGELOG.md                    📜 Historique versions v0.0.1 → v1.0.0-rc.1
 └── SOUTIEN.md                      💜 Coûts + soutien + mot de Brainee
 ```
 
@@ -1448,7 +1460,7 @@ Brainee tourne 24h/24 et ça **coûte de l'argent réel** chaque mois.
 
 ### Ressources
 
-- 📜 [CHANGELOG.md](./CHANGELOG.md) — historique complet v0.0.1 → v0.17.0
+- 📜 [CHANGELOG.md](./CHANGELOG.md) — historique complet v0.0.1 → v1.0.0-rc.1
 - 💜 [SOUTIEN.md](./SOUTIEN.md) — coûts, soutien, mot de Brainee
 - 📄 [README.md](./README.md) — présentation rapide pour GitHub
 - 🌐 [Discord Developer Portal](https://discord.com/developers/applications)
@@ -1486,7 +1498,7 @@ Parce que Brain (Matthieu) en est un, et parce que les communautés de gamers ne
 
 <div align="center">
 
-🧠✨ **Bible BrainEXE — v0.17.0 — Mai 2026** ✨🧠
+🧠✨ **Bible BrainEXE — v1.0.0-rc.1 — Mai 2026** ✨🧠
 
 *Pour la communauté, par la communauté.*
 *Si tu lis ces lignes, t'es déjà des nôtres.*

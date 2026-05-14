@@ -7,12 +7,12 @@
 Pensé pour la communauté gaming neurodivergente du serveur **BrainEXE**.
 
 [![Tests](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/jRPGlibrary/brainexe-dashboard/actions/workflows/tests.yml)
-![Version](https://img.shields.io/badge/version-0.17.0-7c5cbf?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.0.0--rc.1-7c5cbf?style=flat-square)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?style=flat-square&logo=node.js&logoColor=white)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)
 ![Tests](https://img.shields.io/badge/tests-165_passing-22c55e?style=flat-square)
-![Status](https://img.shields.io/badge/status-pre--release-7c5cbf?style=flat-square)
+![Status](https://img.shields.io/badge/status-release--candidate-7c5cbf?style=flat-square)
 
 📚 [Bible projet](./BIBLE_BRAINEXE.md) · 📜 [Changelog](./CHANGELOG.md) · 💰 [Soutenir Brainee](./SOUTIEN.md)
 
@@ -198,15 +198,13 @@ npm test
 
 ## 📝 Versions
 
-> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v0.17.0** (93 versions, de la naissance à aujourd'hui).
+> 📖 **Historique complet : [CHANGELOG.md](./CHANGELOG.md)** — toutes les versions de **v0.0.1 → v1.0.0-rc.1** (94 versions, de la naissance à aujourd'hui).
 
-### Dernière release — `v0.17.0` — 💬 Mode dialogue libre · Fixes DB & émotionnels
+### Dernière release — `v1.0.0-rc.1` — 📦 Mise à jour dépendances majeures
 
-- **Mode dialogue libre** : segment `BOT_PERSONA_DM_LIBRE` injecté en DM pour les membres `inner_circle` (VIP ≥ 75), désactivé par défaut (`dialogueLibre.enabled: false`). Garde-fous éthiques actifs en toutes circonstances.
-- **Fix deepBonds** : `updateBond()` n'était jamais appelé hors du module — la collection était systématiquement vide. Corrigé après chaque DM et @mention.
-- **Fix topicFatigue DM** : `recordMessageTopic` manquait dans le handler DM, le tracker était aveugle aux échanges privés.
-- **Fix analytics** : top membres toujours vide — remplacé par une requête directe sur `memberProfiles.interactionCount`.
-- **Fix skips émotionnels** : `checkEmotionalRefusal` ajouté dans le handler DM + double condition `mentalLoad` supprimée dans `handleMentionReply`.
+- **discord.js** 14.16.3 → 14.26.4 · **express** 4.21.2 → 5.2.1 · **mongodb** 6.5.0 → 7.2.0
+- **dotenv** 16.4.5 → 17.4.2 · **chokidar** 3.6.0 → 5.0.0 · **ws** 8.18.0 → 8.20.1 · **express-rate-limit** 8.4.1 → 8.5.2
+- 165 tests verts · 0 vulnérabilité · passage en phase release candidate
 
 ### Release précédente — `v0.16.0` — 🎭 Présence vivante · Typing réaliste · Excuses IA
 
@@ -236,7 +234,8 @@ npm test
 | 0.14 | `v0.14.1` | 🚀 Autonomie maximale · Exploration tous salons · Outreach boosté |
 | 0.15 | `v0.15.0` | 📰 Actus gaming multi-sources (GNews · NewsAPI · Reddit · IGDB) |
 | 0.16 | `v0.16.0` | 🎭 Présence vivante · Typing réaliste DM · Excuses IA · Statut Discord |
-| **0.17** | `v0.17.0` | 💬 **Mode dialogue libre · Fixes DB (deepBonds, topicFatigue, analytics, skips)** *(actuelle)* |
+| 0.17 | `v0.17.0` | 💬 Mode dialogue libre · Fixes DB (deepBonds, topicFatigue, analytics, skips) |
+| **1.0.0-rc.1** | `v1.0.0-rc.1` | 📦 **Mise à jour dépendances majeures · Release Candidate** *(actuelle)* |
 
 ---
 

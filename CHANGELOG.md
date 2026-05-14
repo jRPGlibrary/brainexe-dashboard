@@ -1,10 +1,33 @@
 # 📜 Changelog — BrainEXE Dashboard
 
-Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v0.17.0** (version actuelle).
-Numérotation [SemVer](https://semver.org/lang/fr/) en mode pre-1.0 : `0.MINOR.PATCH`. En pre-1.0, un `MINOR` peut introduire des breaking changes — c'est cohérent avec un projet qui itère encore.
+Toutes les versions notables du projet, de la **v0.0.1** (premier prototype) à la **v1.0.0-rc.1** (version actuelle).
+Numérotation [SemVer](https://semver.org/lang/fr/). À partir de `1.0.0-rc.1`, le projet entre en phase release candidate : API stable, dépendances à jour, 165 tests verts.
 
-> **Convention :** chaque `MINOR` (`0.1.x`, `0.2.x`, …) correspond à un **chapitre** du projet (une thématique). Le `PATCH` est une vraie correction ou un ajout incrémental dans le chapitre courant.
-> Les versions `0.0.x` constituent la **pré-histoire** : les 10 premiers prototypes fondateurs (12–11 avril 2026) avant la numérotation officielle.
+> **Convention :** les versions `0.x.y` sont la phase pré-1.0 (itérations rapides, breaking changes possibles). Les versions `1.x.y` suivent SemVer strict.
+
+---
+
+## 📦 v1.0.0-rc.1 — Mise à jour dépendances majeures
+**Date :** 2026-05-14
+
+### 🎯 Thème
+
+Passage en release candidate 1.0.0 : toutes les dépendances critiques mises à jour vers leurs dernières versions majeures. 165 tests verts, 0 vulnérabilité.
+
+### 🔧 Mises à jour
+
+| Package | Avant | Après |
+|---------|-------|-------|
+| `discord.js` | 14.16.3 | **14.26.4** |
+| `express` | 4.21.2 | **5.2.1** |
+| `express-rate-limit` | 8.4.1 | **8.5.2** |
+| `mongodb` | 6.5.0 | **7.2.0** |
+| `dotenv` | 16.4.5 | **17.4.2** |
+| `chokidar` | 3.6.0 | **5.0.0** |
+| `ws` | 8.18.0 | **8.20.1** |
+
+### ✅ Inchangés (déjà à jour ou épinglés)
+- `node-cron` 4.2.1 · `qrcode` 1.5.4 · `cookie-parser` 1.4.7 · `speakeasy` 2.0.0 · `tiktok-live-connector` 2.1.1-beta1
 
 ---
 
