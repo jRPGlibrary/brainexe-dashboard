@@ -26,7 +26,7 @@ async function getFundingData() {
   if (!doc) {
     const newDoc = {
       _id: month,
-      costs: { server: 4.6, claude: 22 }, // 5$ ~ 4.6€
+      costs: { server: 5, claude: 35 }, // ~40€/mois (hausse claude API)
       totalDonated: 0,
       lastUpdated: new Date(),
     };

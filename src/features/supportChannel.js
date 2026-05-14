@@ -8,6 +8,7 @@ const { normalizeName } = require('../bot/messaging');
 
 const CHANNEL_NAME = '❤️-soutien-brainee';
 const CHANNEL_DESCRIPTION = 'Aide Brainee à grandir 💙 · Découvre pourquoi le bot a besoin de soutien et comment contribuer';
+const SUPPORT_CHANNEL_ID = '1495733495555690547';
 
 async function ensureSupportChannel() {
   try {
@@ -102,7 +103,7 @@ async function postSupportEmbed(channel) {
       .addFields(
         {
           name: '⚙️ Pourquoi ça coûte de l\'argent ?',
-          value: 'Brainee n\'est pas un simple bot — c\'est une IA vivante qui apprend, se souvient et évolue.\n\n**Ses coûts mensuels :**\n• 💻 **Serveur** : ~5$ (hébergement)\n• 🧠 **Claude API** : 22€ (conversations & mémoire)\n• 💾 **Stockage** : futur (plus on grandit, plus ça coûte)',
+          value: 'Brainee n\'est pas un simple bot — c\'est une IA vivante qui apprend, se souvient et évolue.\n\n**Ses coûts mensuels :**\n• 💻 **Serveur** : ~5€ (hébergement)\n• 🧠 **Claude API** : ~35€ (conversations & mémoire)\n• 💾 **Stockage** : futur (plus on grandit, plus ça coûte)',
           inline: false,
         },
         {
@@ -112,7 +113,7 @@ async function postSupportEmbed(channel) {
         },
         {
           name: '📊 Suivi en temps réel',
-          value: 'Regarde le statut de Brainee dans la sidebar → tu vois le total du mois !\n\n**Format :** 💰 25€ / 27.50€ (collecté / objectif)',
+          value: 'Regarde le statut de Brainee dans la sidebar → tu vois le total du mois !\n\n**Format :** 💰 25€ / 40€ (collecté / objectif)',
           inline: false,
         },
         {
@@ -132,4 +133,64 @@ async function postSupportEmbed(channel) {
   }
 }
 
-module.exports = { ensureSupportChannel };
+async function postCostUpdateEmbed() {
+  try {
+    if (!shared.discord || !shared.discord.isReady()) return;
+
+    const channel = await shared.discord.channels.fetch(SUPPORT_CHANNEL_ID).catch(() => null);
+    if (!channel) {
+      pushLog('ERR', `Canal soutien introuvable (${SUPPORT_CHANNEL_ID})`, 'error');
+      return;
+    }
+
+    // Anti-doublon : on cherche si l'embed a déjà été posté
+    const messages = await channel.messages.fetch({ limit: 50 });
+    const botId = shared.discord?.user?.id;
+    const already = [...messages.values()].find(m =>
+      m.author.id === botId &&
+      m.embeds?.length > 0 &&
+      m.embeds[0].title?.includes('coûts augmentent')
+    );
+    if (already) {
+      pushLog('SYS', 'Embed hausse coûts déjà présent ✓', 'info');
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0xff6b9d)
+      .setTitle('💙 Merci à vous — et les coûts augmentent')
+      .setDescription(
+        'Avant tout : **un énorme merci** à chacun d\'entre vous qui a soutenu Brainee jusqu\'ici. ' +
+        'Grâce à vous, le projet existe et grandit. C\'est pas rien. 🙏'
+      )
+      .addFields(
+        {
+          name: '📈 Les coûts augmentent — comme prévu',
+          value:
+            'On vous avait prévenu que ça allait monter avec la croissance du serveur.\n\n' +
+            '**Ancien objectif :** 26.60€/mois\n' +
+            '**Nouvel objectif : 40€/mois**\n\n' +
+            'L\'essentiel vient de l\'API Claude (la mémoire, les conversations, tout le moteur de Brainee). ' +
+            'Plus le serveur est actif, plus ça consomme. C\'est logique, mais ça coûte.',
+          inline: false,
+        },
+        {
+          name: '🎁 On peut encore compter sur vous ?',
+          value:
+            'Zéro obligation, zéro pression. Chaque euro compte et même 1€ c\'est déjà un geste qui fait la différence.\n\n' +
+            '**PayPal →** [paypal.me/MatthieuMAUBERNARD](https://paypal.me/MatthieuMAUBERNARD)\n\n' +
+            'Merci d\'être là. Vraiment. 💜',
+          inline: false,
+        }
+      )
+      .setFooter({ text: 'Brainee • Mise à jour des coûts — Mai 2026' })
+      .setTimestamp();
+
+    await channel.send({ embeds: [embed] });
+    pushLog('SYS', 'Embed hausse coûts posté ✓', 'success');
+  } catch (e) {
+    pushLog('ERR', `postCostUpdateEmbed: ${e.message}`, 'error');
+  }
+}
+
+module.exports = { ensureSupportChannel, postCostUpdateEmbed };
