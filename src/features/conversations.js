@@ -34,9 +34,27 @@ const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { logMessageForBridge } = require('./dmServerBridge');
 const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
 const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossChannelMem');
+const { isAbsent, maybeStartAbsence } = require('./absence');
 
 const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
+
+// Tracking in-memory des posts par canal — immunisé contre les erreurs Discord API
+const _channelPostHistory = {}; // channelId → [timestamps]
+const CHANNEL_POST_WINDOW_MS = 3 * 60 * 60 * 1000; // 3h
+
+function _recordChannelPost(channelId) {
+  if (!_channelPostHistory[channelId]) _channelPostHistory[channelId] = [];
+  const now = Date.now();
+  _channelPostHistory[channelId].push(now);
+  _channelPostHistory[channelId] = _channelPostHistory[channelId].filter(t => now - t < CHANNEL_POST_WINDOW_MS);
+}
+
+function _getChannelPostCount(channelId) {
+  const history = _channelPostHistory[channelId] || [];
+  const now = Date.now();
+  return history.filter(t => now - t < CHANNEL_POST_WINDOW_MS).length;
+}
 
 /**
  * Évalue si un salon est postable maintenant (no-insist, monologue, posts consécutifs, dead).
@@ -44,7 +62,16 @@ const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
  * et ignore le check "calme plat" (le général a toujours du trafic).
  * Retourne { ok: bool, reason: string|null }.
  */
+const CHANNEL_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2h dur par canal
+
 async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } = {}) {
+  // Gap 2h in-memory synchrone — immunisé contre erreurs Discord API
+  const history = _channelPostHistory[ch.channelId] || [];
+  const lastPost = history.length > 0 ? Math.max(...history) : 0;
+  if (lastPost && Date.now() - lastPost < CHANNEL_COOLDOWN_MS) {
+    const elapsed = Math.round((Date.now() - lastPost) / 60000);
+    return { ok: false, reason: `cooldown 2h canal (${elapsed}min écoulées)` };
+  }
   if (!relaxed) {
     if (await hasUnansweredLastPost(ch.channelId, channelResolver)) {
       return { ok: false, reason: 'dernier post sans réponse humaine (no-insist 24h)' };
@@ -154,6 +181,7 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
   await simulateTyping(channel, 1000 + Math.random() * 2000);
   const sentMsg = await channel.send(contentResolved);
   shared.lastAnyBotPostTime = Date.now();
+  _recordChannelPost(ch.channelId);
   recordCrossChannelPost(ch.channelId, ch.channelName, contentResolved).catch(() => {});
   await updateConvStats(ch.channelId);
   recordBotMessage(sentMsg.id, ch.channelId, mode.name, contentResolved.length).catch(() => {});
@@ -172,6 +200,10 @@ async function postRandomConversation() {
   if (getConvDailyCount() >= getConvMaxPerDay()) return;
   if (Date.now() - shared.lastAnyBotPostTime < getSlotIntervalMs(slot)) return;
   if (!ANTHROPIC_API_KEY) return;
+
+  // Absence : si active → silence total
+  if (isAbsent()) return;
+
   // Vraie absence aléatoire — 25% de chance de sauter le lance-conv (pas H24)
   if (Math.random() < 0.25) { pushLog('SYS', `🌫️ Vraie absence (skip lance-conv 25%)`); return; }
 
@@ -183,6 +215,25 @@ async function postRandomConversation() {
       await g.channels.fetch();
       return g.channels.cache.get(id);
     };
+
+    // Absence annoncée : phrase randomisée dans le général puis silence
+    const absencePhrase = maybeStartAbsence(slot.status || slot.label || '');
+    if (absencePhrase) {
+      const general = getGeneralChannel();
+      if (general) {
+        const genCh = guild.channels.cache.get(general.channelId);
+        if (genCh) {
+          try {
+            await simulateTyping(genCh, 500 + Math.random() * 1000);
+            await genCh.send(absencePhrase);
+            shared.lastAnyBotPostTime = Date.now();
+            _recordChannelPost(general.channelId);
+            pushLog('SYS', `🌙 Absence annoncée dans #${general.channelName} : "${absencePhrase}"`, 'success');
+          } catch (_) {}
+        }
+      }
+      return;
+    }
 
     // 1. Boucler sur les candidats classiques (général exclu, gardé pour fallback)
     const candidates = getRankedChannels({ excludeGeneral: true }).slice(0, MAX_CONV_ATTEMPTS);
@@ -237,8 +288,10 @@ async function replyToConversations() {
   if (!cfg.enabled || !cfg.canReply || !ANTHROPIC_API_KEY) return;
   const slot = getCurrentSlot();
   if (slot.maxConv === 0) return;
-  // Vraie absence aléatoire — 35% de chance de simplement ignorer la slot (pas H24)
-  if (Math.random() < 0.35) { pushLog('SYS', `🌫️ Vraie absence (skip silencieux 35%)`); return; }
+  // Absence active → silence total (les @mentions passent toujours via events.js)
+  if (isAbsent()) return;
+  // Vraie absence aléatoire — 55% de chance de simplement ignorer la slot (pas H24)
+  if (Math.random() < 0.55) { pushLog('SYS', `🌫️ Vraie absence (skip silencieux 55%)`); return; }
   const active = cfg.channels.filter(c => c.enabled);
   if (!active.length) return;
   const ch = active[Math.floor(Math.random() * active.length)];
@@ -253,9 +306,26 @@ async function replyToConversations() {
     const lastMsg = msgArray[0];
     if (lastMsg.author.bot) return;
     const age = Date.now() - lastMsg.createdTimestamp;
-    if (age < 20 * 60 * 1000 || age > 3 * 60 * 60 * 1000) return;
-    if (Date.now() - (cfg.lastPostByChannel?.[ch.channelId] || 0) < Math.max(getSlotIntervalMs(slot), 90 * 60 * 1000)) return;
+    if (age < 30 * 60 * 1000 || age > 90 * 60 * 1000) return;
     if (Date.now() - shared.lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
+
+    // Gap 2h in-memory par canal avec exception canal actif
+    const chHistory = _channelPostHistory[ch.channelId] || [];
+    const chLastPost = chHistory.length > 0 ? Math.max(...chHistory) : 0;
+    let softReply = false;
+    if (chLastPost && Date.now() - chLastPost < CHANNEL_COOLDOWN_MS) {
+      const msgArr = [...msgs.values()];
+      const cutoff30 = Date.now() - 30 * 60 * 1000;
+      const botId = shared.discord?.user?.id;
+      const recentHumans = msgArr.filter(m => !m.author?.bot && m.author?.id !== botId && m.createdTimestamp > cutoff30).length;
+      if (recentHumans >= 3 && Math.random() < 0.40) {
+        softReply = true;
+        pushLog('SYS', `💬 Override cooldown 2h reply (${recentHumans} msgs/30min) → ${ch.channelName} [soft]`);
+      } else {
+        pushLog('SYS', `🔇 Skip reply ${ch.channelName} — cooldown 2h (${Math.round((Date.now()-chLastPost)/60000)}min)`);
+        return;
+      }
+    }
 
     // No-insist check : si Brainee a déjà posté dans ce salon sans réponse, ne pas relancer
     const channelResolver = async (id) => {
@@ -279,6 +349,18 @@ async function replyToConversations() {
       pushLog('SYS', `🔇 Skip reply ${ch.channelName} — salon monologue`);
       return;
     }
+
+    // Lâché prise : si Brainee a déjà posté 2+ fois dans ce canal en 3h, elle laisse souffler
+    try {
+      const recentArr = [...msgs.values()];
+      const cutoff = Date.now() - 3 * 60 * 60 * 1000;
+      const botId = shared.discord?.user?.id;
+      const recentBotPosts = recentArr.filter(m => m.author?.id === botId && m.createdTimestamp > cutoff).length;
+      if (recentBotPosts >= 2 && Math.random() < 0.85) {
+        pushLog('SYS', `🔇 Skip reply ${ch.channelName} — lâché prise (${recentBotPosts} posts/3h)`);
+        return;
+      }
+    } catch (_) {}
 
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
@@ -319,11 +401,15 @@ async function replyToConversations() {
 
     // Adapter selon la verbosité du salon
     const verbosity = await getChannelVerbosity(ch.channelId);
-    const verbosityReplyInstruct = verbosity.shouldBePavé
-      ? `Tu peux te permettre 3-4 phrases si le sujet le mérite (ce salon aime l'engagement).`
-      : `Réponse courte (1-2 phrases). Les gens ici préfèrent les réponses concises.`;
+    const verbosityReplyInstruct = softReply
+      ? `1 phrase max, tu passes vite, reste légère.`
+      : verbosity.shouldBePavé
+        ? `Tu peux te permettre 3-4 phrases si le sujet le mérite (ce salon aime l'engagement).`
+        : `Réponse courte (1-2 phrases). Les gens ici préfèrent les réponses concises.`;
     const baseReplyTokens = getContextualMaxTokens(msgContent, { defaultShort: 100, extended: 200 });
-    const replyMaxTokens = adjustMaxTokens(verbosity.shouldBePavé ? Math.round(baseReplyTokens * 1.3) : baseReplyTokens);
+    const replyMaxTokens = softReply
+      ? adjustMaxTokens(55)
+      : adjustMaxTokens(verbosity.shouldBePavé ? Math.round(baseReplyTokens * 1.3) : baseReplyTokens);
 
     const crossReplyBlock = await getCrossChannelContext(ch.channelId);
     const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
@@ -371,6 +457,7 @@ async function replyToConversations() {
     }
     recordCrossChannelPost(ch.channelId, ch.channelName, replyResolved).catch(() => {});
     shared.lastAnyBotPostTime = Date.now();
+    _recordChannelPost(ch.channelId);
     await updateConvStats(ch.channelId);
     await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
     await applyInteractionToBond(lastMsg.author.id, lastMsg.author.username, msgContent);
