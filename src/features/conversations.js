@@ -35,26 +35,10 @@ const { logMessageForBridge } = require('./dmServerBridge');
 const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
 const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossChannelMem');
 const { isAbsent, maybeStartAbsence } = require('./absence');
+const { record: recordChannelPost, getLastPost, isOnCooldown, isOverLimit, COOLDOWN_MS: CHANNEL_COOLDOWN_MS, MAX_POSTS } = require('../bot/channelPostTracker');
 
 const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
-
-// Tracking in-memory des posts par canal — immunisé contre les erreurs Discord API
-const _channelPostHistory = {}; // channelId → [timestamps]
-const CHANNEL_POST_WINDOW_MS = 3 * 60 * 60 * 1000; // 3h
-
-function _recordChannelPost(channelId) {
-  if (!_channelPostHistory[channelId]) _channelPostHistory[channelId] = [];
-  const now = Date.now();
-  _channelPostHistory[channelId].push(now);
-  _channelPostHistory[channelId] = _channelPostHistory[channelId].filter(t => now - t < CHANNEL_POST_WINDOW_MS);
-}
-
-function _getChannelPostCount(channelId) {
-  const history = _channelPostHistory[channelId] || [];
-  const now = Date.now();
-  return history.filter(t => now - t < CHANNEL_POST_WINDOW_MS).length;
-}
 
 /**
  * Évalue si un salon est postable maintenant (no-insist, monologue, posts consécutifs, dead).
@@ -62,12 +46,13 @@ function _getChannelPostCount(channelId) {
  * et ignore le check "calme plat" (le général a toujours du trafic).
  * Retourne { ok: bool, reason: string|null }.
  */
-const CHANNEL_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2h dur par canal
-
 async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } = {}) {
+  // Limite dure : ${MAX_POSTS} posts proactifs max par canal sur 3h (topic-agnostique)
+  if (isOverLimit(ch.channelId)) {
+    return { ok: false, reason: `limite ${MAX_POSTS} posts/3h atteinte` };
+  }
   // Gap 2h in-memory synchrone — immunisé contre erreurs Discord API
-  const history = _channelPostHistory[ch.channelId] || [];
-  const lastPost = history.length > 0 ? Math.max(...history) : 0;
+  const lastPost = getLastPost(ch.channelId);
   if (lastPost && Date.now() - lastPost < CHANNEL_COOLDOWN_MS) {
     const elapsed = Math.round((Date.now() - lastPost) / 60000);
     return { ok: false, reason: `cooldown 2h canal (${elapsed}min écoulées)` };
@@ -181,7 +166,7 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
   await simulateTyping(channel, 1000 + Math.random() * 2000);
   const sentMsg = await channel.send(contentResolved);
   shared.lastAnyBotPostTime = Date.now();
-  _recordChannelPost(ch.channelId);
+  recordChannelPost(ch.channelId);
   recordCrossChannelPost(ch.channelId, ch.channelName, contentResolved).catch(() => {});
   await updateConvStats(ch.channelId);
   recordBotMessage(sentMsg.id, ch.channelId, mode.name, contentResolved.length).catch(() => {});
@@ -309,9 +294,13 @@ async function replyToConversations() {
     if (age < 30 * 60 * 1000 || age > 90 * 60 * 1000) return;
     if (Date.now() - shared.lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
 
-    // Gap 2h in-memory par canal avec exception canal actif
-    const chHistory = _channelPostHistory[ch.channelId] || [];
-    const chLastPost = chHistory.length > 0 ? Math.max(...chHistory) : 0;
+    // Limite dure topic-agnostique : si le bot a déjà posté MAX_POSTS fois en 3h dans ce canal, stop
+    if (isOverLimit(ch.channelId)) {
+      pushLog('SYS', `🔇 Skip reply ${ch.channelName} — limite ${MAX_POSTS} posts/3h`);
+      return;
+    }
+    // Gap 2h in-memory par canal avec exception canal très actif
+    const chLastPost = getLastPost(ch.channelId);
     let softReply = false;
     if (chLastPost && Date.now() - chLastPost < CHANNEL_COOLDOWN_MS) {
       const msgArr = [...msgs.values()];
@@ -349,18 +338,6 @@ async function replyToConversations() {
       pushLog('SYS', `🔇 Skip reply ${ch.channelName} — salon monologue`);
       return;
     }
-
-    // Lâché prise : si Brainee a déjà posté 2+ fois dans ce canal en 3h, elle laisse souffler
-    try {
-      const recentArr = [...msgs.values()];
-      const cutoff = Date.now() - 3 * 60 * 60 * 1000;
-      const botId = shared.discord?.user?.id;
-      const recentBotPosts = recentArr.filter(m => m.author?.id === botId && m.createdTimestamp > cutoff).length;
-      if (recentBotPosts >= 2 && Math.random() < 0.85) {
-        pushLog('SYS', `🔇 Skip reply ${ch.channelName} — lâché prise (${recentBotPosts} posts/3h)`);
-        return;
-      }
-    } catch (_) {}
 
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
@@ -457,7 +434,7 @@ async function replyToConversations() {
     }
     recordCrossChannelPost(ch.channelId, ch.channelName, replyResolved).catch(() => {});
     shared.lastAnyBotPostTime = Date.now();
-    _recordChannelPost(ch.channelId);
+    recordChannelPost(ch.channelId);
     await updateConvStats(ch.channelId);
     await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
     await applyInteractionToBond(lastMsg.author.id, lastMsg.author.username, msgContent);

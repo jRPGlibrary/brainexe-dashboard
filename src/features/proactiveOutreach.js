@@ -32,6 +32,7 @@ const { getConvDailyCount, getConvMaxPerDay, updateConvStats, getGeneralChannel 
 const { detectMissedVips } = require('../db/vipSystem');
 const { getMemberStories, touchStory } = require('../db/memberStories');
 const { fireProactiveDmToVip } = require('./dmOutreach');
+const { isOverLimit, record: recordChannelPost, MAX_POSTS } = require('../bot/channelPostTracker');
 
 const COOLDOWN_MS = 60 * 60 * 1000;
 let lastOutreachAt = 0;
@@ -274,6 +275,12 @@ async function fireOutreach(forcedType = null) {
     }
   }
 
+  // Limite dure topic-agnostique partagée avec les autres chemins
+  if (isOverLimit(channelCfg.channelId)) {
+    pushLog('SYS', `🤐 Outreach skip #${channelCfg.channelName} — limite ${MAX_POSTS} posts/3h`);
+    return false;
+  }
+
   try {
     const guild = await shared.discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
@@ -300,6 +307,7 @@ async function fireOutreach(forcedType = null) {
     lastOutreachAt = Date.now();
     lastOutreachType = type;
     shared.lastAnyBotPostTime = Date.now();
+    recordChannelPost(channelCfg.channelId);
     updateConvStats(channelCfg.channelId);
 
     if (touchedStoryId && targetUserId) {
