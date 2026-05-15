@@ -92,7 +92,7 @@ const { pushLog, broadcast } = require('./src/logger');
 // ── MODULES ─────────────────────────────────────────────────────────
 const { connectMongoDB } = require('./src/db/index');
 const { readGuildState, syncDiscordToFile, startFileWatcher } = require('./src/discord/sync');
-const { registerDiscordEvents, registerMessageHandlers } = require('./src/discord/events');
+const { registerDiscordEvents, registerMessageHandlers, registerSlashHandlers } = require('./src/discord/events');
 const { startAnecdoteCron, checkAnecdoteMissed } = require('./src/features/anecdotes');
 const { startActusCron, checkActusMissed } = require('./src/features/actus');
 const { startConvCron, startBackupInterval } = require('./src/crons');
@@ -103,6 +103,7 @@ const { refreshDailyMood, getDailyMood } = require('./src/bot/mood');
 const { getCurrentSlot } = require('./src/bot/scheduling');
 const { getDailyVibe } = require('./src/bot/adaptiveSchedule');
 const { registerRoutes } = require('./src/api/routes');
+const { registerAffinityCommand } = require('./src/features/affinityCommand');
 const { getFundingData, calculateTotalCosts, updateBotStatus } = require('./src/project/funding');
 const { ensureSupportChannel, postCostUpdateEmbed } = require('./src/features/supportChannel');
 
@@ -140,6 +141,8 @@ discord.once('clientReady', async () => {
 
   registerDiscordEvents();
   registerMessageHandlers();
+  registerSlashHandlers();
+  registerAffinityCommand(discord.user.id);
   startFileWatcher();
   startAnecdoteCron();
   startActusCron();
