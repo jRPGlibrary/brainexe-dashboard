@@ -2,6 +2,7 @@ const discord_js = require('discord.js');
 const Events = discord_js.Events;
 const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
+const { handleAffinityCommand } = require('../features/affinityCommand');
 const { GUILD_ID, ANTHROPIC_API_KEY } = require('../config');
 const { callClaude } = require('../ai/claude');
 const { recordTokenUsage } = require('../db/tokenUsage');
@@ -685,4 +686,15 @@ function registerMessageHandlers() {
   });
 }
 
-module.exports = { registerDiscordEvents, registerMessageHandlers, handleMentionReply, handleReaction };
+function registerSlashHandlers() {
+  shared.discord.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+    if (interaction.commandName === 'affinite') {
+      await handleAffinityCommand(interaction).catch(err =>
+        pushLog('ERR', `handleAffinityCommand: ${err.message}`, 'error')
+      );
+    }
+  });
+}
+
+module.exports = { registerDiscordEvents, registerMessageHandlers, registerSlashHandlers, handleMentionReply, handleReaction };
