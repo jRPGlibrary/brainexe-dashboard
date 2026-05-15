@@ -4,6 +4,7 @@
  */
 
 jest.mock('../src/shared', () => ({ mongoDb: null, discord: null }));
+jest.mock('../src/logger', () => ({ pushLog: jest.fn(), broadcast: jest.fn() }));
 
 const { calculateTotalCosts, getCurrentMonth } = require('../src/project/funding');
 
