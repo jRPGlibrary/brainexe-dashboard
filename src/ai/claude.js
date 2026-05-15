@@ -105,7 +105,7 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
       const isTimeout = err.name === 'AbortError' || err.message?.includes('timeout');
       const isRetryable = isTimeout || err.message?.includes('529') || err.message?.includes('529');
       if (attempt < MAX_RETRIES && isRetryable) {
-        const wait = 1000 * (attempt + 1);
+        const wait = 2000 * Math.pow(2, attempt); // 2s, 4s, 8s
         await new Promise(r => setTimeout(r, wait));
         continue;
       }
