@@ -50,6 +50,7 @@ const { shouldRespond, recordMessageTopic } = require('../features/decisionLogic
 const { isAbsent } = require('../features/absence');
 const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { checkEmotionalRefusal, isInRefusalCooldown } = require('../features/emotionalRefusal');
+const { checkAndHandleSpam } = require('../features/spamDetector');
 const { analyzeConviction } = require('../features/conviction');
 const {
   getAttachmentStage, tryPromoteSingularBond,
@@ -121,7 +122,7 @@ async function handleMentionReply(message, userQuery) {
     detectEmotionFromMessage(userQuery, { userId: message.author.id });
 
     // v0.12.0 : Refus émotionnel — vérifié AVANT tout le reste
-    const refusal = checkEmotionalRefusal(true); // true = mention directe
+    const refusal = await checkEmotionalRefusal(true); // true = mention directe
     if (refusal.shouldRefuse && !refusal.isSilent) {
       // Elle dit pourquoi elle ne répond pas
       try {
@@ -363,6 +364,12 @@ async function handleMentionReply(message, userQuery) {
 }
 
 function registerMessageHandlers() {
+  // Spam detector — serveur uniquement, s'exécute avant tout autre traitement
+  shared.discord.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot || !message.guild) return;
+    await checkAndHandleSpam(message);
+  });
+
   // DM handler
   shared.discord.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
@@ -421,7 +428,7 @@ function registerMessageHandlers() {
       }
 
       // 🚫 Refus émotionnel en DM (manquait — ne s'appliquait qu'aux @mentions)
-      const dmRefusal = checkEmotionalRefusal(true); // true = interaction directe, seuils plus tolérants
+      const dmRefusal = await checkEmotionalRefusal(true); // true = interaction directe, seuils plus tolérants
       if (dmRefusal.shouldRefuse && !dmRefusal.isSilent) {
         try { await message.reply(dmRefusal.message); } catch (_) {}
         pushLog('SYS', `🚫 Refus émotionnel DM [${dmRefusal.type}] → ${message.author.username}`);
