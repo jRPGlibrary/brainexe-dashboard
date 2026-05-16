@@ -51,6 +51,7 @@ const { isAbsent } = require('../features/absence');
 const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { checkEmotionalRefusal, isInRefusalCooldown } = require('../features/emotionalRefusal');
 const { checkAndHandleSpam } = require('../features/spamDetector');
+const { handleHangmanDm, isHangmanActive } = require('../features/hangman');
 const { logMemberJoin, logMemberLeave, logMemberBan } = require('../features/modLogger');
 const { analyzeConviction } = require('../features/conviction');
 const {
@@ -381,6 +382,25 @@ function registerMessageHandlers() {
     if (!rawContent && dmImages.length === 0) return;
     // Si juste image sans texte, on remplace par un marqueur pour que le reste du code fonctionne
     const userContent = rawContent || (dmImages.length ? `[image envoyée]` : '');
+
+    // 🎮 Pendu RPG/JRPG (rôle Fondateur uniquement)
+    {
+      const lower = userContent.toLowerCase().trim();
+      const isCmd = lower === '!pendu' || lower === '!pendu stop';
+      const isGuess = isHangmanActive(message.author.id) && /^[a-zA-Z]$/.test(userContent.trim());
+      if (isCmd || isGuess) {
+        try {
+          const guild = await shared.discord.guilds.fetch(GUILD_ID);
+          const member = await guild.members.fetch(message.author.id).catch(() => null);
+          const isFondateur = member?.roles.cache.some(r => r.name.toLowerCase() === 'fondateur') ?? false;
+          if (isFondateur) {
+            await handleHangmanDm(message, userContent.trim()).catch(err => pushLog('ERR', `Pendu: ${err.message}`, 'error'));
+            return;
+          }
+        } catch (_) {}
+      }
+    }
+
     try {
       const history = await getDmHistory(message.author.id);
       const historyBlock = formatDmHistory(history);
