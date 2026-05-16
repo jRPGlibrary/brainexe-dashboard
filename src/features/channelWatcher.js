@@ -312,20 +312,18 @@ async function runChannelWatch() {
       const AGE_MAX = 150 * 60 * 1000; // Conversation pas trop vieille (150 min, était 90)
       if (Date.now() - newestMsg.createdTimestamp > AGE_MAX) continue;
 
-      // Vérifier qu'on n'a pas déjà posté récemment dans ce salon
-      const botRecentMsg = [...channelFetched.values()].find(m => m.author.id === botId);
-      if (botRecentMsg && Date.now() - botRecentMsg.createdTimestamp < 30 * 60 * 1000) {
-        // Quand même regarder les threads
-      } else {
+      // Ne poster que si le dernier message absolu (bot+human) est humain
+      const allSorted = [...channelFetched.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+      const lastMsgIsBot = allSorted.length > 0 && allSorted[0].author?.id === botId;
+      if (!lastMsgIsBot) {
         if (await shouldWatchJump(channel)) {
           const parentCatName = channel.parent?.name || '';
           const score = await computeInterestScore(channelMsgs, channel.name, parentCatName);
-          if (score >= 0.34) { // seuil abaissé (était 0.42) pour plus d'autonomie
+          if (score >= 0.34) {
             const jumped = await performWatchJump(channel, channelMsgs, false, channelFetched);
             if (jumped) {
-              // Enregistrer la visite de catégorie pour le bonus de diversité
               if (parentCatName) categoryLastVisit.set(parentCatName.toLowerCase(), Date.now());
-              return; // Un seul saut par tick
+              return;
             }
           }
         }
@@ -381,6 +379,9 @@ async function maybeRespondToThreadMessage(thread) {
 
   try {
     const fetched = await thread.messages.fetch({ limit: 20 });
+    const allSortedThread = [...fetched.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+    if (allSortedThread.length > 0 && allSortedThread[0].author?.id === shared.discord?.user?.id) return;
+
     const threadMsgs = [...fetched.values()]
       .filter(m => !m.author.bot)
       .sort((a, b) => b.createdTimestamp - a.createdTimestamp);

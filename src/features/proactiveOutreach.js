@@ -287,6 +287,16 @@ async function fireOutreach(forcedType = null) {
     const channel = guild.channels.cache.get(channelCfg.channelId);
     if (!channel) return false;
 
+    // Ne pas poster si le dernier message du salon est du bot
+    try {
+      const recentMsgs = await channel.messages.fetch({ limit: 5 });
+      const lastMsg = [...recentMsgs.values()].sort((a, b) => b.createdTimestamp - a.createdTimestamp)[0];
+      if (lastMsg?.author?.id === shared.discord?.user?.id) {
+        pushLog('SYS', `🤐 Outreach skip #${channelCfg.channelName} : dernier message est du bot`);
+        return false;
+      }
+    } catch (_) {}
+
     // En fallback général, sauf pour vip_callback (qui reste pertinent partout),
     // on bascule sur random_thought : parler de tout et rien naturellement.
     const promptType = (isFallback && type !== 'vip_callback') ? 'random_thought' : type;
