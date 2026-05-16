@@ -21,6 +21,13 @@ const shared = require('../shared');
 const channelCache = new Map(); // name → { channel, cachedAt }
 const CACHE_TTL = 5 * 60 * 1000;
 
+// Noms exacts des canaux (convention emoji・nom du serveur BrainEXE)
+const MOD_CHANNELS = {
+  logs:     '⚠️・mod-logs',
+  members:  '📋・member-logs',
+  briefing: '💡・briefing-brainee',
+};
+
 async function getModChannel(name) {
   const cached = channelCache.get(name);
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL) return cached.channel;
@@ -41,7 +48,7 @@ async function getModChannel(name) {
 // ─── SPAM / MODÉRATION ───────────────────────────────────────────
 
 async function logSpamAction({ userId, username, spamType, action, timeoutMin, offenseCount }) {
-  const channel = await getModChannel('mod-logs');
+  const channel = await getModChannel(MOD_CHANNELS.logs);
   if (!channel) return;
 
   const isKick = action === 'kick';
@@ -73,7 +80,7 @@ async function logSpamAction({ userId, username, spamType, action, timeoutMin, o
 // ─── MEMBRE : ARRIVÉE ────────────────────────────────────────────
 
 async function logMemberJoin(member) {
-  const channel = await getModChannel('member-logs');
+  const channel = await getModChannel(MOD_CHANNELS.members);
   if (!channel) return;
 
   const accountAge = Math.floor((Date.now() - member.user.createdTimestamp) / (1000 * 60 * 60 * 24));
@@ -97,7 +104,7 @@ async function logMemberJoin(member) {
 // ─── MEMBRE : DÉPART ─────────────────────────────────────────────
 
 async function logMemberLeave(member) {
-  const channel = await getModChannel('member-logs');
+  const channel = await getModChannel(MOD_CHANNELS.members);
   if (!channel) return;
 
   const joinedAt = member.joinedAt
@@ -121,7 +128,7 @@ async function logMemberLeave(member) {
 // ─── MEMBRE : BAN ────────────────────────────────────────────────
 
 async function logMemberBan(guild, user, reason) {
-  const channel = await getModChannel('member-logs');
+  const channel = await getModChannel(MOD_CHANNELS.members);
   if (!channel) return;
 
   const embed = new EmbedBuilder()
@@ -141,7 +148,7 @@ async function logMemberBan(guild, user, reason) {
 // ─── MEMBRE : KICK ───────────────────────────────────────────────
 
 async function logMemberKick(member, reason) {
-  const channel = await getModChannel('member-logs');
+  const channel = await getModChannel(MOD_CHANNELS.members);
   if (!channel) return;
 
   const embed = new EmbedBuilder()
@@ -161,7 +168,7 @@ async function logMemberKick(member, reason) {
 // ─── BRIEFING OWNER ──────────────────────────────────────────────
 
 async function postBriefingToChannel(content) {
-  const channel = await getModChannel('briefing-brainee');
+  const channel = await getModChannel(MOD_CHANNELS.briefing);
   if (!channel) return false;
 
   const embed = new EmbedBuilder()
