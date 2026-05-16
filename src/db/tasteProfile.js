@@ -254,7 +254,7 @@ function formatTasteBlock(profile, username) {
   if (Array.isArray(profile.games) && profile.games.length) {
     const loved = profile.games.filter(g => g.sentiment === 'love' && (g.score || 0) >= 2)
       .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .slice(0, 5)
+      .slice(0, 3)
       .map(g => g.title);
     const disliked = profile.games.filter(g => g.sentiment === 'dislike')
       .slice(0, 3)
@@ -268,7 +268,7 @@ function formatTasteBlock(profile, username) {
     const topGenres = Object.entries(profile.genres)
       .filter(([_, w]) => w >= 3)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 4)
+      .slice(0, 3)
       .map(([g]) => g.replace(/_/g, ' '));
     if (topGenres.length) parts.push(`Genres préférés : ${topGenres.join(', ')}`);
   }
@@ -290,7 +290,7 @@ function formatTasteBlock(profile, username) {
 
   // Déjà recommandé (pour ne pas répéter)
   if (Array.isArray(profile.recommended) && profile.recommended.length) {
-    const recent = profile.recommended.slice(-5).map(r => r.title);
+    const recent = profile.recommended.slice(-3).map(r => r.title);
     parts.push(`Déjà conseillé par toi : ${recent.join(', ')} — évite de re-recommander pareil sauf demande explicite.`);
   }
 

@@ -26,11 +26,12 @@ if (!shared.claudeHealth) {
  *     { type: 'image', source: { type: 'url', url: 'https://...' } },
  *   ]
  */
-async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefix = null, model = 'claude-sonnet-4-6') {
+async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefix = null, model = 'claude-sonnet-4-6', cachedPrefix2 = null) {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante');
 
   const cleanSystemPrompt = sanitizeForJson(systemPrompt);
   const cleanCachedPrefix = cachedPrefix ? sanitizeForJson(cachedPrefix) : null;
+  const cleanCachedPrefix2 = cachedPrefix2 ? sanitizeForJson(cachedPrefix2) : null;
 
   let userContent;
   if (Array.isArray(userPrompt)) {
@@ -42,6 +43,7 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
   const system = cleanCachedPrefix
     ? [
         { type: 'text', text: cleanCachedPrefix, cache_control: { type: 'ephemeral' } },
+        ...(cleanCachedPrefix2 ? [{ type: 'text', text: cleanCachedPrefix2, cache_control: { type: 'ephemeral' } }] : []),
         { type: 'text', text: cleanSystemPrompt },
       ]
     : cleanSystemPrompt;

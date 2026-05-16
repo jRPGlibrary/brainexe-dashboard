@@ -115,7 +115,7 @@ async function handleMentionReply(message, userQuery) {
   try {
     const slot = getCurrentSlot();
     const fetched = await message.channel.messages.fetch({ limit: 20 });
-    const contextLines = formatContext(fetched, message.id, 15);
+    const contextLines = formatContext(fetched, message.id, 12);
     const profile = await getMemberProfile(message.author.id);
     const toneInstruction = getToneInstruction(profile, message.author.username);
     const mood = refreshDailyMood();
@@ -181,13 +181,15 @@ async function handleMentionReply(message, userQuery) {
     const weeklyBlock = await getWeeklyContext();
     if (weeklyBlock) narrativeBlock = `${weeklyBlock}\n${narrativeBlock}`;
 
-    // v0.12.0 : Système de conviction — détecte l'insistance/contradiction
-    const convictionResult = analyzeConviction(message.author.id, userQuery);
+    const isShortMsg = (userQuery || '').length < 30;
+
+    // v0.12.0 : Système de conviction — détecte l'insistance/contradiction (skip si message court)
+    const convictionResult = !isShortMsg ? analyzeConviction(message.author.id, userQuery) : null;
     const convictionBlock = convictionResult?.convictionBlock || '';
 
-    // v0.12.0 : Lien singulier + arc de rejet
-    const singularBlock = getSingularBondBlock(bond, message.author.username);
-    const appreciationBlock = getAppreciationInjection(bond, message.author.username);
+    // v0.12.0 : Lien singulier + arc de rejet (skip si message court)
+    const singularBlock = !isShortMsg ? getSingularBondBlock(bond, message.author.username) : '';
+    const appreciationBlock = !isShortMsg ? getAppreciationInjection(bond, message.author.username) : '';
 
     // Détection de rejet du lien singulier
     const singularHolder = await (async () => {
@@ -234,8 +236,8 @@ async function handleMentionReply(message, userQuery) {
     const taggedMembers = [...message.mentions.users.values()].filter(u => u.id !== shared.discord.user.id).map(u => '@' + u.username);
     const taggedBlock = taggedMembers.length > 0 ? `Membres tagués : ${taggedMembers.join(', ')}. Tu peux les évoquer naturellement SANS les re-tagger — ils ont déjà été notifiés.` : '';
 
-    // 🔁 Anti-répétition lexicale — mots récents utilisés par Brainee dans ce salon
-    const recentBraineeWords = extractRecentBraineeWords(fetched, 4, shared.discord.user?.id);
+    // 🔁 Anti-répétition lexicale — skip si message court (inutile pour "lol", "t'es là ?")
+    const recentBraineeWords = !isShortMsg ? extractRecentBraineeWords(fetched, 4, shared.discord.user?.id) : [];
     const antiRepeatBlock = recentBraineeWords.length > 0
       ? `\n🔁 MOTS RÉCENTS À ÉVITER (tu les as utilisés dans tes derniers messages) : ${recentBraineeWords.join(', ')}. Utilise des synonymes ou reformule complètement.`
       : '';
@@ -251,9 +253,15 @@ async function handleMentionReply(message, userQuery) {
     }
 
     const temporalBlock = getTemporalBlock();
-    // 🔗 Contexte DM récents avec cette personne pour faire le lien serveur ↔ DM
-    const dmCrossContext = await enrichServerWithDmContext(message.author.id, message.author.username).catch(() => '');
-    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}${antiRepeatBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
+    // 🔗 Contexte DM récents — skip si message court (économie tokens)
+    const dmCrossContext = !isShortMsg ? await enrichServerWithDmContext(message.author.id, message.author.username).catch(() => '') : '';
+    // Bloc stable quotidien → mis en cache API (mood + vibe + narrative = identiques pour tous les users du même slot)
+    const stableDailyBlock = [
+      `Humeur du jour : ${mood}. ${getMoodInjection(mood)}`,
+      `Vibe du jour : ${vibe.name} — ${vibe.desc}.`,
+      narrativeBlock,
+    ].filter(Boolean).join('\n');
+    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}${antiRepeatBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
     const reactionRoll = Math.random();
     if (reactionRoll < 0.10) {
@@ -284,7 +292,7 @@ async function handleMentionReply(message, userQuery) {
 
     const userTextPrompt = `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\nRéponds court (1-2 phrases) sauf si le sujet mérite vraiment plus.${replyRefContext}`;
     const userContent = buildMultimodalUserContent(userTextPrompt, userImages);
-    const { text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION);
+    const { text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION, 'claude-sonnet-4-6', stableDailyBlock);
     if (userImages.length) pushLog('SYS', `🖼️ ${userImages.length} image(s) lues (mention ${message.author.username})`);
     await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'mention_reply');
     const replyResolved = resolveMentionsInText(reply, message.guild);
@@ -468,14 +476,19 @@ function registerMessageHandlers() {
       const dmTemporalBlock = getTemporalBlock();
       const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
       const penduInstruction = `\n\n🎮 PENDU : Tu peux proposer spontanément une partie de pendu RPG/JRPG, ou accepter si l'utilisateur en demande une. Si tu décides de lancer le jeu, inclus exactement \`[PENDU]\` sur une ligne seule dans ta réponse — le jeu démarre automatiquement. N'explique pas ce marker, fais juste comme si tu lançais la partie naturellement.`;
-      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.${dmImgInstruction}${penduInstruction}`;
+      // Bloc stable quotidien DM → mis en cache API
+      const dmStableDailyBlock = [
+        `Humeur du jour : ${mood}. ${getMoodInjection(mood)}`,
+        dmNarrativeBlock,
+      ].filter(Boolean).join('\n');
+      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.${dmImgInstruction}${penduInstruction}`;
       const userTextOnlyPrompt = `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"`;
       const userPrompt = buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
       // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
       await simulateTyping(message.channel, 500 + Math.random() * 500);
       const { getContextualMaxTokens } = require('../utils');
       const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
-      const { text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona);
+      const { text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona, 'claude-sonnet-4-6', dmStableDailyBlock);
       if (dmImages.length) pushLog('SYS', `🖼️ ${dmImages.length} image(s) lues (DM ${message.author.username})`);
       const hasPenduTrigger = rawReply.includes('[PENDU]');
       const reply = rawReply.replace(/\[PENDU\]/g, '').trim();

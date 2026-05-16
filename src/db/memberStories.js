@@ -265,14 +265,16 @@ function formatStoriesBlock(stories, username) {
     concern: '💭 Préoccupations récentes',
   };
 
-  ['quest', 'project', 'concern', 'joke', 'fact'].forEach(type => {
+  let totalStories = 0;
+  ['concern', 'quest', 'project', 'joke', 'fact'].forEach(type => {
+    if (totalStories >= 4) return;
     const items = byType[type];
     if (!items || !items.length) return;
     const top = items
       .sort((a, b) => new Date(b.lastMentioned) - new Date(a.lastMentioned))
-      .slice(0, 3);
-    const formatted = top.map(s => `   • ${s.content}`).join('\n');
-    lines.push(`${labels[type]} :\n${formatted}`);
+      .slice(0, 1);
+    lines.push(`${labels[type]} :\n   • ${top[0].content}`);
+    totalStories++;
   });
 
   if (!lines.length) return '';
