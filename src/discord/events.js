@@ -51,6 +51,7 @@ const { isAbsent } = require('../features/absence');
 const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { checkEmotionalRefusal, isInRefusalCooldown } = require('../features/emotionalRefusal');
 const { checkAndHandleSpam } = require('../features/spamDetector');
+const { logMemberJoin, logMemberLeave, logMemberBan } = require('../features/modLogger');
 const { analyzeConviction } = require('../features/conviction');
 const {
   getAttachmentStage, tryPromoteSingularBond,
@@ -689,7 +690,20 @@ function registerMessageHandlers() {
         broadcast('autorole', { user: member.user.tag, role: role.name });
       }
       await sendWelcomeMessage(member);
+      logMemberJoin(member).catch(() => {});
     } catch (err) { pushLog('ERR', `Arrivée échouée : ${err.message}`, 'error'); }
+  });
+
+  // Member leave
+  shared.discord.on(Events.GuildMemberRemove, async (member) => {
+    if (member.guild.id !== GUILD_ID) return;
+    logMemberLeave(member).catch(() => {});
+  });
+
+  // Member banned
+  shared.discord.on(Events.GuildBanAdd, async (ban) => {
+    if (ban.guild.id !== GUILD_ID) return;
+    logMemberBan(ban.guild, ban.user, ban.reason).catch(() => {});
   });
 }
 
