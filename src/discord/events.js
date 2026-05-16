@@ -3,7 +3,7 @@ const Events = discord_js.Events;
 const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
 const { handleAffinityCommand } = require('../features/affinityCommand');
-const { GUILD_ID, ANTHROPIC_API_KEY } = require('../config');
+const { GUILD_ID, ANTHROPIC_API_KEY, OWNER_USER_ID } = require('../config');
 const { callClaude } = require('../ai/claude');
 const { recordTokenUsage } = require('../db/tokenUsage');
 const { extractYoutubeQuery, searchYoutube } = require('../ai/youtube');
@@ -51,6 +51,7 @@ const { isAbsent } = require('../features/absence');
 const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { checkEmotionalRefusal, isInRefusalCooldown } = require('../features/emotionalRefusal');
 const { checkAndHandleSpam } = require('../features/spamDetector');
+const { handleHangmanDm, isHangmanActive } = require('../features/hangman');
 const { logMemberJoin, logMemberLeave, logMemberBan } = require('../features/modLogger');
 const { analyzeConviction } = require('../features/conviction');
 const {
@@ -381,6 +382,18 @@ function registerMessageHandlers() {
     if (!rawContent && dmImages.length === 0) return;
     // Si juste image sans texte, on remplace par un marqueur pour que le reste du code fonctionne
     const userContent = rawContent || (dmImages.length ? `[image envoyée]` : '');
+
+    // 🎮 Pendu RPG/JRPG (fondateur uniquement)
+    if (OWNER_USER_ID && message.author.id === OWNER_USER_ID) {
+      const lower = userContent.toLowerCase().trim();
+      const isCmd = lower === '!pendu' || lower === '!pendu stop';
+      const isGuess = isHangmanActive(message.author.id) && /^[a-zA-Z]$/.test(userContent.trim());
+      if (isCmd || isGuess) {
+        await handleHangmanDm(message, userContent.trim()).catch(err => pushLog('ERR', `Pendu: ${err.message}`, 'error'));
+        return;
+      }
+    }
+
     try {
       const history = await getDmHistory(message.author.id);
       const historyBlock = formatDmHistory(history);
