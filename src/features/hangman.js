@@ -10,6 +10,7 @@
 
 const { callClaude } = require('../ai/claude');
 const { simulateDmTyping } = require('../bot/messaging');
+const { appendDmMessage } = require('../db/dmHistory');
 const { pushLog } = require('../logger');
 
 // État des parties en cours (userId → gameState)
@@ -200,7 +201,10 @@ async function handleHangmanDm(message, content) {
     if (games.has(userId)) {
       const { title } = games.get(userId);
       games.delete(userId);
-      await message.reply(`🛑 Partie abandonnée. La réponse était : **${title}**`);
+      const stopMsg = `🛑 Partie abandonnée. La réponse était : **${title}**`;
+      await message.reply(stopMsg);
+      await appendDmMessage(userId, message.author.username, 'user', '[Abandonne la partie de pendu RPG/JRPG]').catch(() => {});
+      await appendDmMessage(userId, message.author.username, 'assistant', `Partie de pendu abandonnée, le titre était "${title}".`).catch(() => {});
     } else {
       await message.reply('Pas de partie en cours. Tape `!pendu` pour commencer !');
     }
@@ -228,6 +232,11 @@ async function handleHangmanDm(message, content) {
     if (result.type === 'win' || result.type === 'lose') {
       const reaction = await getBraineeReaction(result.type, result.state.title);
       await message.reply(msg + reaction);
+      const userCtx = result.type === 'win'
+        ? `[Vient de trouver "${result.state.title}" au pendu RPG/JRPG]`
+        : `[Vient de perdre au pendu RPG/JRPG, le titre était "${result.state.title}"]`;
+      await appendDmMessage(userId, message.author.username, 'user', userCtx).catch(() => {});
+      await appendDmMessage(userId, message.author.username, 'assistant', (msg + reaction).replace(/```[\s\S]*?```/g, '').trim()).catch(() => {});
       pushLog('SYS', `🎮 Pendu ${result.type === 'win' ? 'GAGNÉ' : 'PERDU'} → ${message.author.username} [${result.state.title}]`);
     } else {
       await message.reply(msg);
