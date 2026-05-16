@@ -13,6 +13,7 @@ const { callClaude } = require('../ai/claude');
 const { BOT_PERSONA_DM } = require('../bot/persona');
 const { getBotState, setBotState } = require('../db/botState');
 const { pushLog } = require('../logger');
+const { postBriefingToChannel } = require('./modLogger');
 const shared = require('../shared');
 
 const BRIEFING_COOLDOWN_DAYS = 6; // au moins 6j entre deux briefings
@@ -56,6 +57,10 @@ Ton message doit :
 
     const dm = await owner.createDM();
     await dm.send(`💡 **Idées de la semaine**\n\n${text}`);
+
+    // Also post to #briefing-brainee for the mod team
+    postBriefingToChannel(text).catch(() => {});
+
     await setBotState({ ownerBriefingLastTs: Date.now() });
     pushLog('SYS', `💡 Owner briefing envoyé à Brain`, 'success');
   } catch (err) {

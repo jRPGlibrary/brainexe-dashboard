@@ -43,8 +43,9 @@ const INTENTS_GUILDS          = discord_js.GatewayIntentBits?.Guilds ?? 1;
 const INTENTS_GUILD_MEMBERS   = discord_js.GatewayIntentBits?.GuildMembers ?? 2;
 const INTENTS_GUILD_MESSAGES  = discord_js.GatewayIntentBits?.GuildMessages ?? 512;
 const INTENTS_MESSAGE_CONTENT = discord_js.GatewayIntentBits?.MessageContent ?? 32768;
-const INTENTS_GUILD_REACTIONS = discord_js.GatewayIntentBits?.GuildMessageReactions ?? 1024;
-const INTENTS_DIRECT_MESSAGES = discord_js.GatewayIntentBits?.DirectMessages ?? 4096;
+const INTENTS_GUILD_REACTIONS   = discord_js.GatewayIntentBits?.GuildMessageReactions ?? 1024;
+const INTENTS_DIRECT_MESSAGES   = discord_js.GatewayIntentBits?.DirectMessages ?? 4096;
+const INTENTS_GUILD_MODERATION  = discord_js.GatewayIntentBits?.GuildModeration ?? 4;
 
 // ── SHARED STATE ───────────────────────────────────────────────
 const shared = require('./src/shared');
@@ -81,7 +82,7 @@ shared.wss = wss;
 
 // ── DISCORD CLIENT ──────────────────────────────────────────────
 const discord = new Client({
-  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS, INTENTS_GUILD_MESSAGES, INTENTS_MESSAGE_CONTENT, INTENTS_GUILD_REACTIONS, INTENTS_DIRECT_MESSAGES],
+  intents: [INTENTS_GUILDS, INTENTS_GUILD_MEMBERS, INTENTS_GUILD_MESSAGES, INTENTS_MESSAGE_CONTENT, INTENTS_GUILD_REACTIONS, INTENTS_DIRECT_MESSAGES, INTENTS_GUILD_MODERATION],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 shared.discord = discord;
