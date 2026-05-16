@@ -17,6 +17,11 @@ const { GUILD_ID } = require('../config');
 const { pushLog } = require('../logger');
 const shared = require('../shared');
 
+function _saveAction(collection, doc) {
+  if (!shared.mongoDb) return;
+  shared.mongoDb.collection(collection).insertOne({ ...doc, timestamp: new Date() }).catch(() => {});
+}
+
 // Cache channel references pour 5 minutes
 const channelCache = new Map(); // name → { channel, cachedAt }
 const CACHE_TTL = 5 * 60 * 1000;
@@ -75,6 +80,7 @@ async function logSpamAction({ userId, username, spamType, action, timeoutMin, o
     .setFooter({ text: 'Brainee — Modération automatique' });
 
   await channel.send({ embeds: [embed] }).catch(() => {});
+  _saveAction('modActions', { userId, username, spamType, action, timeoutMin: timeoutMin || null, offenseCount });
 }
 
 // ─── MEMBRE : ARRIVÉE ────────────────────────────────────────────
@@ -99,6 +105,7 @@ async function logMemberJoin(member) {
     .setFooter({ text: `ID : ${member.id}` });
 
   await channel.send({ embeds: [embed] }).catch(() => {});
+  _saveAction('memberEvents', { eventType: 'join', userId: member.id, tag: member.user.tag, accountAgeDays: accountAge });
 }
 
 // ─── MEMBRE : DÉPART ─────────────────────────────────────────────
@@ -123,6 +130,7 @@ async function logMemberLeave(member) {
     .setFooter({ text: `ID : ${member.id}` });
 
   await channel.send({ embeds: [embed] }).catch(() => {});
+  _saveAction('memberEvents', { eventType: 'leave', userId: member.id, tag: member.user.tag });
 }
 
 // ─── MEMBRE : BAN ────────────────────────────────────────────────
@@ -143,6 +151,7 @@ async function logMemberBan(guild, user, reason) {
     .setFooter({ text: `ID : ${user.id}` });
 
   await channel.send({ embeds: [embed] }).catch(() => {});
+  _saveAction('memberEvents', { eventType: 'ban', userId: user.id, tag: user.tag, reason: reason || null });
 }
 
 // ─── MEMBRE : KICK ───────────────────────────────────────────────
@@ -163,6 +172,7 @@ async function logMemberKick(member, reason) {
     .setFooter({ text: `ID : ${member.id}` });
 
   await channel.send({ embeds: [embed] }).catch(() => {});
+  _saveAction('memberEvents', { eventType: 'kick', userId: member.id, tag: member.user.tag, reason: reason || null });
 }
 
 // ─── BRIEFING OWNER ──────────────────────────────────────────────

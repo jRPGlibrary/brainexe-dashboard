@@ -108,6 +108,8 @@ function registerRoutes(app) {
   app.use('/api', require('./analytics'));
   // ── BRAINEE-LIVING : Vie intérieure ───────────────────────────
   app.use('/api/being', require('./being'));
+  // ── Modération ────────────────────────────────────────────────
+  app.use('/api', require('./moderation'));
 }
 
 module.exports = { registerRoutes };
