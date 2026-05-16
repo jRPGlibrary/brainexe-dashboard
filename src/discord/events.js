@@ -51,7 +51,7 @@ const { isAbsent } = require('../features/absence');
 const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { checkEmotionalRefusal, isInRefusalCooldown } = require('../features/emotionalRefusal');
 const { checkAndHandleSpam } = require('../features/spamDetector');
-const { handleHangmanDm, isHangmanActive } = require('../features/hangman');
+const { handleHangmanDm, isHangmanActive, launchHangmanFromDm } = require('../features/hangman');
 const { logMemberJoin, logMemberLeave, logMemberBan } = require('../features/modLogger');
 const { analyzeConviction } = require('../features/conviction');
 const {
@@ -383,12 +383,12 @@ function registerMessageHandlers() {
     // Si juste image sans texte, on remplace par un marqueur pour que le reste du code fonctionne
     const userContent = rawContent || (dmImages.length ? `[image envoyée]` : '');
 
-    // 🎮 Pendu RPG/JRPG (rôle Fondateur uniquement)
+    // 🎮 Pendu — interception si partie active (lettre) ou commande stop
     {
       const lower = userContent.toLowerCase().trim();
-      const isCmd = lower === '!pendu' || lower === '!pendu stop';
+      const isStop = lower === '!pendu stop';
       const isGuess = isHangmanActive(message.author.id) && /^[a-zA-Z]$/.test(userContent.trim());
-      if (isCmd || isGuess) {
+      if (isStop || isGuess) {
         await handleHangmanDm(message, userContent.trim()).catch(err => pushLog('ERR', `Pendu: ${err.message}`, 'error'));
         return;
       }
@@ -467,15 +467,18 @@ function registerMessageHandlers() {
 
       const dmTemporalBlock = getTemporalBlock();
       const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
-      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.${dmImgInstruction}`;
+      const penduInstruction = `\n\n🎮 PENDU : Tu peux proposer spontanément une partie de pendu RPG/JRPG, ou accepter si l'utilisateur en demande une. Si tu décides de lancer le jeu, inclus exactement \`[PENDU]\` sur une ligne seule dans ta réponse — le jeu démarre automatiquement. N'explique pas ce marker, fais juste comme si tu lançais la partie naturellement.`;
+      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.${dmImgInstruction}${penduInstruction}`;
       const userTextOnlyPrompt = `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"`;
       const userPrompt = buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
       // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
       await simulateTyping(message.channel, 500 + Math.random() * 500);
       const { getContextualMaxTokens } = require('../utils');
       const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
-      const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona);
+      const { text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona);
       if (dmImages.length) pushLog('SYS', `🖼️ ${dmImages.length} image(s) lues (DM ${message.author.username})`);
+      const hasPenduTrigger = rawReply.includes('[PENDU]');
+      const reply = rawReply.replace(/\[PENDU\]/g, '').trim();
       await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'dm_reply');
 
       let dmSteamBlock = '';
@@ -537,6 +540,9 @@ function registerMessageHandlers() {
       try { await updateTasteFromMessage(message.author.id, message.author.username, userContent); }
       catch (_) {}
 
+      if (hasPenduTrigger) {
+        await launchHangmanFromDm(message).catch(err => pushLog('ERR', `Pendu launch: ${err.message}`, 'error'));
+      }
       pushLog('SYS', `📨 DM répondu à ${message.author.username} (mood: ${mood})`, 'success');
     } catch (err) { pushLog('ERR', `DM handler échoué pour ${message.author.username} : ${err.message}`, 'error'); }
   });
