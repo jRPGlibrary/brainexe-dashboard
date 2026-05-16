@@ -64,7 +64,7 @@ function renderCurrentSection() {
   const map = {
     overview: renderOverview, admin: renderAdmin,
     logs: renderLogs, channels: renderChannels, roles: renderRoles,
-    members: renderMembers, automations: renderAutomations,
+    members: renderMembers, moderation: renderModeration, automations: renderAutomations,
     posts: renderPosts, backups: renderBackups, settings: renderSettings,
     funding: renderFunding, health: renderHealth, emotions: renderEmotions,
     being: renderBeingSection,
