@@ -389,20 +389,8 @@ function registerMessageHandlers() {
       const isCmd = lower === '!pendu' || lower === '!pendu stop';
       const isGuess = isHangmanActive(message.author.id) && /^[a-zA-Z]$/.test(userContent.trim());
       if (isCmd || isGuess) {
-        try {
-          const guild = await shared.discord.guilds.fetch(GUILD_ID);
-          await guild.roles.fetch();
-          const member = await guild.members.fetch(message.author.id).catch(() => null);
-          const isFondateur = member?.roles.cache.some(r => r.name.toLowerCase() === 'fondateur') ?? false;
-          if (isFondateur) {
-            await handleHangmanDm(message, userContent.trim()).catch(err => pushLog('ERR', `Pendu: ${err.message}`, 'error'));
-            return;
-          } else {
-            pushLog('SYS', `🎮 Pendu: accès refusé → ${message.author.username} (rôle Fondateur absent)`);
-          }
-        } catch (err) {
-          pushLog('ERR', `Pendu role check: ${err.message}`, 'error');
-        }
+        await handleHangmanDm(message, userContent.trim()).catch(err => pushLog('ERR', `Pendu: ${err.message}`, 'error'));
+        return;
       }
     }
 
