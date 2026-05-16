@@ -193,6 +193,17 @@ async function getBraineeReaction(type, title) {
   } catch (_) { return ''; }
 }
 
+// Lancé par Brainee via le marker [PENDU] dans sa réponse
+async function launchHangmanFromDm(message) {
+  const userId = message.author.id;
+  if (games.has(userId)) games.delete(userId);
+  const state = startGame(userId);
+  const msg = buildStatusMessage(state, 'start');
+  await message.channel.send(`${msg}\n\n💡 Envoie une lettre pour jouer · \`!pendu stop\` pour abandonner.`);
+  pushLog('SYS', `🎮 Pendu lancé via Brainee → ${message.author.username} [${state.title}]`);
+}
+
+// Gestion des messages pendant une partie active (lettre ou stop)
 async function handleHangmanDm(message, content) {
   const userId = message.author.id;
   const lower = content.toLowerCase().trim();
@@ -201,31 +212,17 @@ async function handleHangmanDm(message, content) {
     if (games.has(userId)) {
       const { title } = games.get(userId);
       games.delete(userId);
-      const stopMsg = `🛑 Partie abandonnée. La réponse était : **${title}**`;
-      await message.reply(stopMsg);
+      await message.reply(`🛑 Partie abandonnée. La réponse était : **${title}**`);
       await appendDmMessage(userId, message.author.username, 'user', '[Abandonne la partie de pendu RPG/JRPG]').catch(() => {});
       await appendDmMessage(userId, message.author.username, 'assistant', `Partie de pendu abandonnée, le titre était "${title}".`).catch(() => {});
     } else {
-      await message.reply('Pas de partie en cours. Tape `!pendu` pour commencer !');
+      await message.reply('Pas de partie en cours.');
     }
-    return;
-  }
-
-  if (lower === '!pendu') {
-    if (games.has(userId)) games.delete(userId);
-    const state = startGame(userId);
-    const msg = buildStatusMessage(state, 'start');
-    await message.reply(`${msg}\n\n💡 Envoie une lettre pour jouer · \`!pendu stop\` pour abandonner.`);
-    pushLog('SYS', `🎮 Pendu démarré → ${message.author.username} [${state.title}]`);
     return;
   }
 
   // Deviner une lettre
   if (/^[a-zA-Z]$/.test(content.trim())) {
-    if (!games.has(userId)) {
-      await message.reply('Pas de partie en cours. Tape `!pendu` pour en lancer une !');
-      return;
-    }
     await simulateDmTyping(message.channel, 300);
     const result = processGuess(userId, content.trim());
     const msg = buildStatusMessage(result.state, result.type);
@@ -244,4 +241,4 @@ async function handleHangmanDm(message, content) {
   }
 }
 
-module.exports = { handleHangmanDm, isHangmanActive };
+module.exports = { handleHangmanDm, isHangmanActive, launchHangmanFromDm };
