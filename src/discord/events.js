@@ -421,9 +421,8 @@ function registerMessageHandlers() {
       const vipTier = getVipTier(bond);
       const vipBlock = getVipBlockForPrompt(vipTier, bond, message.author.username);
 
-      // 🔓 Mode dialogue libre — DM uniquement, inner_circle uniquement
-      const isLibreMode = shared.botConfig.dialogueLibre?.enabled === true
-        && vipTier?.key === 'inner_circle';
+      // 🔓 Mode dialogue libre — DM uniquement, activé pour tous
+      const isLibreMode = shared.botConfig.dialogueLibre?.enabled === true;
       const dmPersona = isLibreMode ? `${BOT_PERSONA_DM}\n\n${BOT_PERSONA_DM_LIBRE}` : BOT_PERSONA_DM;
       if (isLibreMode) pushLog('SYS', `🔓 Mode libre actif → DM ${message.author.username}`);
 
@@ -453,12 +452,6 @@ function registerMessageHandlers() {
         return;
       }
 
-      // 💤 v0.16.0 : Excuse occupée (4% de chance) — après le refus émotionnel
-      if (checkBusyExcuse(true)) {
-        await triggerBusyExcuse(message, userContent, slot, true);
-        return;
-      }
-
       // Enrichir le DM avec le contexte serveur (faire la liaison DM ↔ Serveur)
       const enrichedUserContent = await enrichDMWithServerContext(message.author.id, message.author.username, userContent);
 
@@ -474,7 +467,7 @@ function registerMessageHandlers() {
       // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
       await simulateTyping(message.channel, 500 + Math.random() * 500);
       const { getContextualMaxTokens } = require('../utils');
-      const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
+      const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 250, extended: 600, isDM: true }));
       const { text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona);
       if (dmImages.length) pushLog('SYS', `🖼️ ${dmImages.length} image(s) lues (DM ${message.author.username})`);
       const hasPenduTrigger = rawReply.includes('[PENDU]');

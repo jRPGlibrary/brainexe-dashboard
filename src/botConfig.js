@@ -85,7 +85,7 @@ const DEFAULT_CONFIG = {
     channelId: '1481028204897501273', channelName: '🔴・alertes-live', pingRoleName: '🔔 Notif Lives',
   },
   dialogueLibre: {
-    enabled: false,
+    enabled: true,
   },
 };
 
