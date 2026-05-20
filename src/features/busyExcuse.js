@@ -95,7 +95,15 @@ async function triggerBusyExcuse(message, userQuery, slot, isDM) {
           pushLog('SYS', `💤 Retour busyExcuse annulé — Brainee dort`);
           return;
         }
-        const returnMsg = await generateReturnMessage(userQuery, username, reason);
+        // Cherche le dernier message non-répondu de l'user dans le channel
+        let pendingQuery = userQuery;
+        try {
+          const fetched = await message.channel.messages.fetch({ limit: 20 });
+          const sorted = [...fetched.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+          const lastUserMsg = sorted.filter(m => m.author.id === message.author.id).pop();
+          if (lastUserMsg && lastUserMsg.content.trim()) pendingQuery = lastUserMsg.content.trim();
+        } catch (_) {}
+        const returnMsg = await generateReturnMessage(pendingQuery, username, reason);
         const returnResolved = resolveMentionsInText(returnMsg, message.guild || null);
         if (isDM) {
           await simulateDmTyping(message.channel, returnResolved.length);

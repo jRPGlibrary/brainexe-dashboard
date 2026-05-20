@@ -54,7 +54,7 @@ async function postMorningGreeting() {
     const morningSeed = getMorningSeed(hourNow);
     const { text: content } = await callClaude(
       `\nHumeur : ${mood}. Vibe du jour : ${vibe.name} (${vibe.desc}). Heure actuelle : ${hourNow.toFixed(1)}h. C'est ${dayCtx}.\nAngle pour ce matin : ${morningSeed}.${recentCtx}\n${NO_TAG_CLAUSE}`,
-      `Message du matin, naturel, COURT (1-2 phrases max, ~30 mots). Pas forcément "bonjour" — varie ("yo", "salut", "hey", "ça commence", ou même direct sans formule). Pas de café automatique. Si la conversation récente s'y prête, rebondis dessus. Jamais de @. Pas plus d'un emoji et seulement si vraiment ça colle (~10% des cas).`,
+      `Message du matin, naturel, COURT (1-2 phrases max, ~30 mots). Pas forcément "bonjour" — varie ("yo", "salut", "hey", "ça commence", ou même direct sans formule). Pas de café automatique. Si la conversation récente s'y prête, rebondis dessus. Jamais de @. Pas plus d'un emoji et seulement si vraiment ça colle (~10% des cas). INTERDIT : ne commence JAMAIS par "[jour] matin", "pour un [jour]", "le [jour] matin" ou toute variante — le jour ne doit pas structurer l'ouverture de la phrase.`,
       110,
       BOT_PERSONA
     );
