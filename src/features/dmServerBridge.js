@@ -3,6 +3,7 @@ const { pushLog } = require('../logger');
 const { callClaude } = require('../ai/claude');
 const { sanitizeForJson } = require('../utils');
 const { getSmartMemory, formatSmartMemory } = require('../db/intelligentMemory');
+const { getCurrentSlot } = require('../bot/scheduling');
 const { GUILD_ID } = require('../config');
 
 // Récupérer le contexte récent du serveur pour une personne
@@ -12,11 +13,18 @@ async function getServerContextForUser(userId, userName, limit = 12) {
 
   try {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+    // Limite dynamique : user très actif (5+ messages en 48h) = contexte frais, moins d'historique
+    const recentCount = await shared.mongoDb.collection('messageLog')
+      .countDocuments({ authorId: userId, source: 'server', createdAt: { $gte: since48h } });
+    const dynamicLimit = recentCount >= 5 ? 5 : recentCount >= 2 ? 8 : limit;
+
     const recentMessages = await shared.mongoDb
       .collection('messageLog')
       .find({ authorId: userId, source: 'server', createdAt: { $gte: since } })
       .sort({ createdAt: -1 })
-      .limit(limit)
+      .limit(dynamicLimit)
       .toArray();
 
     if (!recentMessages.length) return '';
@@ -37,11 +45,18 @@ async function getDmContextForUser(userId, limit = 8) {
   if (!shared.mongoDb) return '';
   try {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+    // Limite dynamique côté DM aussi
+    const recentCount = await shared.mongoDb.collection('messageLog')
+      .countDocuments({ authorId: userId, source: 'dm', createdAt: { $gte: since48h } });
+    const dynamicLimit = recentCount >= 4 ? 4 : recentCount >= 2 ? 6 : limit;
+
     const recent = await shared.mongoDb
       .collection('messageLog')
       .find({ authorId: userId, source: 'dm', createdAt: { $gte: since } })
       .sort({ createdAt: -1 })
-      .limit(limit)
+      .limit(dynamicLimit)
       .toArray();
     if (!recent.length) return '';
     return recent
@@ -137,6 +152,7 @@ async function logMessageForBridge(authorId, authorName, content, channelId, cha
       content.match(/\b[A-Z][a-z]+/g).slice(0, 2).forEach(t => topics.push(t));
     }
 
+    const slot = getCurrentSlot();
     await shared.mongoDb.collection('messageLog').insertOne({
       authorId,
       authorName,
@@ -145,6 +161,7 @@ async function logMessageForBridge(authorId, authorName, content, channelId, cha
       channelName,
       source,
       topics,
+      timeSlot: slot?.status || 'active',
       createdAt: new Date(),
     });
   } catch (err) {

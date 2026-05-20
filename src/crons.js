@@ -34,6 +34,7 @@ const { resetConvictionTracker } = require('./features/conviction');
 const { tryPromoteSingularBond } = require('./features/attachmentStages');
 const { setSlotPresence } = require('./features/presenceManager');
 const { sendOwnerBriefing } = require('./features/ownerBriefing');
+const { compactMemory, getSmartMemory } = require('./db/intelligentMemory');
 
 let convCron = null, replyCron = null, floatingEventsCron = null;
 let moodResetCron = null, driftCron = null, relanceCron = null;
@@ -320,6 +321,42 @@ function startConvCron() {
   cron.schedule('0 20 * * 0', () => {
     pushLog('SYS', `💡 Owner briefing hebdo déclenché`);
     sendOwnerBriefing().catch(err => pushLog('ERR', `ownerBriefing: ${err.message}`, 'error'));
+  }, { timezone: 'Europe/Paris' });
+
+  // Compaction mémoire hebdo — dimanche 3h
+  // Distille les messages de la semaine vers smartMemory (1 appel Claude/user actif)
+  cron.schedule('0 3 * * 0', async () => {
+    if (!shared.mongoDb) return;
+    try {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const activeUsers = await shared.mongoDb.collection('messageLog')
+        .distinct('authorId', { createdAt: { $gte: since } });
+      if (!activeUsers.length) return;
+      pushLog('SYS', `🧠 Compaction mémoire hebdo — ${activeUsers.length} user(s) actifs`);
+      for (let i = 0; i < activeUsers.length; i++) {
+        const userId = activeUsers[i];
+        try {
+          const messages = await shared.mongoDb.collection('messageLog')
+            .find({ authorId: userId, createdAt: { $gte: since } })
+            .sort({ createdAt: -1 })
+            .limit(20)
+            .toArray();
+          if (!messages.length) continue;
+          const recentEvents = messages.map(m => ({
+            date: m.createdAt?.toISOString?.() || 'récent',
+            summary: `[${m.source || 'server'}${m.timeSlot ? '/' + m.timeSlot : ''}] ${(m.content || '').slice(0, 80)}`,
+          }));
+          const existing = await getSmartMemory(userId, 'user');
+          await compactMemory(userId, 'user', recentEvents, existing);
+          if (i < activeUsers.length - 1) await new Promise(r => setTimeout(r, 2000));
+        } catch (err) {
+          pushLog('ERR', `Compaction ${userId}: ${err.message}`, 'error');
+        }
+      }
+      pushLog('SYS', `✅ Compaction mémoire hebdo terminée`, 'success');
+    } catch (err) {
+      pushLog('ERR', `cronCompaction: ${err.message}`, 'error');
+    }
   }, { timezone: 'Europe/Paris' });
 
   // Slot presence — sync statut Discord avec le slot toutes les 10 min
