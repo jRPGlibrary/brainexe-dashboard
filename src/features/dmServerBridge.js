@@ -11,7 +11,7 @@ async function getServerContextForUser(userId, userName, limit = 12) {
   if (!shared.mongoDb) return '';
 
   try {
-    const since = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000);
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recentMessages = await shared.mongoDb
       .collection('messageLog')
       .find({ authorId: userId, source: 'server', createdAt: { $gte: since } })
@@ -36,7 +36,7 @@ async function getServerContextForUser(userId, userName, limit = 12) {
 async function getDmContextForUser(userId, limit = 8) {
   if (!shared.mongoDb) return '';
   try {
-    const since = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000);
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recent = await shared.mongoDb
       .collection('messageLog')
       .find({ authorId: userId, source: 'dm', createdAt: { $gte: since } })
