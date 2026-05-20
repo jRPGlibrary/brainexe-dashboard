@@ -15,7 +15,21 @@ async function connectMongoDB() {
     await shared.mongoDb.collection('dmHistory').createIndex({ userId: 1 }, { unique: true });
     await shared.mongoDb.collection('channelDirectory').createIndex({ channelId: 1 }, { unique: true });
     await shared.mongoDb.collection('memberBonds').createIndex({ userId: 1 }, { unique: true });
-    pushLog('SYS', '✅ MongoDB Atlas connecté — memberProfiles + botState + channelMemory + dmHistory + channelDirectory + memberBonds', 'success');
+    // messageLog: TTL 7 jours + index composé pour requêtes bridge DM/serveur
+    await shared.mongoDb.collection('messageLog').createIndex(
+      { createdAt: 1 },
+      { expireAfterSeconds: 604800, name: 'messageLog_ttl' }
+    );
+    await shared.mongoDb.collection('messageLog').createIndex(
+      { authorId: 1, source: 1, createdAt: -1 },
+      { name: 'messageLog_author_source_date' }
+    );
+    // smartMemory: index unique pour compaction intelligente
+    await shared.mongoDb.collection('smartMemory').createIndex(
+      { entityId: 1, entityType: 1 },
+      { unique: true, name: 'smartMemory_entity' }
+    );
+    pushLog('SYS', '✅ MongoDB Atlas connecté — memberProfiles + botState + channelMemory + dmHistory + channelDirectory + memberBonds + messageLog TTL + smartMemory', 'success');
     try {
       const { loadEmotionalState } = require('../bot/emotions');
       await loadEmotionalState();
