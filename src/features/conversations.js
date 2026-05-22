@@ -189,8 +189,10 @@ async function postRandomConversation() {
   // Absence : si active → silence total
   if (isAbsent()) return;
 
-  // Vraie absence aléatoire — 25% de chance de sauter le lance-conv (pas H24)
-  if (Math.random() < 0.25) { pushLog('SYS', `🌫️ Vraie absence (skip lance-conv 25%)`); return; }
+  // Vraie absence aléatoire — taux dépend du slot (0% au réveil, jusqu'à 30% la nuit)
+  const _skipConvProba = { wakeup: 0, active: 0.10, lunch: 0.15, productive: 0.15, transition: 0.20, gaming: 0.25, latenight: 0.30 };
+  const _convSkip = _skipConvProba[slot.status] ?? 0.15;
+  if (Math.random() < _convSkip) { pushLog('SYS', `🌫️ Vraie absence (skip lance-conv ${Math.round(_convSkip * 100)}%)`); return; }
 
   try {
     const guild = await shared.discord.guilds.fetch(GUILD_ID);
@@ -202,7 +204,9 @@ async function postRandomConversation() {
     };
 
     // Absence annoncée : phrase randomisée dans le général puis silence
-    const absencePhrase = maybeStartAbsence(slot.status || slot.label || '');
+    // Wakeup slot protégé (jamais d'absence juste après le réveil)
+    const _slotKey = slot.status || slot.label || '';
+    const absencePhrase = _slotKey !== 'wakeup' ? await maybeStartAbsence(_slotKey) : null;
     if (absencePhrase) {
       const general = getGeneralChannel();
       if (general) {
@@ -212,7 +216,7 @@ async function postRandomConversation() {
             await simulateTyping(genCh, 500 + Math.random() * 1000);
             await genCh.send(absencePhrase);
             shared.lastAnyBotPostTime = Date.now();
-            _recordChannelPost(general.channelId);
+            recordChannelPost(general.channelId);
             pushLog('SYS', `🌙 Absence annoncée dans #${general.channelName} : "${absencePhrase}"`, 'success');
           } catch (_) {}
         }
@@ -275,8 +279,10 @@ async function replyToConversations() {
   if (slot.maxConv === 0) return;
   // Absence active → silence total (les @mentions passent toujours via events.js)
   if (isAbsent()) return;
-  // Vraie absence aléatoire — 55% de chance de simplement ignorer la slot (pas H24)
-  if (Math.random() < 0.55) { pushLog('SYS', `🌫️ Vraie absence (skip silencieux 55%)`); return; }
+  // Vraie absence aléatoire — taux dépend du slot (10% au réveil, jusqu'à 50% la nuit)
+  const _skipReplyProba = { wakeup: 0.10, active: 0.20, lunch: 0.25, productive: 0.25, transition: 0.30, gaming: 0.40, latenight: 0.50 };
+  const _replySkip = _skipReplyProba[slot.status] ?? 0.30;
+  if (Math.random() < _replySkip) { pushLog('SYS', `🌫️ Vraie absence (skip silencieux ${Math.round(_replySkip * 100)}%)`); return; }
   const active = cfg.channels.filter(c => c.enabled);
   if (!active.length) return;
   const ch = active[Math.floor(Math.random() * active.length)];
