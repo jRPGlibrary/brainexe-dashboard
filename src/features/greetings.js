@@ -163,9 +163,22 @@ async function postRelanceMention({ userId, username, channelId, messageId, quer
       if (ctx.length > 20) recentCtx = `\n\nContexte récent du salon (30 derniers messages) :\n${ctx}`;
     } catch (_) {}
 
+    // Bug 2 : calcul du délai réel depuis le message d'origine via Discord snowflake
+    let _elapsedLabel = 'hier';
+    try {
+      const _msgTs = Number(BigInt(messageId) >> 22n) + 1420070400000;
+      const _msAgo = Date.now() - _msgTs;
+      const _hAgo = _msAgo / 3600000;
+      _elapsedLabel = _hAgo < 2 ? `y'a ${Math.round(_msAgo / 60000)} min`
+                    : _hAgo < 6 ? `y'a ${Math.round(_hAgo)}h`
+                    : _hAgo < 20 ? `ce matin ou cet après-midi`
+                    : _hAgo < 36 ? `hier`
+                    : `y'a ${Math.ceil(_hAgo / 24)} jours`;
+    } catch (_) {}
+
     const { text: content } = await callClaude(
-      `\nVibe : ${vibe.name}. Tu avais zappé un message hier d'une personne qui voulait ton avis.\n${tagInstruction}${recentCtx}`,
-      `Hier ${username} t'avait écrit : "${query}"\nTu relances maintenant, avec une mini-excuse naturelle ("désolée j'ai zappé hier", "j'ai mis du temps mais..."). Puis tu réponds/réagis à son message en tenant compte de ce qui s'est dit depuis. Max 3 phrases.`,
+      `\nVibe : ${vibe.name}. Tu avais zappé un message (${_elapsedLabel}) d'une personne qui voulait ton avis.\n${tagInstruction}${recentCtx}`,
+      `${username} t'avait écrit ${_elapsedLabel} : "${query}"\nTu relances maintenant. Formule toi-même une courte excuse naturelle — adapte-la à quand c'était (si c'était y'a 2h ne dis pas "hier", si c'était hier sois précise). Puis réponds/réagis à son message en tenant compte de ce qui s'est dit depuis. Max 3 phrases.`,
       220,
       BOT_PERSONA
     );
