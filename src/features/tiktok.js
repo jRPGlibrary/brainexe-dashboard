@@ -359,6 +359,7 @@ function connectToTikTokLive() {
 
       const onEnd = async () => {
         if (!liveActive) return;
+        liveActive = false; // guard immédiat — empêche streamEnd + disconnected de doubler
         await sendLiveEndEmbed(title);
         resetLiveState();
       };
