@@ -9,6 +9,8 @@ const { getChannelMemory } = require('../../db/channelMem');
 const { getDmHistory } = require('../../db/dmHistory');
 const { getFundingData, addDonation, calculateTotalCosts, updateBotStatus } = require('../../project/funding');
 const { getAuditEntries, auditLog } = require('../../audit');
+const { getCacheStats } = require('../../ai/tavilySearch');
+const { TAVILY_API_KEY } = require('../../config');
 
 const router = Router();
 
@@ -38,6 +40,7 @@ router.get('/health', async (req, res) => {
         lastErrorMsg: claude.lastErrorMsg,
         lastLatencyMs: claude.lastLatencyMs,
       },
+      tavily: { enabled: !!TAVILY_API_KEY, cache: getCacheStats() },
       tiktokLive: shared.tiktokLiveActive === true,
       logsCount: (shared.changeLog || []).length,
       auditCount: (shared.auditLog || []).length,

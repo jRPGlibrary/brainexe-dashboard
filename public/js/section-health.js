@@ -18,6 +18,8 @@ async function renderHealth() {
     const lastClaudeLat = h.claude?.lastLatencyMs != null ? `${h.claude.lastLatencyMs}ms` : '—';
     const lastSuccess = h.claude?.lastSuccess ? new Date(h.claude.lastSuccess).toLocaleTimeString('fr-FR') : '—';
     const lastError = h.claude?.lastError ? new Date(h.claude.lastError).toLocaleTimeString('fr-FR') : '—';
+    const tavilyEnabled = h.tavily?.enabled;
+    const tavilyCache = h.tavily?.cache || {};
 
     sec.innerHTML = `
       <div class="health-grid mb-3">
@@ -53,6 +55,19 @@ async function renderHealth() {
             Latence : ${lastClaudeLat}<br>
             Dernier succès : ${lastSuccess}
             ${claudeErrors > 0 ? `<br>Dernière erreur : ${lastError}<br><span style="color:var(--danger)">${escapeHtml(h.claude?.lastErrorMsg || '')}</span>` : ''}
+          </div>
+        </div>
+
+        <div class="health-card ${tavilyEnabled ? 'ok' : 'warn'}">
+          <div class="health-label">Tavily Search</div>
+          <div class="health-status">
+            <span class="health-dot ${tavilyEnabled ? 'ok' : 'warn'}"></span>
+            ${tavilyEnabled ? 'Actif' : 'Clé manquante'}
+          </div>
+          <div class="health-meta">
+            ${tavilyEnabled
+              ? `Cache : ${tavilyCache.size || 0} / ${tavilyCache.maxSize || 50} entrées<br>TTL : ${tavilyCache.ttlMin || 30} min`
+              : 'Ajouter TAVILY_API_KEY dans Railway'}
           </div>
         </div>
 
