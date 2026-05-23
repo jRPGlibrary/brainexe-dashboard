@@ -1,6 +1,6 @@
 /**
  * Tests — src/ai/tavilySearch.js
- * Cache LRU, searchGamingNews, searchIGDB, gamingToolHandler, getAvailableTools
+ * Cache LRU, searchGamingNews, searchIGDB, searchGamingHelp, gamingToolHandler, getAvailableTools
  */
 
 jest.mock('../src/config', () => ({
@@ -14,11 +14,13 @@ jest.mock('../src/logger', () => ({ pushLog: jest.fn() }));
 const {
   searchGamingNews,
   searchIGDB,
+  searchGamingHelp,
   gamingToolHandler,
   getAvailableTools,
   getCacheStats,
   GAMING_NEWS_TOOL,
   IGDB_GAME_TOOL,
+  GAMING_HELP_TOOL,
 } = require('../src/ai/tavilySearch');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -43,6 +45,13 @@ const TAVILY_RESULTS = {
   ],
 };
 
+const TAVILY_HELP_RESULTS = {
+  results: [
+    { title: 'How to beat Malenia — Elden Ring', url: 'https://reddit.com/r/Eldenring/abc', content: 'Use bleed build, equip Bloodhound Step for the waterfowl dance, keep circling left...' },
+    { title: 'Malenia boss guide', url: 'https://gamefaqs.gamespot.com/elden-ring/malenia', content: 'Phase 1: stay close and punish. Phase 2: dodge the scarlet rot bloom immediately...' },
+  ],
+};
+
 const IGDB_RESULTS = [
   {
     id: 1,
@@ -60,12 +69,6 @@ const IGDB_RESULTS = [
 // ── Cache LRU ────────────────────────────────────────────────────────────────
 
 describe('Cache LRU', () => {
-  beforeEach(() => {
-    // Vider le cache entre les tests en le vidant via une requête réelle
-    // On réimporte pour avoir un cache frais... non disponible sans jest.isolateModules
-    // On utilise getCacheStats pour vérifier l'état
-  });
-
   test('getCacheStats retourne la structure attendue', () => {
     const stats = getCacheStats();
     expect(stats).toHaveProperty('size');
@@ -88,16 +91,24 @@ describe('Schémas outils Anthropic', () => {
     expect(IGDB_GAME_TOOL.input_schema.required).toContain('game_name');
     expect(IGDB_GAME_TOOL.input_schema.properties).toHaveProperty('game_name');
   });
+
+  test('GAMING_HELP_TOOL a le bon format', () => {
+    expect(GAMING_HELP_TOOL.name).toBe('rechercher_aide_gaming');
+    expect(GAMING_HELP_TOOL.input_schema.required).toContain('query');
+    expect(GAMING_HELP_TOOL.input_schema.properties).toHaveProperty('query');
+  });
 });
 
 // ── getAvailableTools ────────────────────────────────────────────────────────
 
 describe('getAvailableTools', () => {
-  test('retourne les deux outils quand les clés sont présentes', () => {
+  test('retourne les trois outils quand toutes les clés sont présentes', () => {
     const tools = getAvailableTools();
-    expect(tools).toHaveLength(2);
-    expect(tools.map(t => t.name)).toContain('rechercher_actu_gaming');
-    expect(tools.map(t => t.name)).toContain('rechercher_jeu_igdb');
+    expect(tools).toHaveLength(3);
+    const names = tools.map(t => t.name);
+    expect(names).toContain('rechercher_actu_gaming');
+    expect(names).toContain('rechercher_jeu_igdb');
+    expect(names).toContain('rechercher_aide_gaming');
   });
 });
 
@@ -140,7 +151,6 @@ describe('searchGamingNews', () => {
     const q = 'cache-test-unique-' + Date.now();
     await searchGamingNews(q);
     await searchGamingNews(q);
-    // fetch ne doit être appelé qu'une seule fois
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -183,6 +193,56 @@ describe('searchIGDB', () => {
   });
 });
 
+// ── searchGamingHelp ─────────────────────────────────────────────────────────
+
+describe('searchGamingHelp', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('retourne les résultats formatés avec source et snippet', async () => {
+    mockFetch(TAVILY_HELP_RESULTS);
+    const results = await searchGamingHelp('Elden Ring comment battre Malenia');
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({ title: 'How to beat Malenia — Elden Ring' });
+    expect(results[0].source).toBeDefined();
+    expect(results[0].snippet.length).toBeGreaterThan(0);
+  });
+
+  test('utilise search_depth advanced', async () => {
+    mockFetch(TAVILY_HELP_RESULTS);
+    await searchGamingHelp('Hollow Knight boss tips');
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.search_depth).toBe('advanced');
+  });
+
+  test('ne préfixe pas la requête avec "gaming"', async () => {
+    mockFetch(TAVILY_HELP_RESULTS);
+    await searchGamingHelp('Zelda TOTK temple puzzle');
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.query).toBe('Zelda TOTK temple puzzle');
+  });
+
+  test('inclut reddit et gamefaqs dans les domaines', async () => {
+    mockFetch(TAVILY_HELP_RESULTS);
+    await searchGamingHelp('test');
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.include_domains).toContain('reddit.com');
+    expect(body.include_domains).toContain('gamefaqs.gamespot.com');
+  });
+
+  test('lève une erreur si Tavily répond non-ok', async () => {
+    mockFetch({}, false, 503);
+    await expect(searchGamingHelp('help-error-503-' + Date.now())).rejects.toThrow('Tavily 503');
+  });
+
+  test('utilise le cache sur la deuxième requête identique', async () => {
+    mockFetch(TAVILY_HELP_RESULTS);
+    const q = 'help-cache-test-' + Date.now();
+    await searchGamingHelp(q);
+    await searchGamingHelp(q);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
 // ── gamingToolHandler ────────────────────────────────────────────────────────
 
 describe('gamingToolHandler', () => {
@@ -196,7 +256,7 @@ describe('gamingToolHandler', () => {
     expect(result).toContain('https://ign.com/gta6');
   });
 
-  test('retourne un fallback JSON si Tavily échoue', async () => {
+  test('retourne un fallback JSON si Tavily actu échoue', async () => {
     mockFetchError('connection refused');
     const result = await gamingToolHandler('rechercher_actu_gaming', { query: 'fallback-unique-' + Date.now() });
     const parsed = JSON.parse(result);
@@ -217,6 +277,28 @@ describe('gamingToolHandler', () => {
     const result = await gamingToolHandler('rechercher_jeu_igdb', { game_name: 'Fallback Game' });
     const parsed = JSON.parse(result);
     expect(parsed.fallback).toBe(true);
+  });
+
+  test('gère rechercher_aide_gaming et retourne du texte formaté', async () => {
+    mockFetch(TAVILY_HELP_RESULTS);
+    const result = await gamingToolHandler('rechercher_aide_gaming', { query: 'help-handler-unique-' + Date.now() });
+    expect(typeof result).toBe('string');
+    expect(result).toContain('How to beat Malenia');
+    expect(result).toContain('reddit.com');
+  });
+
+  test('retourne un fallback JSON si la recherche aide échoue', async () => {
+    mockFetchError('help search down');
+    const result = await gamingToolHandler('rechercher_aide_gaming', { query: 'help-fallback-' + Date.now() });
+    const parsed = JSON.parse(result);
+    expect(parsed.fallback).toBe(true);
+    expect(parsed.error).toContain('help search down');
+  });
+
+  test('retourne "Aucun guide" si aucun résultat aide', async () => {
+    mockFetch({ results: [] });
+    const result = await gamingToolHandler('rechercher_aide_gaming', { query: 'jeu-inexistant-' + Date.now() });
+    expect(result).toContain('Aucun guide');
   });
 
   test('retourne une erreur JSON pour un outil inconnu', async () => {

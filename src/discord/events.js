@@ -75,12 +75,25 @@ const NEWS_KEYWORDS = [
   'mise à jour', 'nintendo direct', 'state of play', 'showcase', 'event', 'événement',
 ];
 
+// Déclenche l'outil IGDB sur les questions factuelles sur un jeu précis
 const GAME_INFO_KEYWORDS = [
   'jeu', 'game', 'ps5', 'ps4', 'ps3', 'xbox', 'switch', 'sur pc', 'sur steam',
   'nintendo', 'playstation', 'tu connais', 'tu sais', "c'est quoi", 'dis-moi',
   'parle-moi', 'infos sur', 'info sur', 'qui a fait', 'qui développe', 'qui a développé',
   'sorti sur', 'disponible sur', 'développeur', 'éditeur', 'studio', 'rpg', 'fps',
   'indie', 'open world', 'multijoueur',
+];
+
+const HELP_KEYWORDS = [
+  'soluce', 'soluces', 'astuce', 'astuces', 'guide', 'aide', 'aider',
+  'comment faire', 'comment passer', 'comment battre', 'comment tuer',
+  'comment trouver', 'comment débloquer', 'comment terminer', 'comment finir',
+  'boss', 'niveau', 'mission', 'quête', 'trophée', 'achievement', 'succès',
+  'walkthrough', 'tips', 'trick', 'cheat', 'secret', 'easter egg',
+  'je bloque', "j'arrive pas", "j'y arrive pas", 'trop dur', 'impossible',
+  'farm', 'grind', 'build', 'stratégie', 'tactique', 'deck', 'loadout',
+  'où trouver', 'où est', 'comment avoir', 'comment obtenir',
+  'rétro', 'retro', 'cheat code', 'code triche',
 ];
 
 function registerDiscordEvents() {
@@ -304,10 +317,10 @@ async function handleMentionReply(message, userQuery) {
     const lowerQuery = userQuery.toLowerCase();
     const isNewsQuery = availableTools.length > 0
       && (NEWS_KEYWORDS.some(kw => lowerQuery.includes(kw))
-        || GAME_INFO_KEYWORDS.some(kw => lowerQuery.includes(kw)));
+        || GAME_INFO_KEYWORDS.some(kw => lowerQuery.includes(kw))
+        || HELP_KEYWORDS.some(kw => lowerQuery.includes(kw)));
 
     let reply, usage;
-    let usedToolCall = false;
     if (isNewsQuery) {
       try {
         ({ text: reply, usage } = await callClaudeWithTools(
@@ -317,7 +330,6 @@ async function handleMentionReply(message, userQuery) {
           gamingToolHandler,
           { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION }
         ));
-        usedToolCall = true;
         pushLog('SYS', `🔍 Tool use Tavily → @mention ${message.author.username}`, 'success');
       } catch (toolErr) {
         pushLog('DBG', `Tool use échoué, fallback callClaude: ${toolErr.message}`, 'debug');
@@ -332,7 +344,7 @@ async function handleMentionReply(message, userQuery) {
     if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
 
     let steamBlock = '';
-    if (!usedToolCall && GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
+    if (GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
       try {
         const gameName = await extractGameName(userQuery, reply);
         if (gameName && !contextLines.toLowerCase().includes(gameName.toLowerCase())) {
@@ -520,7 +532,8 @@ function registerMessageHandlers() {
       const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
       const dmIsNewsQuery = dmAvailableTools.length > 0
         && (NEWS_KEYWORDS.some(kw => dmQueryText.includes(kw))
-          || GAME_INFO_KEYWORDS.some(kw => dmQueryText.includes(kw)));
+          || GAME_INFO_KEYWORDS.some(kw => dmQueryText.includes(kw))
+          || HELP_KEYWORDS.some(kw => dmQueryText.includes(kw)));
 
       let rawReply, usage;
       if (dmIsNewsQuery) {
