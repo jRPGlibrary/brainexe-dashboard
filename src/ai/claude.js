@@ -119,4 +119,118 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
   throw lastErr;
 }
 
-module.exports = { callClaude };
+/**
+ * Variante de callClaude avec support Tool Use (Function Calling).
+ * Gère la boucle complète : appel → tool_use → exécution → réponse finale.
+ * @param {string} systemPrompt
+ * @param {Array<{role: string, content: string|Array}>} userMessages
+ * @param {Array} tools — schémas d'outils Anthropic
+ * @param {Function} toolHandler — async (toolName, toolInput) => string|object
+ * @param {object} [options] — maxTokens, cachedPrefix, model
+ */
+async function callClaudeWithTools(systemPrompt, userMessages, tools, toolHandler, options = {}) {
+  const { maxTokens = 500, cachedPrefix = null, model = 'claude-sonnet-4-6' } = options;
+  if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante');
+
+  const cleanSystem = sanitizeForJson(systemPrompt);
+  const cleanCached = cachedPrefix ? sanitizeForJson(cachedPrefix) : null;
+  const system = cleanCached
+    ? [
+        { type: 'text', text: cleanCached, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: cleanSystem },
+      ]
+    : cleanSystem;
+
+  let messages = userMessages.map(m => ({
+    role: m.role,
+    content: typeof m.content === 'string' ? sanitizeForJson(m.content) : m.content,
+  }));
+
+  const startedAt = Date.now();
+  shared.claudeHealth.totalCalls++;
+  shared.claudeHealth.lastCall = startedAt;
+  const totalUsage = { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0 };
+
+  for (let iter = 0; iter < 3; iter++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'anthropic-beta': 'prompt-caching-2024-07-31',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: Math.min(Math.max(Math.floor(maxTokens), 50), 1024),
+          system,
+          tools,
+          messages,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (!response.ok) {
+        const e = await response.text();
+        throw new Error(`Anthropic ${response.status}: ${e}`);
+      }
+
+      const data = await response.json();
+      totalUsage.inputTokens += data.usage?.input_tokens || 0;
+      totalUsage.outputTokens += data.usage?.output_tokens || 0;
+      totalUsage.cacheCreationInputTokens += data.usage?.cache_creation_input_tokens || 0;
+      totalUsage.cacheReadInputTokens += data.usage?.cache_read_input_tokens || 0;
+
+      if (data.stop_reason !== 'tool_use') {
+        const textBlock = data.content.find(b => b.type === 'text');
+        const text = (textBlock?.text || '').trim();
+        const latency = Date.now() - startedAt;
+        shared.claudeHealth.lastSuccess = Date.now();
+        shared.claudeHealth.lastLatencyMs = latency;
+        shared.claudeHealth.consecutiveErrors = 0;
+        return { text, usage: totalUsage };
+      }
+
+      const toolUseBlock = data.content.find(b => b.type === 'tool_use');
+      if (!toolUseBlock) break;
+
+      messages = [...messages, { role: 'assistant', content: data.content }];
+
+      let toolResultContent;
+      try {
+        const rawResult = await toolHandler(toolUseBlock.name, toolUseBlock.input);
+        toolResultContent = typeof rawResult === 'string' ? rawResult : JSON.stringify(rawResult);
+      } catch (toolErr) {
+        toolResultContent = JSON.stringify({ error: toolErr.message, fallback: true });
+      }
+
+      messages = [...messages, {
+        role: 'user',
+        content: [{
+          type: 'tool_result',
+          tool_use_id: toolUseBlock.id,
+          content: toolResultContent,
+        }],
+      }];
+
+    } catch (err) {
+      clearTimeout(timer);
+      shared.claudeHealth.totalErrors++;
+      shared.claudeHealth.consecutiveErrors++;
+      shared.claudeHealth.lastError = Date.now();
+      shared.claudeHealth.lastErrorMsg = (err.message || 'unknown').slice(0, 180);
+      throw err;
+    }
+  }
+
+  shared.claudeHealth.totalErrors++;
+  shared.claudeHealth.consecutiveErrors++;
+  throw new Error('callClaudeWithTools: boucle tool use non terminée après 3 itérations');
+}
+
+module.exports = { callClaude, callClaudeWithTools };

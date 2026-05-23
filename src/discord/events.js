@@ -3,8 +3,9 @@ const Events = discord_js.Events;
 const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
 const { handleAffinityCommand } = require('../features/affinityCommand');
-const { GUILD_ID, ANTHROPIC_API_KEY } = require('../config');
-const { callClaude } = require('../ai/claude');
+const { GUILD_ID, ANTHROPIC_API_KEY, TAVILY_API_KEY } = require('../config');
+const { callClaude, callClaudeWithTools } = require('../ai/claude');
+const { gamingNewsToolHandler, GAMING_NEWS_TOOL } = require('../ai/tavilySearch');
 const { recordTokenUsage } = require('../db/tokenUsage');
 const { extractYoutubeQuery, searchYoutube } = require('../ai/youtube');
 const { getMemberProfile, updateMemberProfile, getToneInstruction } = require('../db/members');
@@ -284,7 +285,33 @@ async function handleMentionReply(message, userQuery) {
 
     const userTextPrompt = `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\nRéponds court (1-2 phrases) sauf si le sujet mérite vraiment plus.${replyRefContext}`;
     const userContent = buildMultimodalUserContent(userTextPrompt, userImages);
-    const { text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION);
+    const NEWS_KEYWORDS = [
+      'actu', 'news', 'nouvelles', 'dernier', 'dernière', 'dernières', 'récent', 'récente',
+      "aujourd'hui", 'cette semaine', 'ce mois', 'annonce', 'sorti', 'sortie', 'vient de',
+      'release', 'trailer', 'reveal', 'leak', 'rumeur', 'update', 'patch', 'maj',
+      'mise à jour', 'nintendo direct', 'state of play', 'showcase', 'event', 'événement',
+    ];
+    const isNewsQuery = TAVILY_API_KEY
+      && NEWS_KEYWORDS.some(kw => userQuery.toLowerCase().includes(kw));
+
+    let reply, usage;
+    if (isNewsQuery) {
+      try {
+        ({ text: reply, usage } = await callClaudeWithTools(
+          dynamicPrompt + imgInstruction,
+          [{ role: 'user', content: userContent }],
+          [GAMING_NEWS_TOOL],
+          gamingNewsToolHandler,
+          { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION }
+        ));
+        pushLog('SYS', `🔍 Tool use Tavily → @mention ${message.author.username}`, 'success');
+      } catch (toolErr) {
+        pushLog('DBG', `Tool use échoué, fallback callClaude: ${toolErr.message}`, 'debug');
+        ({ text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION));
+      }
+    } else {
+      ({ text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION));
+    }
     if (userImages.length) pushLog('SYS', `🖼️ ${userImages.length} image(s) lues (mention ${message.author.username})`);
     await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'mention_reply');
     const replyResolved = resolveMentionsInText(reply, message.guild);
