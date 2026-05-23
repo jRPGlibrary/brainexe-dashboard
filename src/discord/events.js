@@ -75,6 +75,14 @@ const NEWS_KEYWORDS = [
   'mise à jour', 'nintendo direct', 'state of play', 'showcase', 'event', 'événement',
 ];
 
+const GAME_INFO_KEYWORDS = [
+  'jeu', 'game', 'ps5', 'ps4', 'ps3', 'xbox', 'switch', 'sur pc', 'sur steam',
+  'nintendo', 'playstation', 'tu connais', 'tu sais', "c'est quoi", 'dis-moi',
+  'parle-moi', 'infos sur', 'info sur', 'qui a fait', 'qui développe', 'qui a développé',
+  'sorti sur', 'disponible sur', 'développeur', 'éditeur', 'studio', 'rpg', 'fps',
+  'indie', 'open world', 'multijoueur',
+];
+
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
   shared.discord.on(Events.ChannelDelete, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon supprimé : ${ch.name}`); });
@@ -293,8 +301,10 @@ async function handleMentionReply(message, userQuery) {
     const userTextPrompt = `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\nRéponds court (1-2 phrases) sauf si le sujet mérite vraiment plus.${replyRefContext}`;
     const userContent = buildMultimodalUserContent(userTextPrompt, userImages);
     const availableTools = getAvailableTools();
+    const lowerQuery = userQuery.toLowerCase();
     const isNewsQuery = availableTools.length > 0
-      && NEWS_KEYWORDS.some(kw => userQuery.toLowerCase().includes(kw));
+      && (NEWS_KEYWORDS.some(kw => lowerQuery.includes(kw))
+        || GAME_INFO_KEYWORDS.some(kw => lowerQuery.includes(kw)));
 
     let reply, usage;
     if (isNewsQuery) {
@@ -505,8 +515,10 @@ function registerMessageHandlers() {
       const { getContextualMaxTokens } = require('../utils');
       const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
       const dmAvailableTools = getAvailableTools();
+      const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
       const dmIsNewsQuery = dmAvailableTools.length > 0
-        && NEWS_KEYWORDS.some(kw => (enrichedUserContent || userContent || '').toLowerCase().includes(kw));
+        && (NEWS_KEYWORDS.some(kw => dmQueryText.includes(kw))
+          || GAME_INFO_KEYWORDS.some(kw => dmQueryText.includes(kw)));
 
       let rawReply, usage;
       if (dmIsNewsQuery) {
