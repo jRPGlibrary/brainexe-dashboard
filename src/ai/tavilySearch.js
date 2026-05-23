@@ -208,16 +208,13 @@ async function gamingToolHandler(toolName, toolInput) {
       if (!games.length) return `Aucun jeu trouvé pour "${toolInput.game_name}".`;
 
       return games.map(g => {
-        const lines = [`🎮 **${g.name}**`];
-        if (g.releaseDate) lines.push(`📅 Sortie : ${g.releaseDate}`);
-        if (g.platforms.length) lines.push(`🖥️ Plateformes : ${g.platforms.join(', ')}`);
-        if (g.genres.length) lines.push(`🏷️ Genres : ${g.genres.join(', ')}`);
-        if (g.developers.length) lines.push(`🏗️ Développeur : ${g.developers.join(', ')}`);
-        if (g.rating) lines.push(`⭐ Note : ${g.rating}`);
-        if (g.summary) lines.push(`📝 ${g.summary}`);
-        lines.push(`🔗 ${g.url}`);
-        return lines.join('\n');
-      }).join('\n\n---\n\n');
+        const parts = [g.name];
+        if (g.releaseDate) parts.push(`sorti ${g.releaseDate}`);
+        if (g.platforms.length) parts.push(`sur ${g.platforms.slice(0, 3).join(', ')}`);
+        if (g.developers.length) parts.push(`par ${g.developers[0]}`);
+        if (g.summary) parts.push(g.summary.slice(0, 120));
+        return parts.join(' — ');
+      }).join('\n');
     } catch (err) {
       return JSON.stringify({
         error: err.message,

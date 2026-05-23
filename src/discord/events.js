@@ -307,6 +307,7 @@ async function handleMentionReply(message, userQuery) {
         || GAME_INFO_KEYWORDS.some(kw => lowerQuery.includes(kw)));
 
     let reply, usage;
+    let usedToolCall = false;
     if (isNewsQuery) {
       try {
         ({ text: reply, usage } = await callClaudeWithTools(
@@ -316,6 +317,7 @@ async function handleMentionReply(message, userQuery) {
           gamingToolHandler,
           { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION }
         ));
+        usedToolCall = true;
         pushLog('SYS', `🔍 Tool use Tavily → @mention ${message.author.username}`, 'success');
       } catch (toolErr) {
         pushLog('DBG', `Tool use échoué, fallback callClaude: ${toolErr.message}`, 'debug');
@@ -330,7 +332,7 @@ async function handleMentionReply(message, userQuery) {
     if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
 
     let steamBlock = '';
-    if (GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
+    if (!usedToolCall && GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
       try {
         const gameName = await extractGameName(userQuery, reply);
         if (gameName && !contextLines.toLowerCase().includes(gameName.toLowerCase())) {
