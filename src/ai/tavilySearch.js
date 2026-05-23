@@ -1,0 +1,249 @@
+const { TAVILY_API_KEY, IGDB_API_KEY, IGDB_CLIENT_ID } = require('../config');
+const { pushLog } = require('../logger');
+
+const TAVILY_TIMEOUT_MS = 8000;
+const IGDB_TIMEOUT_MS = 8000;
+const CACHE_TTL_MS = 30 * 60 * 1000;
+const CACHE_MAX_SIZE = 50;
+
+// Cache LRU simple : Map préserve l'ordre d'insertion → le premier = le plus vieux
+const searchCache = new Map();
+
+function getCacheKey(query) {
+  return query.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function getCached(query) {
+  const key = getCacheKey(query);
+  const entry = searchCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    searchCache.delete(key);
+    return null;
+  }
+  // Rafraîchit la position LRU (delete + re-set)
+  searchCache.delete(key);
+  searchCache.set(key, entry);
+  return entry.results;
+}
+
+function setCache(query, results) {
+  const key = getCacheKey(query);
+  if (searchCache.size >= CACHE_MAX_SIZE) {
+    searchCache.delete(searchCache.keys().next().value);
+  }
+  searchCache.set(key, { results, timestamp: Date.now() });
+}
+
+function getCacheStats() {
+  return { size: searchCache.size, maxSize: CACHE_MAX_SIZE, ttlMin: CACHE_TTL_MS / 60000 };
+}
+
+// ─── OUTIL 1 : Tavily — actualités gaming temps réel ────────────────────────
+
+const GAMING_NEWS_TOOL = {
+  name: 'rechercher_actu_gaming',
+  description: "Recherche des actualités gaming récentes sur internet en temps réel. Utiliser quand quelqu'un demande des infos récentes sur un jeu, une annonce, une sortie, un événement gaming, un leak ou l'actualité du moment. Ne pas utiliser pour des questions sur l'histoire ou des faits établis.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: 'Requête de recherche optimisée (ex: "GTA VI release date 2025", "Elden Ring DLC news", "Nintendo Direct juin 2025")',
+      },
+    },
+    required: ['query'],
+  },
+};
+
+async function searchGamingNews(query) {
+  if (!TAVILY_API_KEY) throw new Error('TAVILY_API_KEY manquante');
+
+  const cached = getCached(query);
+  if (cached) {
+    pushLog('DBG', `Tavily cache hit pour "${query}" (${searchCache.size} entrées)`, 'debug');
+    return cached;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS);
+
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: TAVILY_API_KEY,
+        query: `gaming ${query}`,
+        search_depth: 'basic',
+        include_answer: false,
+        include_raw_content: false,
+        max_results: 5,
+        include_domains: [
+          'ign.com', 'gamespot.com', 'eurogamer.net', 'kotaku.com',
+          'jeuxvideo.com', 'gamekult.com', 'pcgamer.com',
+          'rockpapershotgun.com', 'destructoid.com', 'polygon.com',
+          'thegamer.com', 'vg247.com', 'gamesradar.com',
+        ],
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) throw new Error(`Tavily ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+
+    const results = (data.results || []).map(r => ({
+      title: r.title || '',
+      url: r.url || '',
+      snippet: (r.content || '').slice(0, 350),
+      publishedDate: r.published_date || null,
+    }));
+
+    setCache(query, results);
+    pushLog('DBG', `Tavily: ${results.length} résultat(s) pour "${query}" → mis en cache`, 'debug');
+    return results;
+  } catch (err) {
+    clearTimeout(timer);
+    pushLog('DBG', `Tavily erreur: ${err.message}`, 'debug');
+    throw err;
+  }
+}
+
+// ─── OUTIL 2 : IGDB — fiche jeu précise ─────────────────────────────────────
+
+const IGDB_GAME_TOOL = {
+  name: 'rechercher_jeu_igdb',
+  description: "Recherche la fiche officielle d'un jeu vidéo : date de sortie, plateformes, genres, note, développeur. Utiliser quand quelqu'un demande des infos précises sur un jeu spécifique (pas les actus du moment). Exemples : 'c'est sorti quand ?', 'sur quelles plateformes ?', 'c'est quel genre ?', 'qui a fait ce jeu ?'.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      game_name: {
+        type: 'string',
+        description: "Nom exact ou approché du jeu (ex: 'Elden Ring', 'The Last of Us Part II', 'Zelda Tears of the Kingdom')",
+      },
+    },
+    required: ['game_name'],
+  },
+};
+
+async function searchIGDB(gameName) {
+  if (!IGDB_API_KEY || !IGDB_CLIENT_ID) throw new Error('Clés IGDB manquantes');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), IGDB_TIMEOUT_MS);
+
+  try {
+    const res = await fetch('https://api.igdb.com/v4/games', {
+      method: 'POST',
+      headers: {
+        'Client-ID': IGDB_CLIENT_ID,
+        'Authorization': `Bearer ${IGDB_API_KEY}`,
+        'Accept': 'application/json',
+      },
+      body: `search "${gameName}"; fields name, summary, release_dates.human, release_dates.platform.name, platforms.name, genres.name, involved_companies.company.name, involved_companies.developer, rating, slug; limit 3;`,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) throw new Error(`IGDB ${res.status}: ${res.statusText}`);
+    const games = await res.json();
+
+    return games
+      .filter(g => g?.name)
+      .map(g => {
+        const devs = (g.involved_companies || [])
+          .filter(c => c.developer)
+          .map(c => c.company?.name)
+          .filter(Boolean);
+        const platforms = (g.platforms || []).map(p => p.name).filter(Boolean);
+        const genres = (g.genres || []).map(g2 => g2.name).filter(Boolean);
+        const releaseDate = g.release_dates?.[0]?.human || null;
+        const rating = g.rating ? `${Math.round(g.rating)}/100` : null;
+
+        return {
+          name: g.name,
+          summary: (g.summary || '').slice(0, 300),
+          releaseDate,
+          platforms,
+          genres,
+          developers: devs,
+          rating,
+          url: `https://www.igdb.com/games/${g.slug || g.id}`,
+        };
+      });
+  } catch (err) {
+    clearTimeout(timer);
+    pushLog('DBG', `IGDB erreur: ${err.message}`, 'debug');
+    throw err;
+  }
+}
+
+// ─── Handler unifié — reçoit les deux outils ────────────────────────────────
+
+async function gamingToolHandler(toolName, toolInput) {
+  if (toolName === 'rechercher_actu_gaming') {
+    try {
+      const results = await searchGamingNews(toolInput.query || '');
+      if (!results.length) return 'Aucun résultat trouvé pour cette recherche.';
+
+      return results.map((r, i) => {
+        const date = r.publishedDate
+          ? ` (${new Date(r.publishedDate).toLocaleDateString('fr-FR')})`
+          : '';
+        return `${i + 1}. ${r.title}${date}\n${r.snippet}\nURL: ${r.url}`;
+      }).join('\n\n');
+    } catch (err) {
+      return JSON.stringify({
+        error: err.message,
+        fallback: true,
+        instruction: "La recherche web a échoué. Réponds avec tes propres connaissances en précisant que tu n'as pas accès au web en ce moment.",
+      });
+    }
+  }
+
+  if (toolName === 'rechercher_jeu_igdb') {
+    try {
+      const games = await searchIGDB(toolInput.game_name || '');
+      if (!games.length) return `Aucun jeu trouvé pour "${toolInput.game_name}".`;
+
+      return games.map(g => {
+        const lines = [`🎮 **${g.name}**`];
+        if (g.releaseDate) lines.push(`📅 Sortie : ${g.releaseDate}`);
+        if (g.platforms.length) lines.push(`🖥️ Plateformes : ${g.platforms.join(', ')}`);
+        if (g.genres.length) lines.push(`🏷️ Genres : ${g.genres.join(', ')}`);
+        if (g.developers.length) lines.push(`🏗️ Développeur : ${g.developers.join(', ')}`);
+        if (g.rating) lines.push(`⭐ Note : ${g.rating}`);
+        if (g.summary) lines.push(`📝 ${g.summary}`);
+        lines.push(`🔗 ${g.url}`);
+        return lines.join('\n');
+      }).join('\n\n---\n\n');
+    } catch (err) {
+      return JSON.stringify({
+        error: err.message,
+        fallback: true,
+        instruction: "La base de données IGDB est inaccessible. Réponds avec tes propres connaissances.",
+      });
+    }
+  }
+
+  return JSON.stringify({ error: 'Outil inconnu' });
+}
+
+// Liste des outils disponibles selon les clés présentes
+function getAvailableTools() {
+  const tools = [];
+  if (TAVILY_API_KEY) tools.push(GAMING_NEWS_TOOL);
+  if (IGDB_API_KEY && IGDB_CLIENT_ID) tools.push(IGDB_GAME_TOOL);
+  return tools;
+}
+
+module.exports = {
+  searchGamingNews,
+  searchIGDB,
+  gamingToolHandler,
+  GAMING_NEWS_TOOL,
+  IGDB_GAME_TOOL,
+  getAvailableTools,
+  getCacheStats,
+};

@@ -3,8 +3,9 @@ const Events = discord_js.Events;
 const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
 const { handleAffinityCommand } = require('../features/affinityCommand');
-const { GUILD_ID, ANTHROPIC_API_KEY } = require('../config');
-const { callClaude } = require('../ai/claude');
+const { GUILD_ID, ANTHROPIC_API_KEY, TAVILY_API_KEY } = require('../config');
+const { callClaude, callClaudeWithTools } = require('../ai/claude');
+const { gamingToolHandler, getAvailableTools } = require('../ai/tavilySearch');
 const { recordTokenUsage } = require('../db/tokenUsage');
 const { extractYoutubeQuery, searchYoutube } = require('../ai/youtube');
 const { getMemberProfile, updateMemberProfile, getToneInstruction } = require('../db/members');
@@ -66,6 +67,13 @@ const {
   checkPendingDmProposal, consumeDmProposal, openAndSendDm,
 } = require('../features/dmOutreach');
 const { recordEngagement } = require('../db/messageEngagement');
+
+const NEWS_KEYWORDS = [
+  'actu', 'news', 'nouvelles', 'dernier', 'dernière', 'dernières', 'récent', 'récente',
+  "aujourd'hui", 'cette semaine', 'ce mois', 'annonce', 'sorti', 'sortie', 'vient de',
+  'release', 'trailer', 'reveal', 'leak', 'rumeur', 'update', 'patch', 'maj',
+  'mise à jour', 'nintendo direct', 'state of play', 'showcase', 'event', 'événement',
+];
 
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
@@ -284,7 +292,28 @@ async function handleMentionReply(message, userQuery) {
 
     const userTextPrompt = `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\nRéponds court (1-2 phrases) sauf si le sujet mérite vraiment plus.${replyRefContext}`;
     const userContent = buildMultimodalUserContent(userTextPrompt, userImages);
-    const { text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION);
+    const availableTools = getAvailableTools();
+    const isNewsQuery = availableTools.length > 0
+      && NEWS_KEYWORDS.some(kw => userQuery.toLowerCase().includes(kw));
+
+    let reply, usage;
+    if (isNewsQuery) {
+      try {
+        ({ text: reply, usage } = await callClaudeWithTools(
+          dynamicPrompt + imgInstruction,
+          [{ role: 'user', content: userContent }],
+          getAvailableTools(),
+          gamingToolHandler,
+          { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION }
+        ));
+        pushLog('SYS', `🔍 Tool use Tavily → @mention ${message.author.username}`, 'success');
+      } catch (toolErr) {
+        pushLog('DBG', `Tool use échoué, fallback callClaude: ${toolErr.message}`, 'debug');
+        ({ text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION));
+      }
+    } else {
+      ({ text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION));
+    }
     if (userImages.length) pushLog('SYS', `🖼️ ${userImages.length} image(s) lues (mention ${message.author.username})`);
     await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'mention_reply');
     const replyResolved = resolveMentionsInText(reply, message.guild);
@@ -475,7 +504,28 @@ function registerMessageHandlers() {
       await simulateTyping(message.channel, 500 + Math.random() * 500);
       const { getContextualMaxTokens } = require('../utils');
       const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
-      const { text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona);
+      const dmAvailableTools = getAvailableTools();
+      const dmIsNewsQuery = dmAvailableTools.length > 0
+        && NEWS_KEYWORDS.some(kw => (enrichedUserContent || userContent || '').toLowerCase().includes(kw));
+
+      let rawReply, usage;
+      if (dmIsNewsQuery) {
+        try {
+          ({ text: rawReply, usage } = await callClaudeWithTools(
+            dynamicPrompt,
+            [{ role: 'user', content: userPrompt }],
+            dmAvailableTools,
+            gamingToolHandler,
+            { maxTokens: dmMaxTokens, cachedPrefix: dmPersona }
+          ));
+          pushLog('SYS', `🔍 Tool use Tavily → DM ${message.author.username}`, 'success');
+        } catch (toolErr) {
+          pushLog('DBG', `Tool use DM échoué, fallback: ${toolErr.message}`, 'debug');
+          ({ text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona));
+        }
+      } else {
+        ({ text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona));
+      }
       if (dmImages.length) pushLog('SYS', `🖼️ ${dmImages.length} image(s) lues (DM ${message.author.username})`);
       const hasPenduTrigger = rawReply.includes('[PENDU]');
       const reply = rawReply.replace(/\[PENDU\]/g, '').trim();
