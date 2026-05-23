@@ -83,6 +83,18 @@ const GAME_INFO_KEYWORDS = [
   'indie', 'open world', 'multijoueur',
 ];
 
+const HELP_KEYWORDS = [
+  'soluce', 'soluces', 'astuce', 'astuces', 'guide', 'aide', 'aider',
+  'comment faire', 'comment passer', 'comment battre', 'comment tuer',
+  'comment trouver', 'comment débloquer', 'comment terminer', 'comment finir',
+  'boss', 'niveau', 'mission', 'quête', 'trophée', 'achievement', 'succès',
+  'walkthrough', 'tips', 'trick', 'cheat', 'secret', 'easter egg',
+  'je bloque', "j'arrive pas", "j'y arrive pas", 'trop dur', 'impossible',
+  'farm', 'grind', 'build', 'stratégie', 'tactique', 'deck', 'loadout',
+  'où trouver', 'où est', 'comment avoir', 'comment obtenir',
+  'rétro', 'retro', 'cheat code', 'code triche',
+];
+
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
   shared.discord.on(Events.ChannelDelete, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon supprimé : ${ch.name}`); });
@@ -304,7 +316,8 @@ async function handleMentionReply(message, userQuery) {
     const lowerQuery = userQuery.toLowerCase();
     const isNewsQuery = availableTools.length > 0
       && (NEWS_KEYWORDS.some(kw => lowerQuery.includes(kw))
-        || GAME_INFO_KEYWORDS.some(kw => lowerQuery.includes(kw)));
+        || GAME_INFO_KEYWORDS.some(kw => lowerQuery.includes(kw))
+        || HELP_KEYWORDS.some(kw => lowerQuery.includes(kw)));
 
     let reply, usage;
     let usedToolCall = false;
@@ -315,7 +328,7 @@ async function handleMentionReply(message, userQuery) {
           [{ role: 'user', content: userContent }],
           getAvailableTools(),
           gamingToolHandler,
-          { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION }
+          { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION, model: 'claude-haiku-4-5-20251001' }
         ));
         usedToolCall = true;
         pushLog('SYS', `🔍 Tool use Tavily → @mention ${message.author.username}`, 'success');
@@ -520,7 +533,8 @@ function registerMessageHandlers() {
       const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
       const dmIsNewsQuery = dmAvailableTools.length > 0
         && (NEWS_KEYWORDS.some(kw => dmQueryText.includes(kw))
-          || GAME_INFO_KEYWORDS.some(kw => dmQueryText.includes(kw)));
+          || GAME_INFO_KEYWORDS.some(kw => dmQueryText.includes(kw))
+          || HELP_KEYWORDS.some(kw => dmQueryText.includes(kw)));
 
       let rawReply, usage;
       if (dmIsNewsQuery) {
@@ -530,7 +544,7 @@ function registerMessageHandlers() {
             [{ role: 'user', content: userPrompt }],
             dmAvailableTools,
             gamingToolHandler,
-            { maxTokens: dmMaxTokens, cachedPrefix: dmPersona }
+            { maxTokens: dmMaxTokens, cachedPrefix: dmPersona, model: 'claude-haiku-4-5-20251001' }
           ));
           pushLog('SYS', `🔍 Tool use Tavily → DM ${message.author.username}`, 'success');
         } catch (toolErr) {

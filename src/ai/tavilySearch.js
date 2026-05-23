@@ -179,7 +179,79 @@ async function searchIGDB(gameName) {
   }
 }
 
-// ─── Handler unifié — reçoit les deux outils ────────────────────────────────
+// ─── OUTIL 3 : Tavily — soluces, guides, astuces ────────────────────────────
+
+const GAMING_HELP_TOOL = {
+  name: 'rechercher_aide_gaming',
+  description: "Recherche des soluces, guides, walkthroughs, astuces et conseils pour les jeux vidéo. Utiliser quand quelqu'un demande de l'aide pour passer un niveau, battre un boss, trouver un objet, comprendre les mécaniques d'un jeu, ou veut des conseils stratégiques. Fonctionne pour tous les types de jeux : rétro, indie, AAA, next-gen.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: "Requête ciblée incluant le nom du jeu et le problème précis (ex: 'Elden Ring comment battre Malenia', 'Hollow Knight boss Hornet stratégie', 'Zelda TOTK puzzle temple du vent', 'Pokemon guide débutant')",
+      },
+    },
+    required: ['query'],
+  },
+};
+
+async function searchGamingHelp(query) {
+  if (!TAVILY_API_KEY) throw new Error('TAVILY_API_KEY manquante');
+
+  const cacheKey = `help:${query}`;
+  const cached = getCached(cacheKey);
+  if (cached) {
+    pushLog('DBG', `Tavily help cache hit pour "${query}"`, 'debug');
+    return cached;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS);
+
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: TAVILY_API_KEY,
+        query,
+        search_depth: 'advanced',
+        include_answer: false,
+        include_raw_content: false,
+        max_results: 6,
+        include_domains: [
+          'reddit.com', 'gamefaqs.gamespot.com', 'fandom.com',
+          'powerpyx.com', 'thegamer.com', 'ign.com',
+          'gamespot.com', 'gamesradar.com', 'pcgamer.com',
+          'trueachievements.com', 'retroachievements.org', 'gameinformer.com',
+        ],
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) throw new Error(`Tavily ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+
+    const results = (data.results || []).map(r => ({
+      title: r.title || '',
+      url: r.url || '',
+      snippet: (r.content || '').slice(0, 500),
+      source: (r.url || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0] || 'web',
+    }));
+
+    setCache(cacheKey, results);
+    pushLog('DBG', `Tavily help: ${results.length} résultat(s) pour "${query}" → mis en cache`, 'debug');
+    return results;
+  } catch (err) {
+    clearTimeout(timer);
+    pushLog('DBG', `Tavily help erreur: ${err.message}`, 'debug');
+    throw err;
+  }
+}
+
+// ─── Handler unifié — reçoit les trois outils ───────────────────────────────
 
 async function gamingToolHandler(toolName, toolInput) {
   if (toolName === 'rechercher_actu_gaming') {
@@ -208,18 +280,38 @@ async function gamingToolHandler(toolName, toolInput) {
       if (!games.length) return `Aucun jeu trouvé pour "${toolInput.game_name}".`;
 
       return games.map(g => {
-        const parts = [g.name];
-        if (g.releaseDate) parts.push(`sorti ${g.releaseDate}`);
-        if (g.platforms.length) parts.push(`sur ${g.platforms.slice(0, 3).join(', ')}`);
-        if (g.developers.length) parts.push(`par ${g.developers[0]}`);
-        if (g.summary) parts.push(g.summary.slice(0, 120));
-        return parts.join(' — ');
-      }).join('\n');
+        const lines = [`🎮 **${g.name}**`];
+        if (g.releaseDate) lines.push(`📅 Sortie : ${g.releaseDate}`);
+        if (g.platforms.length) lines.push(`🖥️ Plateformes : ${g.platforms.join(', ')}`);
+        if (g.genres.length) lines.push(`🏷️ Genres : ${g.genres.join(', ')}`);
+        if (g.developers.length) lines.push(`🏗️ Développeur : ${g.developers.join(', ')}`);
+        if (g.rating) lines.push(`⭐ Note : ${g.rating}`);
+        if (g.summary) lines.push(`📝 ${g.summary}`);
+        lines.push(`🔗 ${g.url}`);
+        return lines.join('\n');
+      }).join('\n\n---\n\n');
     } catch (err) {
       return JSON.stringify({
         error: err.message,
         fallback: true,
         instruction: "La base de données IGDB est inaccessible. Réponds avec tes propres connaissances.",
+      });
+    }
+  }
+
+  if (toolName === 'rechercher_aide_gaming') {
+    try {
+      const results = await searchGamingHelp(toolInput.query || '');
+      if (!results.length) return 'Aucun guide ou soluce trouvé pour cette recherche.';
+
+      return results.map((r, i) =>
+        `${i + 1}. [${r.source}] ${r.title}\n${r.snippet}`
+      ).join('\n\n');
+    } catch (err) {
+      return JSON.stringify({
+        error: err.message,
+        fallback: true,
+        instruction: "La recherche de guide a échoué. Réponds avec tes propres connaissances en précisant que tu n'as pas accès au web en ce moment.",
       });
     }
   }
@@ -230,7 +322,7 @@ async function gamingToolHandler(toolName, toolInput) {
 // Liste des outils disponibles selon les clés présentes
 function getAvailableTools() {
   const tools = [];
-  if (TAVILY_API_KEY) tools.push(GAMING_NEWS_TOOL);
+  if (TAVILY_API_KEY) tools.push(GAMING_NEWS_TOOL, GAMING_HELP_TOOL);
   if (IGDB_API_KEY && IGDB_CLIENT_ID) tools.push(IGDB_GAME_TOOL);
   return tools;
 }
@@ -238,9 +330,11 @@ function getAvailableTools() {
 module.exports = {
   searchGamingNews,
   searchIGDB,
+  searchGamingHelp,
   gamingToolHandler,
   GAMING_NEWS_TOOL,
   IGDB_GAME_TOOL,
+  GAMING_HELP_TOOL,
   getAvailableTools,
   getCacheStats,
 };
