@@ -328,7 +328,7 @@ async function handleMentionReply(message, userQuery) {
           [{ role: 'user', content: userContent }],
           getAvailableTools(),
           gamingToolHandler,
-          { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION }
+          { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION, model: 'claude-haiku-4-5-20251001' }
         ));
         pushLog('SYS', `🔍 Tool use Tavily → @mention ${message.author.username}`, 'success');
       } catch (toolErr) {
@@ -543,7 +543,7 @@ function registerMessageHandlers() {
             [{ role: 'user', content: userPrompt }],
             dmAvailableTools,
             gamingToolHandler,
-            { maxTokens: dmMaxTokens, cachedPrefix: dmPersona }
+            { maxTokens: dmMaxTokens, cachedPrefix: dmPersona, model: 'claude-haiku-4-5-20251001' }
           ));
           pushLog('SYS', `🔍 Tool use Tavily → DM ${message.author.username}`, 'success');
         } catch (toolErr) {
