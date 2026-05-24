@@ -75,7 +75,6 @@ const NEWS_KEYWORDS = [
   'mise à jour', 'nintendo direct', 'state of play', 'showcase', 'event', 'événement',
 ];
 
-// Déclenche l'outil IGDB sur les questions factuelles sur un jeu précis
 const GAME_INFO_KEYWORDS = [
   'jeu', 'game', 'ps5', 'ps4', 'ps3', 'xbox', 'switch', 'sur pc', 'sur steam',
   'nintendo', 'playstation', 'tu connais', 'tu sais', "c'est quoi", 'dis-moi',
@@ -95,6 +94,9 @@ const HELP_KEYWORDS = [
   'où trouver', 'où est', 'comment avoir', 'comment obtenir',
   'rétro', 'retro', 'cheat code', 'code triche',
 ];
+
+// Steam link ignoré si l'user demande explicitement une console non-PC
+const CONSOLE_ONLY_KEYWORDS = ['ps5', 'ps4', 'ps3', 'playstation', 'xbox', 'switch', 'nintendo eshop'];
 
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
@@ -321,6 +323,7 @@ async function handleMentionReply(message, userQuery) {
         || HELP_KEYWORDS.some(kw => lowerQuery.includes(kw)));
 
     let reply, usage;
+    let usedToolCall = false;
     if (isNewsQuery) {
       try {
         ({ text: reply, usage } = await callClaudeWithTools(
@@ -330,6 +333,7 @@ async function handleMentionReply(message, userQuery) {
           gamingToolHandler,
           { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION, model: 'claude-haiku-4-5-20251001' }
         ));
+        usedToolCall = true;
         pushLog('SYS', `🔍 Tool use Tavily → @mention ${message.author.username}`, 'success');
       } catch (toolErr) {
         pushLog('DBG', `Tool use échoué, fallback callClaude: ${toolErr.message}`, 'debug');
@@ -343,8 +347,9 @@ async function handleMentionReply(message, userQuery) {
     const replyResolved = resolveMentionsInText(reply, message.guild);
     if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
 
+    const isConsoleFocused = CONSOLE_ONLY_KEYWORDS.some(kw => lowerQuery.includes(kw));
     let steamBlock = '';
-    if (GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
+    if (!usedToolCall && !isConsoleFocused && GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
       try {
         const gameName = await extractGameName(userQuery, reply);
         if (gameName && !contextLines.toLowerCase().includes(gameName.toLowerCase())) {
@@ -536,6 +541,7 @@ function registerMessageHandlers() {
           || HELP_KEYWORDS.some(kw => dmQueryText.includes(kw)));
 
       let rawReply, usage;
+      let dmUsedToolCall = false;
       if (dmIsNewsQuery) {
         try {
           ({ text: rawReply, usage } = await callClaudeWithTools(
@@ -545,6 +551,7 @@ function registerMessageHandlers() {
             gamingToolHandler,
             { maxTokens: dmMaxTokens, cachedPrefix: dmPersona, model: 'claude-haiku-4-5-20251001' }
           ));
+          dmUsedToolCall = true;
           pushLog('SYS', `🔍 Tool use Tavily → DM ${message.author.username}`, 'success');
         } catch (toolErr) {
           pushLog('DBG', `Tool use DM échoué, fallback: ${toolErr.message}`, 'debug');
@@ -558,8 +565,9 @@ function registerMessageHandlers() {
       const reply = rawReply.replace(/\[PENDU\]/g, '').trim();
       await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'dm_reply');
 
+      const dmIsConsoleFocused = CONSOLE_ONLY_KEYWORDS.some(kw => dmQueryText.includes(kw));
       let dmSteamBlock = '';
-      if (GAMING_KEYWORDS.some(kw => `${userContent} ${reply}`.toLowerCase().includes(kw))) {
+      if (!dmUsedToolCall && !dmIsConsoleFocused && GAMING_KEYWORDS.some(kw => `${userContent} ${reply}`.toLowerCase().includes(kw))) {
         try {
           const gameName = await extractGameName(userContent, reply);
           if (gameName && !(historyBlock || '').toLowerCase().includes(gameName.toLowerCase())) {
