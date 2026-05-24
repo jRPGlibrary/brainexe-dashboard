@@ -7,6 +7,8 @@ jest.mock('../src/config', () => ({
   TAVILY_API_KEY: 'tvly-test',
   IGDB_API_KEY: 'igdb-test',
   IGDB_CLIENT_ID: 'client-test',
+  GOOGLE_CSE_API_KEY: 'gcs-test',
+  GOOGLE_CSE_CX: 'cx-test',
 }));
 
 jest.mock('../src/logger', () => ({ pushLog: jest.fn() }));
@@ -15,12 +17,14 @@ const {
   searchGamingNews,
   searchIGDB,
   searchGamingHelp,
+  searchGoogleGaming,
   gamingToolHandler,
   getAvailableTools,
   getCacheStats,
   GAMING_NEWS_TOOL,
   IGDB_GAME_TOOL,
   GAMING_HELP_TOOL,
+  GOOGLE_GAMING_TOOL,
 } = require('../src/ai/tavilySearch');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,6 +70,13 @@ const IGDB_RESULTS = [
   },
 ];
 
+const GOOGLE_CSE_RESULTS = {
+  items: [
+    { title: 'Test Zelda TOTK — Jeuxvideo.com', link: 'https://www.jeuxvideo.com/zelda-totk', snippet: 'Un chef-d\'oeuvre absolu, note 20/20...' },
+    { title: 'Zelda TOTK : notre avis — Gamekult', link: 'https://www.gamekult.com/zelda-totk', snippet: 'La suite de Breath of the Wild surpasse son aîné...' },
+  ],
+};
+
 // ── Cache LRU ────────────────────────────────────────────────────────────────
 
 describe('Cache LRU', () => {
@@ -97,18 +108,25 @@ describe('Schémas outils Anthropic', () => {
     expect(GAMING_HELP_TOOL.input_schema.required).toContain('query');
     expect(GAMING_HELP_TOOL.input_schema.properties).toHaveProperty('query');
   });
+
+  test('GOOGLE_GAMING_TOOL a le bon format', () => {
+    expect(GOOGLE_GAMING_TOOL.name).toBe('rechercher_google_gaming');
+    expect(GOOGLE_GAMING_TOOL.input_schema.required).toContain('query');
+    expect(GOOGLE_GAMING_TOOL.input_schema.properties).toHaveProperty('query');
+  });
 });
 
 // ── getAvailableTools ────────────────────────────────────────────────────────
 
 describe('getAvailableTools', () => {
-  test('retourne les trois outils quand toutes les clés sont présentes', () => {
+  test('retourne les quatre outils quand toutes les clés sont présentes', () => {
     const tools = getAvailableTools();
-    expect(tools).toHaveLength(3);
+    expect(tools).toHaveLength(4);
     const names = tools.map(t => t.name);
     expect(names).toContain('rechercher_actu_gaming');
     expect(names).toContain('rechercher_jeu_igdb');
     expect(names).toContain('rechercher_aide_gaming');
+    expect(names).toContain('rechercher_google_gaming');
   });
 });
 
@@ -311,5 +329,87 @@ describe('gamingToolHandler', () => {
     mockFetch({ results: [] });
     const result = await gamingToolHandler('rechercher_actu_gaming', { query: '' });
     expect(typeof result).toBe('string');
+  });
+
+  test('gère rechercher_google_gaming et retourne du texte formaté', async () => {
+    mockFetch(GOOGLE_CSE_RESULTS);
+    const result = await gamingToolHandler('rechercher_google_gaming', { query: 'google-handler-unique-' + Date.now() });
+    expect(typeof result).toBe('string');
+    expect(result).toContain('Jeuxvideo.com');
+    expect(result).toContain('https://www.jeuxvideo.com/zelda-totk');
+  });
+
+  test('retourne un fallback JSON si Google CSE échoue', async () => {
+    mockFetchError('google cse down');
+    const result = await gamingToolHandler('rechercher_google_gaming', { query: 'google-fallback-' + Date.now() });
+    const parsed = JSON.parse(result);
+    expect(parsed.fallback).toBe(true);
+    expect(parsed.error).toContain('google cse down');
+  });
+
+  test('retourne "Aucun résultat Google CSE" si items vide', async () => {
+    mockFetch({ items: [] });
+    const result = await gamingToolHandler('rechercher_google_gaming', { query: 'google-empty-' + Date.now() });
+    expect(result).toContain('Aucun résultat Google CSE');
+  });
+});
+
+// ── searchGoogleGaming ────────────────────────────────────────────────────────
+
+describe('searchGoogleGaming', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('retourne les résultats formatés depuis Google CSE', async () => {
+    mockFetch(GOOGLE_CSE_RESULTS);
+    const results = await searchGoogleGaming('Zelda TOTK test');
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      title: 'Test Zelda TOTK — Jeuxvideo.com',
+      url: 'https://www.jeuxvideo.com/zelda-totk',
+    });
+    expect(results[0].snippet).toBeDefined();
+    expect(results[0].source).toBeDefined();
+  });
+
+  test('extrait le domaine source depuis l\'URL', async () => {
+    mockFetch(GOOGLE_CSE_RESULTS);
+    const results = await searchGoogleGaming('test source extraction ' + Date.now());
+    expect(results[0].source).toBe('jeuxvideo.com');
+    expect(results[1].source).toBe('gamekult.com');
+  });
+
+  test('retourne tableau vide si items absent', async () => {
+    mockFetch({});
+    const results = await searchGoogleGaming('google-no-items-' + Date.now());
+    expect(results).toHaveLength(0);
+  });
+
+  test('utilise le cache sur la deuxième requête identique', async () => {
+    mockFetch(GOOGLE_CSE_RESULTS);
+    const q = 'google-cache-test-' + Date.now();
+    await searchGoogleGaming(q);
+    await searchGoogleGaming(q);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('lève une erreur si Google CSE répond non-ok', async () => {
+    mockFetch({}, false, 403);
+    await expect(searchGoogleGaming('google-error-403-' + Date.now())).rejects.toThrow('Google CSE 403');
+  });
+
+  test('lève une erreur si fetch échoue (réseau)', async () => {
+    mockFetchError('cse network failure');
+    await expect(searchGoogleGaming('google-network-' + Date.now())).rejects.toThrow('cse network failure');
+  });
+
+  test('construit l\'URL avec la clé et le CX encodés', async () => {
+    mockFetch(GOOGLE_CSE_RESULTS);
+    const q = 'Zelda TOTK url-check-' + Date.now();
+    await searchGoogleGaming(q);
+    const calledUrl = global.fetch.mock.calls[0][0];
+    expect(calledUrl).toContain('key=gcs-test');
+    expect(calledUrl).toContain('cx=cx-test');
+    expect(calledUrl).toContain(encodeURIComponent(q));
+    expect(calledUrl).toContain('num=8');
   });
 });

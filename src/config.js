@@ -13,6 +13,8 @@ module.exports = {
   IGDB_API_KEY: process.env.IGDB_API_KEY,
   IGDB_CLIENT_ID: process.env.IGDB_CLIENT_ID,
   TAVILY_API_KEY: process.env.TAVILY_API_KEY,
+  GOOGLE_CSE_API_KEY: process.env.GOOGLE_CSE_API_KEY,
+  GOOGLE_CSE_CX: process.env.GOOGLE_CSE_CX,
   MONGODB_URI: process.env.MONGODB_URI,
   MIN_GAP_ANY_POST: 15 * 60 * 1000,
 };
