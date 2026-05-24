@@ -141,6 +141,11 @@ async function callClaudeWithTools(systemPrompt, userMessages, tools, toolHandle
       ]
     : cleanSystem;
 
+  // Cache les schémas d'outils (constants) : cache_control sur le dernier outil
+  const cachedTools = tools.length
+    ? tools.map((t, i) => i === tools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t)
+    : tools;
+
   let messages = userMessages.map(m => ({
     role: m.role,
     content: typeof m.content === 'string' ? sanitizeForJson(m.content) : m.content,
@@ -168,7 +173,7 @@ async function callClaudeWithTools(systemPrompt, userMessages, tools, toolHandle
           model,
           max_tokens: Math.min(Math.max(Math.floor(maxTokens), 50), 1024),
           system,
-          tools,
+          tools: cachedTools,
           messages,
         }),
         signal: controller.signal,
