@@ -1,4 +1,4 @@
-const { TAVILY_API_KEY, IGDB_API_KEY, IGDB_CLIENT_ID } = require('../config');
+const { TAVILY_API_KEY, IGDB_API_KEY, IGDB_CLIENT_ID, GOOGLE_CSE_API_KEY, GOOGLE_CSE_CX } = require('../config');
 const { pushLog } = require('../logger');
 
 const TAVILY_TIMEOUT_MS = 8000;
@@ -251,7 +251,62 @@ async function searchGamingHelp(query) {
   }
 }
 
-// ─── Handler unifié — reçoit les trois outils ───────────────────────────────
+// ─── OUTIL 4 : Google Custom Search — 20 sites gaming de référence ──────────
+
+const GOOGLE_GAMING_TOOL = {
+  name: 'rechercher_google_gaming',
+  description: "Recherche gaming ciblée sur 20 sites de référence via Google : jeuxvideo.com, gamekult.com, gameblog.fr, gamergen.com, actugaming.net, millenium.org, puissance-nintendo.com, switchactu.fr, nintendolife.com, pushsquare.com, purexbox.com, retronauts.com, hardcoregamer.com, digitaltrends.com, pcinvasion.com, thesixthaxis.com, godisageek.com, metacritic.com, ign.com, gamespot.com. Utiliser en complément de Tavily pour des résultats FR ou des sites de niche spécialisés.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: "Requête de recherche (ex: 'Zelda TOTK test jeuxvideo', 'GTA VI date sortie PS5', 'meilleur RPG Switch 2025', 'Elden Ring soluce boss')",
+      },
+    },
+    required: ['query'],
+  },
+};
+
+async function searchGoogleGaming(query) {
+  if (!GOOGLE_CSE_API_KEY || !GOOGLE_CSE_CX) throw new Error('Clés Google CSE manquantes');
+
+  const cacheKey = `google:${query}`;
+  const cached = getCached(cacheKey);
+  if (cached) {
+    pushLog('DBG', `Google CSE cache hit pour "${query}"`, 'debug');
+    return cached;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS);
+
+  try {
+    const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_CX}&q=${encodeURIComponent(query)}&num=8`;
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+
+    if (!res.ok) throw new Error(`Google CSE ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+
+    const results = (data.items || []).map(item => ({
+      title: item.title || '',
+      url: item.link || '',
+      snippet: (item.snippet || '').slice(0, 400),
+      source: (item.link || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0] || 'web',
+    }));
+
+    setCache(cacheKey, results);
+    pushLog('DBG', `Google CSE: ${results.length} résultat(s) pour "${query}" → mis en cache`, 'debug');
+    return results;
+  } catch (err) {
+    clearTimeout(timer);
+    pushLog('DBG', `Google CSE erreur: ${err.message}`, 'debug');
+    throw err;
+  }
+}
+
+// ─── Handler unifié — reçoit les quatre outils ──────────────────────────────
 
 async function gamingToolHandler(toolName, toolInput) {
   if (toolName === 'rechercher_actu_gaming') {
@@ -316,6 +371,23 @@ async function gamingToolHandler(toolName, toolInput) {
     }
   }
 
+  if (toolName === 'rechercher_google_gaming') {
+    try {
+      const results = await searchGoogleGaming(toolInput.query || '');
+      if (!results.length) return 'Aucun résultat Google CSE trouvé pour cette recherche.';
+
+      return results.map((r, i) =>
+        `${i + 1}. [${r.source}] ${r.title}\n${r.snippet}\nURL: ${r.url}`
+      ).join('\n\n');
+    } catch (err) {
+      return JSON.stringify({
+        error: err.message,
+        fallback: true,
+        instruction: "Google Custom Search est inaccessible. Réponds avec tes propres connaissances.",
+      });
+    }
+  }
+
   return JSON.stringify({ error: 'Outil inconnu' });
 }
 
@@ -324,6 +396,7 @@ function getAvailableTools() {
   const tools = [];
   if (TAVILY_API_KEY) tools.push(GAMING_NEWS_TOOL, GAMING_HELP_TOOL);
   if (IGDB_API_KEY && IGDB_CLIENT_ID) tools.push(IGDB_GAME_TOOL);
+  if (GOOGLE_CSE_API_KEY && GOOGLE_CSE_CX) tools.push(GOOGLE_GAMING_TOOL);
   return tools;
 }
 
@@ -331,10 +404,12 @@ module.exports = {
   searchGamingNews,
   searchIGDB,
   searchGamingHelp,
+  searchGoogleGaming,
   gamingToolHandler,
   GAMING_NEWS_TOOL,
   IGDB_GAME_TOOL,
   GAMING_HELP_TOOL,
+  GOOGLE_GAMING_TOOL,
   getAvailableTools,
   getCacheStats,
 };
