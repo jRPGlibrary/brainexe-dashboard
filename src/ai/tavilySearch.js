@@ -43,7 +43,7 @@ function getCacheStats() {
 
 const GAMING_NEWS_TOOL = {
   name: 'rechercher_actu_gaming',
-  description: "Recherche des actualités gaming récentes sur internet en temps réel. Utiliser quand quelqu'un demande des infos récentes sur un jeu, une annonce, une sortie, un événement gaming, un leak ou l'actualité du moment. Ne pas utiliser pour des questions sur l'histoire ou des faits établis.",
+  description: "Recherche des actualités gaming récentes sur internet en temps réel. Utiliser quand quelqu'un demande des infos récentes sur un jeu, une annonce, une sortie, un événement gaming, un leak, ou pour vérifier qu'un jeu existe vraiment (chercher son nom + 'Steam' ou 'release date'). Ne pas utiliser pour des questions sur l'histoire ou des faits établis.",
   input_schema: {
     type: 'object',
     properties: {
@@ -84,6 +84,7 @@ async function searchGamingNews(query) {
           'jeuxvideo.com', 'gamekult.com', 'pcgamer.com',
           'rockpapershotgun.com', 'destructoid.com', 'polygon.com',
           'thegamer.com', 'vg247.com', 'gamesradar.com',
+          'store.steampowered.com', 'store.epicgames.com',
         ],
       }),
       signal: controller.signal,
@@ -312,7 +313,7 @@ async function gamingToolHandler(toolName, toolInput) {
   if (toolName === 'rechercher_actu_gaming') {
     try {
       const results = await searchGamingNews(toolInput.query || '');
-      if (!results.length) return 'Aucun résultat trouvé pour cette recherche.';
+      if (!results.length) return 'Aucun résultat dans les sources indexées pour cette recherche. Le jeu ou la news peut exister sur d\'autres sources non couvertes ici — ne conclus pas à une hallucination.';
 
       return results.map((r, i) => {
         const date = r.publishedDate
@@ -332,7 +333,7 @@ async function gamingToolHandler(toolName, toolInput) {
   if (toolName === 'rechercher_jeu_igdb') {
     try {
       const games = await searchIGDB(toolInput.game_name || '');
-      if (!games.length) return `Aucun jeu trouvé pour "${toolInput.game_name}".`;
+      if (!games.length) return `Aucun jeu trouvé dans la base IGDB pour "${toolInput.game_name}". Cela ne signifie pas que le jeu n'existe pas — IGDB peut manquer des titres récents ou indépendants. Utilise rechercher_actu_gaming pour chercher sur le web.`;
 
       return games.map(g => {
         const lines = [`🎮 **${g.name}**`];
