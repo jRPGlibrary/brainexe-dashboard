@@ -541,12 +541,6 @@ function registerMessageHandlers() {
       const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
       const penduInstruction = `\n\n🎮 PENDU : Tu peux proposer spontanément une partie de pendu RPG/JRPG, ou accepter si l'utilisateur en demande une. Si tu décides de lancer le jeu, inclus exactement \`[PENDU]\` sur une ligne seule dans ta réponse — le jeu démarre automatiquement. N'explique pas ce marker, fais juste comme si tu lançais la partie naturellement.`;
       const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.${dmImgInstruction}${penduInstruction}`;
-      const userTextOnlyPrompt = dmIsPostRequest
-        ? `${message.author.username} demande : "${enrichedUserContent || userContent}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord. Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
-        : `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"`;
-      const userPrompt = buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
-      // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
-      await simulateTyping(message.channel, 500 + Math.random() * 500);
       const { getContextualMaxTokens } = require('../utils');
       const dmAvailableTools = getAvailableTools();
       const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
@@ -554,6 +548,12 @@ function registerMessageHandlers() {
       const dmMaxTokens = dmIsPostRequest
         ? adjustMaxTokens(900)
         : adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
+      const userTextOnlyPrompt = dmIsPostRequest
+        ? `${message.author.username} demande : "${enrichedUserContent || userContent}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord. Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
+        : `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"`;
+      const userPrompt = buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
+      // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
+      await simulateTyping(message.channel, 500 + Math.random() * 500);
       const dmIsNewsQuery = dmAvailableTools.length > 0
         && (dmIsPostRequest
           || NEWS_KEYWORDS.some(kw => dmQueryText.includes(kw))
