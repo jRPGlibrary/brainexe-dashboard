@@ -95,6 +95,9 @@ const HELP_KEYWORDS = [
   'rétro', 'retro', 'cheat code', 'code triche',
 ];
 
+// Steam link ignoré si l'user demande explicitement une console non-PC
+const CONSOLE_ONLY_KEYWORDS = ['ps5', 'ps4', 'ps3', 'playstation', 'xbox', 'switch', 'nintendo eshop'];
+
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
   shared.discord.on(Events.ChannelDelete, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon supprimé : ${ch.name}`); });
@@ -344,8 +347,9 @@ async function handleMentionReply(message, userQuery) {
     const replyResolved = resolveMentionsInText(reply, message.guild);
     if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
 
+    const isConsoleFocused = CONSOLE_ONLY_KEYWORDS.some(kw => lowerQuery.includes(kw));
     let steamBlock = '';
-    if (!usedToolCall && GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
+    if (!usedToolCall && !isConsoleFocused && GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
       try {
         const gameName = await extractGameName(userQuery, reply);
         if (gameName && !contextLines.toLowerCase().includes(gameName.toLowerCase())) {
@@ -537,6 +541,7 @@ function registerMessageHandlers() {
           || HELP_KEYWORDS.some(kw => dmQueryText.includes(kw)));
 
       let rawReply, usage;
+      let dmUsedToolCall = false;
       if (dmIsNewsQuery) {
         try {
           ({ text: rawReply, usage } = await callClaudeWithTools(
@@ -546,6 +551,7 @@ function registerMessageHandlers() {
             gamingToolHandler,
             { maxTokens: dmMaxTokens, cachedPrefix: dmPersona, model: 'claude-haiku-4-5-20251001' }
           ));
+          dmUsedToolCall = true;
           pushLog('SYS', `🔍 Tool use Tavily → DM ${message.author.username}`, 'success');
         } catch (toolErr) {
           pushLog('DBG', `Tool use DM échoué, fallback: ${toolErr.message}`, 'debug');
@@ -559,8 +565,9 @@ function registerMessageHandlers() {
       const reply = rawReply.replace(/\[PENDU\]/g, '').trim();
       await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'dm_reply');
 
+      const dmIsConsoleFocused = CONSOLE_ONLY_KEYWORDS.some(kw => dmQueryText.includes(kw));
       let dmSteamBlock = '';
-      if (GAMING_KEYWORDS.some(kw => `${userContent} ${reply}`.toLowerCase().includes(kw))) {
+      if (!dmUsedToolCall && !dmIsConsoleFocused && GAMING_KEYWORDS.some(kw => `${userContent} ${reply}`.toLowerCase().includes(kw))) {
         try {
           const gameName = await extractGameName(userContent, reply);
           if (gameName && !(historyBlock || '').toLowerCase().includes(gameName.toLowerCase())) {
