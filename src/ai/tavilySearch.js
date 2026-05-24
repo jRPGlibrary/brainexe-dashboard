@@ -56,6 +56,26 @@ const GAMING_NEWS_TOOL = {
   },
 };
 
+// Domaines couvrant presse gaming + stores officiels toutes plateformes
+const GAMING_PRESS_DOMAINS = [
+  // Presse internationale
+  'ign.com', 'gamespot.com', 'eurogamer.net', 'kotaku.com',
+  'pcgamer.com', 'rockpapershotgun.com', 'destructoid.com', 'polygon.com',
+  'thegamer.com', 'vg247.com', 'gamesradar.com', 'gameinformer.com',
+  'metacritic.com', 'opencritic.com',
+  // Presse spécialisée JRPG / indie / annonces
+  'gematsu.com', 'siliconera.com', 'rpgsite.net', 'rpgfan.com',
+  'nintendolife.com', 'pushsquare.com', 'purexbox.com',
+  // Presse francophone
+  'jeuxvideo.com', 'gamekult.com', 'gameblog.fr', 'actugaming.net',
+  // Stores officiels toutes plateformes
+  'store.steampowered.com', 'store.epicgames.com',
+  'store.playstation.com', 'psnprofiles.com',
+  'store.xbox.com', 'xbox.com',
+  'nintendo.com', 'eshop.nintendo.com',
+  'gog.com',
+];
+
 async function searchGamingNews(query) {
   if (!TAVILY_API_KEY) throw new Error('TAVILY_API_KEY manquante');
 
@@ -79,13 +99,7 @@ async function searchGamingNews(query) {
         include_answer: false,
         include_raw_content: false,
         max_results: 5,
-        include_domains: [
-          'ign.com', 'gamespot.com', 'eurogamer.net', 'kotaku.com',
-          'jeuxvideo.com', 'gamekult.com', 'pcgamer.com',
-          'rockpapershotgun.com', 'destructoid.com', 'polygon.com',
-          'thegamer.com', 'vg247.com', 'gamesradar.com',
-          'store.steampowered.com', 'store.epicgames.com',
-        ],
+        include_domains: GAMING_PRESS_DOMAINS,
       }),
       signal: controller.signal,
     });
@@ -307,13 +321,82 @@ async function searchGoogleGaming(query) {
   }
 }
 
-// ─── Handler unifié — reçoit les quatre outils ──────────────────────────────
+// ─── OUTIL 5 : Tavily open — existence jeu + stores toutes plateformes ───────
+// Pas de filtre include_domains : recherche sur tout le web pour trouver un jeu
+// peu importe la plateforme (Steam, PSN, Xbox, Switch, eShop, GOG, Epic…).
+
+const PLATFORM_LOOKUP_TOOL = {
+  name: 'rechercher_jeu_plateforme',
+  description: "Vérifie si un jeu existe et sur quelles plateformes il est disponible ou annoncé. À utiliser quand IGDB ne trouve rien, ou quand quelqu'un parle d'un jeu peu connu / annoncé récemment / indépendant. Recherche sur tout le web sans restriction : Steam, PS5, Xbox, Nintendo Switch, eShop, GOG, Epic, itch.io, etc. Exemples d'usage : 'ce jeu existe vraiment ?', 'c'est sur Switch ?', 'y'a une démo sur PS5 ?', 'quel est le prix sur Steam ?'.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: "Nom du jeu + plateforme ou contexte (ex: 'The Adventures of Elliot Millennium Tales Steam', 'Hollow Knight Silksong Switch release', 'Blasphemous 2 PS5 demo')",
+      },
+    },
+    required: ['query'],
+  },
+};
+
+async function searchPlatformLookup(query) {
+  if (!TAVILY_API_KEY) throw new Error('TAVILY_API_KEY manquante');
+
+  const cacheKey = `platform:${query}`;
+  const cached = getCached(cacheKey);
+  if (cached) {
+    pushLog('DBG', `Tavily platform cache hit pour "${query}"`, 'debug');
+    return cached;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS);
+
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: TAVILY_API_KEY,
+        query,
+        search_depth: 'advanced',
+        include_answer: false,
+        include_raw_content: false,
+        max_results: 8,
+        // Pas d'include_domains → tout le web, toutes les stores
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) throw new Error(`Tavily platform ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+
+    const results = (data.results || []).map(r => ({
+      title: r.title || '',
+      url: r.url || '',
+      snippet: (r.content || '').slice(0, 400),
+      source: (r.url || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0] || 'web',
+    }));
+
+    setCache(cacheKey, results);
+    pushLog('DBG', `Tavily platform: ${results.length} résultat(s) pour "${query}" → mis en cache`, 'debug');
+    return results;
+  } catch (err) {
+    clearTimeout(timer);
+    pushLog('DBG', `Tavily platform erreur: ${err.message}`, 'debug');
+    throw err;
+  }
+}
+
+// ─── Handler unifié — reçoit les cinq outils ────────────────────────────────
 
 async function gamingToolHandler(toolName, toolInput) {
   if (toolName === 'rechercher_actu_gaming') {
     try {
       const results = await searchGamingNews(toolInput.query || '');
-      if (!results.length) return 'Aucun résultat dans les sources indexées pour cette recherche. Le jeu ou la news peut exister sur d\'autres sources non couvertes ici — ne conclus pas à une hallucination.';
+      if (!results.length) return "Aucun résultat dans les sources indexées. Le jeu ou la news peut exister ailleurs — utilise rechercher_jeu_plateforme pour une recherche ouverte sur tout le web.";
 
       return results.map((r, i) => {
         const date = r.publishedDate
@@ -333,7 +416,7 @@ async function gamingToolHandler(toolName, toolInput) {
   if (toolName === 'rechercher_jeu_igdb') {
     try {
       const games = await searchIGDB(toolInput.game_name || '');
-      if (!games.length) return `Aucun jeu trouvé dans la base IGDB pour "${toolInput.game_name}". Cela ne signifie pas que le jeu n'existe pas — IGDB peut manquer des titres récents ou indépendants. Utilise rechercher_actu_gaming pour chercher sur le web.`;
+      if (!games.length) return `Aucun jeu trouvé dans la base IGDB pour "${toolInput.game_name}". IGDB peut manquer des titres récents, annoncés ou indépendants — utilise rechercher_jeu_plateforme pour chercher sur Steam, PS Store, Xbox, Nintendo et le web complet.`;
 
       return games.map(g => {
         const lines = [`🎮 **${g.name}**`];
@@ -389,13 +472,30 @@ async function gamingToolHandler(toolName, toolInput) {
     }
   }
 
+  if (toolName === 'rechercher_jeu_plateforme') {
+    try {
+      const results = await searchPlatformLookup(toolInput.query || '');
+      if (!results.length) return "Aucun résultat trouvé même sur le web complet. Le jeu est peut-être très récemment annoncé ou le nom est inexact.";
+
+      return results.map((r, i) =>
+        `${i + 1}. [${r.source}] ${r.title}\n${r.snippet}\nURL: ${r.url}`
+      ).join('\n\n');
+    } catch (err) {
+      return JSON.stringify({
+        error: err.message,
+        fallback: true,
+        instruction: "La recherche plateforme a échoué. Réponds avec tes propres connaissances.",
+      });
+    }
+  }
+
   return JSON.stringify({ error: 'Outil inconnu' });
 }
 
 // Liste des outils disponibles selon les clés présentes
 function getAvailableTools() {
   const tools = [];
-  if (TAVILY_API_KEY) tools.push(GAMING_NEWS_TOOL, GAMING_HELP_TOOL);
+  if (TAVILY_API_KEY) tools.push(GAMING_NEWS_TOOL, GAMING_HELP_TOOL, PLATFORM_LOOKUP_TOOL);
   if (IGDB_API_KEY && IGDB_CLIENT_ID) tools.push(IGDB_GAME_TOOL);
   if (GOOGLE_CSE_API_KEY && GOOGLE_CSE_CX) tools.push(GOOGLE_GAMING_TOOL);
   return tools;
@@ -406,11 +506,13 @@ module.exports = {
   searchIGDB,
   searchGamingHelp,
   searchGoogleGaming,
+  searchPlatformLookup,
   gamingToolHandler,
   GAMING_NEWS_TOOL,
   IGDB_GAME_TOOL,
   GAMING_HELP_TOOL,
   GOOGLE_GAMING_TOOL,
+  PLATFORM_LOOKUP_TOOL,
   getAvailableTools,
   getCacheStats,
 };
