@@ -1,7 +1,9 @@
 const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
 const { GUILD_ID, ANTHROPIC_API_KEY, MIN_GAP_ANY_POST } = require('../config');
-const { callClaude } = require('../ai/claude');
+const { callClaude, callClaudeWithTools } = require('../ai/claude');
+const { gamingToolHandler, getAvailableTools } = require('../ai/tavilySearch');
+const { GAMING_KEYWORDS } = require('../bot/keywords');
 const { getMemberProfile, updateMemberProfile, getToneInstruction } = require('../db/members');
 const { getChannelMemory, formatChannelMemoryBlock } = require('../db/channelMem');
 const { getChannelDirectory } = require('../db/channelDir');
@@ -409,7 +411,26 @@ async function replyToConversations() {
       scheduleDelayedSpontaneousReply(lastMsg, ch, slot, mood, emoji);
       return;
     }
-    const { text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\nSois naturelle. Court par défaut (1-2 phrases). Plus long uniquement si vraiment utile.`, replyMaxTokens, BOT_PERSONA_CONVERSATION);
+    const availableTools = getAvailableTools();
+    const lowerMsgContent = msgContent.toLowerCase();
+    const isGamingTopic = availableTools.length > 0 && GAMING_KEYWORDS.some(kw => lowerMsgContent.includes(kw));
+    let reply;
+    if (isGamingTopic) {
+      try {
+        ({ text: reply } = await callClaudeWithTools(
+          dynamicPrompt,
+          [{ role: 'user', content: `${lastMsg.author.username} parle de : "${msgContent}"\nSi un outil est utile, utilise-le pour donner une info précise. Sinon réponds naturellement. 1-2 phrases, naturel.` }],
+          availableTools,
+          gamingToolHandler,
+          { maxTokens: adjustMaxTokens(300), cachedPrefix: BOT_PERSONA_CONVERSATION, model: 'claude-haiku-4-5-20251001' }
+        ));
+        pushLog('SYS', `🔍 Tool use gaming → reply spontanée ${lastMsg.author.username}`, 'success');
+      } catch (_) {
+        ({ text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\nSois naturelle. Court (1-2 phrases).`, replyMaxTokens, BOT_PERSONA_CONVERSATION));
+      }
+    } else {
+      ({ text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\nSois naturelle. Court par défaut (1-2 phrases). Plus long uniquement si vraiment utile.`, replyMaxTokens, BOT_PERSONA_CONVERSATION));
+    }
     const replyResolved = resolveMentionsInText(reply, guild);
     if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
     // Si le message parle d'un jeu et qu'un fil existe déjà → répondre dans le fil plutôt que le channel
