@@ -98,6 +98,14 @@ const HELP_KEYWORDS = [
 // Steam link ignoré si l'user demande explicitement une console non-PC
 const CONSOLE_ONLY_KEYWORDS = ['ps5', 'ps4', 'ps3', 'playstation', 'xbox', 'switch', 'nintendo eshop'];
 
+// Demandes de post/liste formaté → plus de tokens, livraison directe sans "j'arrive"
+const POST_KEYWORDS = [
+  'post', 'poste', 'prépare', 'prépares', 'compile', 'rédige',
+  'fais un', 'fait moi', 'fait un', 'liste', 'liste-moi', 'sélection',
+  'top 5', 'top 10', 'top 3', '5 jeux', '3 jeux', '10 jeux',
+  'à surveiller', 'à ne pas manquer', 'à venir', 'les meilleurs', 'meilleurs jeux',
+];
+
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
   shared.discord.on(Events.ChannelDelete, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon supprimé : ${ch.name}`); });
@@ -300,7 +308,11 @@ async function handleMentionReply(message, userQuery) {
     // 🖼️ Captation images jointes par l'utilisateur
     const userImages = extractImageAttachments(message);
     const imgInstruction = userImages.length ? getImageCommentInstruction(userImages.length) : '';
-    const mentionMaxTokens = adjustMaxTokens(getContextualMaxTokens(userQuery, { defaultShort: 110, extended: 240 }));
+    const lowerQuery = userQuery.toLowerCase();
+    const isPostRequest = POST_KEYWORDS.some(kw => lowerQuery.includes(kw));
+    const mentionMaxTokens = isPostRequest
+      ? adjustMaxTokens(900)
+      : adjustMaxTokens(getContextualMaxTokens(userQuery, { defaultShort: 110, extended: 240 }));
 
     // Contexte du message auquel répond l'utilisateur (reply Discord)
     let replyRefContext = '';
@@ -313,12 +325,14 @@ async function handleMentionReply(message, userQuery) {
       }
     }
 
-    const userTextPrompt = `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\nRéponds court (1-2 phrases) sauf si le sujet mérite vraiment plus.${replyRefContext}`;
+    const userTextPrompt = isPostRequest
+      ? `${message.author.username} demande : "${userQuery}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord (**, [texte](url)). Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
+      : `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\nRéponds court (1-2 phrases) sauf si le sujet mérite vraiment plus.${replyRefContext}`;
     const userContent = buildMultimodalUserContent(userTextPrompt, userImages);
     const availableTools = getAvailableTools();
-    const lowerQuery = userQuery.toLowerCase();
     const isNewsQuery = availableTools.length > 0
-      && (NEWS_KEYWORDS.some(kw => lowerQuery.includes(kw))
+      && (isPostRequest
+        || NEWS_KEYWORDS.some(kw => lowerQuery.includes(kw))
         || GAME_INFO_KEYWORDS.some(kw => lowerQuery.includes(kw))
         || HELP_KEYWORDS.some(kw => lowerQuery.includes(kw)));
 
@@ -527,16 +541,22 @@ function registerMessageHandlers() {
       const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
       const penduInstruction = `\n\n🎮 PENDU : Tu peux proposer spontanément une partie de pendu RPG/JRPG, ou accepter si l'utilisateur en demande une. Si tu décides de lancer le jeu, inclus exactement \`[PENDU]\` sur une ligne seule dans ta réponse — le jeu démarre automatiquement. N'explique pas ce marker, fais juste comme si tu lançais la partie naturellement.`;
       const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.${dmImgInstruction}${penduInstruction}`;
-      const userTextOnlyPrompt = `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"`;
+      const userTextOnlyPrompt = dmIsPostRequest
+        ? `${message.author.username} demande : "${enrichedUserContent || userContent}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord. Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
+        : `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"`;
       const userPrompt = buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
       // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
       await simulateTyping(message.channel, 500 + Math.random() * 500);
       const { getContextualMaxTokens } = require('../utils');
-      const dmMaxTokens = adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
       const dmAvailableTools = getAvailableTools();
       const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
+      const dmIsPostRequest = POST_KEYWORDS.some(kw => dmQueryText.includes(kw));
+      const dmMaxTokens = dmIsPostRequest
+        ? adjustMaxTokens(900)
+        : adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
       const dmIsNewsQuery = dmAvailableTools.length > 0
-        && (NEWS_KEYWORDS.some(kw => dmQueryText.includes(kw))
+        && (dmIsPostRequest
+          || NEWS_KEYWORDS.some(kw => dmQueryText.includes(kw))
           || GAME_INFO_KEYWORDS.some(kw => dmQueryText.includes(kw))
           || HELP_KEYWORDS.some(kw => dmQueryText.includes(kw)));
 
