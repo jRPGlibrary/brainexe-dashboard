@@ -347,7 +347,7 @@ async function runChannelWatch() {
 
           if (await shouldWatchJump(thread)) {
             const score = await computeInterestScore(threadMsgs, thread.name, channel.name);
-            if (score >= 0.38) { // Seuil threads abaissé (était 0.47)
+            if (score >= 0.28) {
               const jumped = await performWatchJump(thread, threadMsgs, true, threadFetched);
               if (jumped) {
                 const catName = channel.parent?.name || channel.name;
@@ -372,9 +372,6 @@ async function maybeRespondToThreadMessage(thread) {
   if (!ANTHROPIC_API_KEY || !shared.discord?.isReady()) return;
   if (!shared.botConfig?.conversations?.enabled) return;
 
-  const enabledChannels = shared.botConfig.conversations.channels || [];
-  if (!enabledChannels.some(c => c.enabled && c.channelId === thread.parentId)) return;
-
   if (!await shouldWatchJump(thread)) return;
 
   try {
@@ -390,7 +387,7 @@ async function maybeRespondToThreadMessage(thread) {
     if (Date.now() - threadMsgs[0].createdTimestamp > 90 * 60 * 1000) return;
 
     const score = await computeInterestScore(threadMsgs, thread.name, thread.parent?.name || '');
-    if (score < 0.28) return;
+    if (score < 0.22) return;
 
     await performWatchJump(thread, threadMsgs, true, fetched);
   } catch (_) {}

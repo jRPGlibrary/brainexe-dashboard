@@ -796,7 +796,7 @@ function registerMessageHandlers() {
 
     // v0.13.0 : Lecture réactive des threads — 30% de chance de vérifier si elle veut rejoindre
     // Le channelWatcher couvre le proactif (toutes les 4 min), ceci couvre le réactif (sur nouveau message)
-    if (Math.random() < 0.30) {
+    if (Math.random() < 0.55) {
       const { maybeRespondToThreadMessage } = require('../features/channelWatcher');
       maybeRespondToThreadMessage(message.channel).catch(() => {});
     }
