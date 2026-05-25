@@ -61,7 +61,9 @@ async function compactMemory(entityId, entityType, recentEvents, existingMemory)
     const { text: analysis } = await callClaude(
       'Tu analyses la mémoire d\'une personne et compactes les infos essentielles.',
       `Entité: ${sanitizeForJson(entityId)} (type: ${entityType})\n\nMémoire existante:\n${existingStr}\n\nÉvénements récents:\n${recentEventsStr}\n\nRetourne JSON STRICT:\n{\n  "coreTraits": ["trait1", "trait2"],\n  "importantTopics": ["sujet1", "sujet2"],\n  "relatedPeople": {"personne": "relation"},\n  "style": "description ultra-courte du style",\n  "lastUsedTopics": ["recent1", "recent2"],\n  "topicsToForget": ["oubli1"]\n}`,
-      200
+      200,
+      null,
+      'claude-haiku-4-5-20251001'
     );
 
     let parsed;
