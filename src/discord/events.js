@@ -152,6 +152,7 @@ async function handleReaction(reaction, user, add) {
 }
 
 async function handleMentionReply(message, userQuery) {
+  shared.pendingMentionUntil = null; // mention en cours de traitement — verrou levé
   try {
     const slot = getCurrentSlot();
     const budgetProfile = getBudgetProfile();
@@ -195,7 +196,6 @@ async function handleMentionReply(message, userQuery) {
     const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, userQuery, false, true);
 
     if (!decision.should) {
-      try { await message.react('😴').catch(() => {}); } catch (_) {}
       pushLog('SYS', `🙅 Skip @mention (${decision.reason}): ${decision.message || ''}`);
       return;
     }
@@ -668,11 +668,11 @@ function registerMessageHandlers() {
       return;
     }
 
-    // E3 — Engagement actif : @mention autorisée mais retardée (min 15 min)
+    // E3 — Engagement actif : @mention autorisée mais retardée (min 15 min), sans réaction emoji
     if (shared.commitmentUntil && Date.now() < shared.commitmentUntil) {
-      const remaining    = shared.commitmentUntil - Date.now();
-      const commitDelay  = Math.max(15 * 60 * 1000, remaining) + Math.random() * 10 * 60 * 1000;
-      await message.react('⏳').catch(() => {});
+      const remaining   = shared.commitmentUntil - Date.now();
+      const commitDelay = Math.max(15 * 60 * 1000, remaining) + Math.random() * 10 * 60 * 1000;
+      shared.pendingMentionUntil = Date.now() + commitDelay;
       pushLog('SYS', `⏳ @mention pendant engagement → retardée ${Math.round(commitDelay / 60000)} min → ${message.author.username}`);
       setTimeout(() => handleMentionReply(message, userQuery), commitDelay);
       return;
@@ -682,20 +682,12 @@ function registerMessageHandlers() {
     const urgent = isUrgentQuery(userQuery);
     const decision = decideMentionResponse(slot, urgent);
 
-    // Émojis de signal selon la vibe (montre que Brainee a vu mais est dans un état particulier)
-    const VIBE_SIGNAL_EMOJI = {
-      grumpy: '😒', lazy: '😴', introvert: '👀', focus: '🔕',
-      melancholic: '😔', withdrawn: '💤',
-    };
-
-    // Décision : skip total → on ne skip jamais une mention directe, on répond avec délai
-    // On réagit avec un emoji pour signaler qu'on a vu le message
+    // Décision : skip → délai silencieux, sans réaction emoji
     if (decision.action === 'skip') {
       const vibe = getDailyVibe();
-      const signalEmoji = VIBE_SIGNAL_EMOJI[vibe.name] || '⏳';
-      await message.react(signalEmoji).catch(() => {});
       const vibeDelay = 3 * 60 * 1000 + Math.random() * 12 * 60 * 1000; // 3-15 min
-      pushLog('SYS', `⏳ @mention retardée ${signalEmoji} (vibe ${vibe.name}) → ${message.author.username} (${Math.round(vibeDelay / 60000)} min)`);
+      shared.pendingMentionUntil = Date.now() + vibeDelay;
+      pushLog('SYS', `⏳ @mention silencieuse (vibe ${vibe.name}) → ${message.author.username} (${Math.round(vibeDelay / 60000)} min)`);
       setTimeout(() => handleMentionReply(message, userQuery), vibeDelay);
       return;
     }
@@ -703,7 +695,6 @@ function registerMessageHandlers() {
     // Décision : reporter au lendemain — seulement si le bot dort vraiment
     if (decision.action === 'defer_tomorrow') {
       if (slot?.status === 'sleep') {
-        await message.react('💤').catch(() => {});
         queueRelance({
           userId: message.author.id,
           username: message.author.username,
@@ -714,12 +705,10 @@ function registerMessageHandlers() {
         pushLog('SYS', `📬 @mention différée à demain → ${message.author.username} (slot sommeil)`);
         return;
       }
-      // Hors sommeil : signal + délai long plutôt que vrai report
-      const vibe = getDailyVibe();
-      const signalEmoji = VIBE_SIGNAL_EMOJI[vibe.name] || '⏳';
-      await message.react(signalEmoji).catch(() => {});
+      // Hors sommeil : délai silencieux
       const deferDelay = 10 * 60 * 1000 + Math.random() * 20 * 60 * 1000; // 10-30 min
-      pushLog('SYS', `⏳ @mention retardée ${signalEmoji} (vibe ${vibe.name}) → ${message.author.username} (${Math.round(deferDelay / 60000)} min)`);
+      shared.pendingMentionUntil = Date.now() + deferDelay;
+      pushLog('SYS', `⏳ @mention silencieuse (vibe) → ${message.author.username} (${Math.round(deferDelay / 60000)} min)`);
       setTimeout(() => handleMentionReply(message, userQuery), deferDelay);
       return;
     }

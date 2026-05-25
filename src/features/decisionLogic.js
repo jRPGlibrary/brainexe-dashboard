@@ -28,8 +28,13 @@ async function shouldRespond(slot, vibe, mentalLoad, messageContent, isUrgent = 
       return { should: true, reason: 'urgent' };
     }
 
-    // E3 — Engagement actif : bloc total sauf mentions (déjà retardées dans events.js)
-    if (!isMention && shared.commitmentUntil && Date.now() < shared.commitmentUntil) {
+    // Mention directe — toujours répondre, peu importe vibe/fatigue/engagement
+    if (isMention) {
+      return { should: true, reason: 'mention_priority' };
+    }
+
+    // E3 — Engagement actif : bloc total (non-mentions)
+    if (shared.commitmentUntil && Date.now() < shared.commitmentUntil) {
       return { should: false, reason: 'commitment_active', message: 'engagement en cours' };
     }
 

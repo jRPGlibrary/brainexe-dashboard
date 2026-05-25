@@ -19,4 +19,5 @@ module.exports = {
   dailyCostResetDay: '',
   commitmentUntil: null,
   commitmentReason: null,
+  pendingMentionUntil: null,
 };

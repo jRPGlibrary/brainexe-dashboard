@@ -51,9 +51,15 @@ const firedToday = { morning: '', lunch: '', goodnight: '', nightWakeup: '', rel
 // B — Suivi du dernier slot pour détecter les transitions
 let _prevSlotStatus = '';
 
-// E4 — Commitment actif : toutes les tâches proactives vérifient ceci avant de poster
+// E4 — Verrous proactifs : commitment en cours OU mention en attente de réponse
 function isCommitmentActive() {
   return !!(shared.commitmentUntil && Date.now() < shared.commitmentUntil);
+}
+function isPendingMention() {
+  return !!(shared.pendingMentionUntil && Date.now() < shared.pendingMentionUntil);
+}
+function isBlocked() {
+  return isCommitmentActive() || isPendingMention();
 }
 
 function parisDateISO() {
@@ -72,7 +78,7 @@ function startConvCron() {
   convCron = cron.schedule('0 * * * *', () => {
     const cfg = shared.botConfig.conversations;
     if (!cfg.enabled) return;
-    if (isCommitmentActive()) { pushLog('SYS', `🔒 Skip conv — engagement actif`); return; }
+    if (isBlocked()) { pushLog('SYS', `🔒 Skip conv — engagement ou mention en attente`); return; }
     const slot = getCurrentSlot();
     if (slot.maxConv === 0) return;
     if (shouldSkipConvCron()) { pushLog('SYS', `😶 Skip conv (vibe ${getDailyVibe().name})`); return; }
@@ -186,7 +192,7 @@ function startConvCron() {
     }
 
     // Impulsion : post spontané hors-cron
-    if (slot_is_active(h) && rollImpulse() && !isCommitmentActive()) {
+    if (slot_is_active(h) && rollImpulse() && !isBlocked()) {
       pushLog('SYS', `⚡ Impulsion spontanée (vibe ${vibe.name})`);
       postRandomConversation();
     }
@@ -310,7 +316,7 @@ function startConvCron() {
   // Proactive outreach — toutes les 25 min, déclenchement probabiliste
   outreachCron = cron.schedule('*/25 * * * *', () => {
     if (!slot_is_active(getParisHour())) return;
-    if (isCommitmentActive()) return;
+    if (isBlocked()) return;
     if (!rollOutreach()) return;
     pushLog('SYS', `⚡ Tick outreach déclenché`);
     fireOutreach().catch(err => pushLog('ERR', `outreach échoué : ${err.message}`, 'error'));
@@ -319,7 +325,7 @@ function startConvCron() {
   // Hyper-focus revisit — toutes les 25 min, traite UNE obsession arrivée à terme
   hyperFocusCron = cron.schedule('*/25 * * * *', () => {
     if (!slot_is_active(getParisHour())) return;
-    if (isCommitmentActive()) return;
+    if (isBlocked()) return;
     processDueObsessions().catch(err => pushLog('ERR', `hyperFocusRevisit: ${err.message}`, 'error'));
   }, { timezone: 'Europe/Paris' });
 
@@ -394,7 +400,7 @@ function startConvCron() {
   // v0.12.0 — Channel Watcher : observation passive de tous les salons + threads (~4 min)
   channelWatchCron = cron.schedule('*/4 * * * *', () => {
     if (!slot_is_active(getParisHour())) return;
-    if (isCommitmentActive()) return;
+    if (isBlocked()) return;
     runChannelWatch().catch(err => pushLog('ERR', `channelWatch: ${err.message}`, 'error'));
   }, { timezone: 'Europe/Paris' });
 
