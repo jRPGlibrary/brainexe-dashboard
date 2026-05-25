@@ -5,7 +5,7 @@ const { callClaude, callClaudeWithTools } = require('../ai/claude');
 const { gamingToolHandler, getAvailableTools } = require('../ai/tavilySearch');
 const { GAMING_KEYWORDS } = require('../bot/keywords');
 const { getMemberProfile, updateMemberProfile, getToneInstruction } = require('../db/members');
-const { getChannelMemory, formatChannelMemoryBlock } = require('../db/channelMem');
+const { getChannelMemory, formatChannelMemoryBlock, enrichChannelMemory } = require('../db/channelMem');
 const { getChannelDirectory } = require('../db/channelDir');
 const { BOT_PERSONA, BOT_PERSONA_CONVERSATION } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
@@ -42,18 +42,10 @@ const { record: recordChannelPost, getLastPost, isOnCooldown, isOverLimit, COOLD
 const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
 
-/**
- * Évalue si un salon est postable maintenant (no-insist, monologue, posts consécutifs, dead).
- * Mode "relaxed" pour le fallback général : assouplit la fenêtre no-insist (6h au lieu de 24h)
- * et ignore le check "calme plat" (le général a toujours du trafic).
- * Retourne { ok: bool, reason: string|null }.
- */
 async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } = {}) {
-  // Limite dure : ${MAX_POSTS} posts proactifs max par canal sur 3h (topic-agnostique)
   if (isOverLimit(ch.channelId)) {
     return { ok: false, reason: `limite ${MAX_POSTS} posts/3h atteinte` };
   }
-  // Gap 2h in-memory synchrone — immunisé contre erreurs Discord API
   const lastPost = getLastPost(ch.channelId);
   if (lastPost && Date.now() - lastPost < CHANNEL_COOLDOWN_MS) {
     const elapsed = Math.round((Date.now() - lastPost) / 60000);
@@ -85,7 +77,6 @@ async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } =
   if (await isMonologueChannel(ch.channelId, channelResolver)) {
     return { ok: false, reason: 'salon monologue (Brainee parle seule)' };
   }
-  // Skip si le salon n'a aucun message humain récent (évite tokens vides)
   try {
     const channel = await channelResolver(ch.channelId);
     if (channel?.messages) {
@@ -104,10 +95,6 @@ async function evaluateChannelForConv(ch, channelResolver, { relaxed = false } =
   return { ok: true, reason: null };
 }
 
-/**
- * Effectue le post réel dans un salon validé : prompt AI + envoi + stats.
- * Retourne true si posté, false sinon.
- */
 async function postConvInChannel(ch, channel, guild, slot, { fallback = false } = {}) {
   const isDeep = isDeepTopicChannel(ch.channelName);
   const mode = getRandomMode(slot);
@@ -135,10 +122,11 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
     setCacheBlocks(emotionBlock, temperamentBlock, narrativeBlock);
   }
   let contextBlock = '';
+  let recentCtxStr = '';
   try {
-    const msgs = await channel.messages.fetch({ limit: 40 });
-    const ctx = formatContext(msgs, null, 40);
-    if (ctx.length > 20) contextBlock = `\nContexte récent:\n${ctx}`;
+    const msgs = await channel.messages.fetch({ limit: 15 });
+    recentCtxStr = formatContext(msgs, null, 15);
+    if (recentCtxStr.length > 20) contextBlock = `\nContexte récent:\n${recentCtxStr}`;
   } catch (_) {}
   const crossChannelBlock = await getCrossChannelContext(ch.channelId);
   const verbosity = await getChannelVerbosity(ch.channelId);
@@ -172,6 +160,7 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
   recordCrossChannelPost(ch.channelId, ch.channelName, contentResolved).catch(() => {});
   await updateConvStats(ch.channelId);
   recordBotMessage(sentMsg.id, ch.channelId, mode.name, contentResolved.length).catch(() => {});
+  if (recentCtxStr) enrichChannelMemory(ch.channelId, ch.channelName, ch.topic || '', recentCtxStr).catch(() => {});
   const tag = fallback ? '🔁 Conv (fallback général)' : '💬 Conv';
   pushLog('SYS', `${tag} [${mode.name}] ${ch.channelName} [${slot.label}] (${getConvDailyCount()}/${getConvMaxPerDay()})`, 'success');
   broadcast('conversation', { channel: ch.channelName, time: new Date().toLocaleTimeString('fr-FR'), mode: mode.name, slot: slot.label, dayCount: getConvDailyCount(), fallback });
@@ -188,10 +177,8 @@ async function postRandomConversation() {
   if (Date.now() - shared.lastAnyBotPostTime < getSlotIntervalMs(slot)) return;
   if (!ANTHROPIC_API_KEY) return;
 
-  // Absence : si active → silence total
   if (isAbsent()) return;
 
-  // Vraie absence aléatoire — taux dépend du slot (0% au réveil, jusqu'à 30% la nuit)
   const _skipConvProba = { wakeup: 0, active: 0.10, lunch: 0.15, productive: 0.15, transition: 0.20, gaming: 0.25, latenight: 0.30 };
   const _convSkip = _skipConvProba[slot.status] ?? 0.15;
   if (Math.random() < _convSkip) { pushLog('SYS', `🌫️ Vraie absence (skip lance-conv ${Math.round(_convSkip * 100)}%)`); return; }
@@ -205,8 +192,6 @@ async function postRandomConversation() {
       return g.channels.cache.get(id);
     };
 
-    // Absence annoncée : phrase randomisée dans le général puis silence
-    // Wakeup slot protégé (jamais d'absence juste après le réveil)
     const _slotKey = slot.status || slot.label || '';
     const absencePhrase = _slotKey !== 'wakeup' ? await maybeStartAbsence(_slotKey) : null;
     if (absencePhrase) {
@@ -226,7 +211,6 @@ async function postRandomConversation() {
       return;
     }
 
-    // 1. Boucler sur les candidats classiques (général exclu, gardé pour fallback)
     const candidates = getRankedChannels({ excludeGeneral: true }).slice(0, MAX_CONV_ATTEMPTS);
     let skipped = 0;
     for (const ch of candidates) {
@@ -247,7 +231,6 @@ async function postRandomConversation() {
       }
     }
 
-    // 2. Fallback : tenter le général en mode assoupli pour parler de tout et rien
     const general = getGeneralChannel();
     if (!general) {
       pushLog('SYS', `🤐 Aucun salon postable (${skipped} skips) — pas de général configuré`);
@@ -279,9 +262,7 @@ async function replyToConversations() {
   if (!cfg.enabled || !cfg.canReply || !ANTHROPIC_API_KEY) return;
   const slot = getCurrentSlot();
   if (slot.maxConv === 0) return;
-  // Absence active → silence total (les @mentions passent toujours via events.js)
   if (isAbsent()) return;
-  // Vraie absence aléatoire — taux dépend du slot (10% au réveil, jusqu'à 50% la nuit)
   const _skipReplyProba = { wakeup: 0.10, active: 0.20, lunch: 0.25, productive: 0.25, transition: 0.30, gaming: 0.40, latenight: 0.50 };
   const _replySkip = _skipReplyProba[slot.status] ?? 0.30;
   if (Math.random() < _replySkip) { pushLog('SYS', `🌫️ Vraie absence (skip silencieux ${Math.round(_replySkip * 100)}%)`); return; }
@@ -302,12 +283,10 @@ async function replyToConversations() {
     if (age < 30 * 60 * 1000 || age > 90 * 60 * 1000) return;
     if (Date.now() - shared.lastAnyBotPostTime < MIN_GAP_ANY_POST) return;
 
-    // Limite dure topic-agnostique : si le bot a déjà posté MAX_POSTS fois en 3h dans ce canal, stop
     if (isOverLimit(ch.channelId)) {
       pushLog('SYS', `🔇 Skip reply ${ch.channelName} — limite ${MAX_POSTS} posts/3h`);
       return;
     }
-    // Gap 2h in-memory par canal avec exception canal très actif
     const chLastPost = getLastPost(ch.channelId);
     let softReply = false;
     if (chLastPost && Date.now() - chLastPost < CHANNEL_COOLDOWN_MS) {
@@ -324,7 +303,6 @@ async function replyToConversations() {
       }
     }
 
-    // No-insist check : si Brainee a déjà posté dans ce salon sans réponse, ne pas relancer
     const channelResolver = async (id) => {
       const g = await shared.discord.guilds.fetch(GUILD_ID);
       await g.channels.fetch();
@@ -335,13 +313,11 @@ async function replyToConversations() {
       pushLog('SYS', `🔇 Skip reply ${ch.channelName} — dernier post sans réponse (no-insist)`);
       return;
     }
-    // Anti-2-en-suite strict : si Brainee a parlé en dernier (même via un autre path), skip
     const consecBots = await countConsecutiveBotPosts(ch.channelId, channelResolver);
     if (consecBots >= 1) {
       pushLog('SYS', `🔇 Skip reply ${ch.channelName} — Brainee a déjà parlé en dernier`);
       return;
     }
-    // Skip si salon monologue
     if (await isMonologueChannel(ch.channelId, channelResolver)) {
       pushLog('SYS', `🔇 Skip reply ${ch.channelName} — salon monologue`);
       return;
@@ -350,7 +326,6 @@ async function replyToConversations() {
     const msgContent = lastMsg.content;
     if (!msgContent || msgContent.length < 5) return;
 
-    // v0.6.0 : Check if Brainee should respond (autonomy logic)
     const vibe = getDailyVibe();
     const internalState = getInternalState();
     const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, msgContent, false);
@@ -358,14 +333,11 @@ async function replyToConversations() {
     if (!decision.should) {
       pushLog('SYS', `🙅 Skip reply (${decision.reason}): ${decision.message ? decision.message : ''}`);
       if (decision.message && Math.random() < 0.3) {
-        try {
-          await lastMsg.react('😴').catch(() => {});
-        } catch (_) {}
+        try { await lastMsg.react('😴').catch(() => {}); } catch (_) {}
       }
       return;
     }
 
-    // Record topic for fatigue tracking
     await recordMessageTopic(msgContent);
 
     const profile = await getMemberProfile(lastMsg.author.id);
@@ -384,7 +356,6 @@ async function replyToConversations() {
     const intentBlockR = getChannelIntentBlock(channel.name, ch.topic, dirEntryR?.officialDescription || '');
     const context = formatContext(msgs, null, 5);
 
-    // Adapter selon la verbosité du salon
     const verbosity = await getChannelVerbosity(ch.channelId);
     const verbosityReplyInstruct = softReply
       ? `1 phrase max, tu passes vite, reste légère.`
@@ -433,7 +404,6 @@ async function replyToConversations() {
     }
     const replyResolved = resolveMentionsInText(reply, guild);
     if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
-    // Si le message parle d'un jeu et qu'un fil existe déjà → répondre dans le fil plutôt que le channel
     const { THREAD_TRIGGERS } = require('../bot/keywords');
     const lowerReply = replyResolved.toLowerCase();
     const lowerMsg = msgContent.toLowerCase();

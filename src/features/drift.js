@@ -76,10 +76,7 @@ async function handleDrift(guild, channelId, channelName, driftResult, participa
       const targetChannel = guild.channels.cache.get(targetId);
       if (!targetChannel) return;
 
-      // Threads désactivés par défaut (personne ne les utilise)
-      // Peuvent être activés sur demande explicite seulement
-
-      const bridgeMsg = resolveMentionsInText(driftResult.bridgeMessage || `ok on a clairement dérivé vers du ${driftResult.dominantTheme} — je vous ouvre un coin dans ${targetName} 🔀`, guild);
+      const bridgeMsg = resolveMentionsInText(driftResult.bridgeMessage || `ok on a clairement dérié vers du ${driftResult.dominantTheme} — je vous ouvre un coin dans ${targetName} 🔀`, guild);
       await simulateTyping(originChannel, 800);
       await originChannel.send(bridgeMsg);
       await sleep(1500);
@@ -142,10 +139,9 @@ async function runDriftCheck() {
         const lastMsg = [...msgs.values()][0];
         if (Date.now() - lastMsg.createdTimestamp > 2 * 60 * 60 * 1000) continue;
 
-        const context = formatContext(msgs, null, 30);
+        const context = formatContext(msgs, null, 15);
         const memory = await getChannelMemory(ch.channelId);
 
-        // Extraction des participants humains actifs (hors bots) pour tag éventuel dans le fil
         const participantIds = [];
         const seen = new Set();
         for (const m of msgs.values()) {
@@ -156,10 +152,7 @@ async function runDriftCheck() {
           if (participantIds.length >= 5) break;
         }
 
-        const lastEnriched = memory?.lastEnrichedAt ? new Date(memory.lastEnrichedAt).getTime() : 0;
-        if (Date.now() - lastEnriched > 6 * 60 * 60 * 1000) {
-          enrichChannelMemory(ch.channelId, ch.channelName, ch.topic, context).catch(err => pushLog('ERR', `enrichChannelMemory #${ch.channelName}: ${err.message}`, 'error'));
-        }
+        enrichChannelMemory(ch.channelId, ch.channelName, ch.topic, context).catch(err => pushLog('ERR', `enrichChannelMemory #${ch.channelName}: ${err.message}`, 'error'));
 
         const drift = await detectThematicDrift(ch.channelId, ch.channelName, ch.topic, context, memory);
         if (drift && drift.action !== 'observe') {

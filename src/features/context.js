@@ -15,7 +15,7 @@ function formatRelativeTime(ts) {
   return msgDate.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', day: 'numeric', month: 'short' }) + ` ${timeStr}`;
 }
 
-function formatContext(messages, currentMessageId = null, limit = 80) {
+function formatContext(messages, currentMessageId = null, limit = 15) {
   return [...messages.values()]
     .filter(m => currentMessageId ? m.id !== currentMessageId : true)
     .reverse()
