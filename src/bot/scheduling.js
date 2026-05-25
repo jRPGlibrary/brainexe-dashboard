@@ -54,9 +54,38 @@ function getCurrentSlot() {
     const found = all.find(s => s.status === forcedSlotStatus);
     if (found) return found;
   }
-  const h = getParisHour(), d = getParisDay();
-  const slots = d === 6 ? SATURDAY_SLOTS : d === 0 ? SUNDAY_SLOTS : WEEKDAY_SLOTS;
-  return slots.find(s => h >= s.start && h < s.end) || slots[0];
+
+  const h = getParisHour();
+  const d = getParisDay();
+  const base = d === 6 ? SATURDAY_SLOTS : d === 0 ? SUNDAY_SLOTS : WEEKDAY_SLOTS;
+  const get = s => base.find(sl => sl.status === s) || WEEKDAY_SLOTS.find(sl => sl.status === s);
+
+  // Planning dynamique journalier (C) — fallback sur grille statique si indisponible
+  try {
+    const { getDailyFloatingSchedule } = require('./adaptiveSchedule');
+    const sched = getDailyFloatingSchedule();
+    if (sched?.wakeHour !== undefined) {
+      const { wakeHour, lunchStart, dinnerStart, sleepHour } = sched;
+      const wakeEnd           = wakeHour + 0.75;
+      const lunchEnd          = lunchStart + 1.5;
+      const dinnerEnd         = dinnerStart + 1.5;
+      const clampedSleep      = Math.min(sleepHour, 24);
+      // latenight commence 30 min avant le dodo, max 23h30
+      const latenightStart    = Math.max(dinnerEnd + 0.5, Math.min(sleepHour - 0.5, 23.5));
+
+      if (h < wakeHour || h >= clampedSleep) return get('sleep');
+      if (h < wakeEnd)                        return get('wakeup');
+      if (h < lunchStart)                     return get('active');
+      if (h < lunchEnd)                       return get('lunch');
+      if (h < dinnerStart)                    return get('productive');
+      if (h < dinnerEnd)                      return get('lunch');  // dîner → propriétés lunch
+      if (h < latenightStart)                 return get('gaming');
+      return get('latenight');
+    }
+  } catch (_) {}
+
+  // Grille statique (fallback)
+  return base.find(s => h >= s.start && h < s.end) || base[0];
 }
 
 function setForcedSlot(status) {
