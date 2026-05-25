@@ -3,6 +3,8 @@ const { pushLog } = require('../logger');
 const { callClaude } = require('../ai/claude');
 const { sanitizeForJson, extractJson } = require('../utils');
 
+const ENRICH_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2h max entre deux enrichissements
+
 async function getChannelMemory(channelId) {
   if (!shared.mongoDb) return null;
   try { return await shared.mongoDb.collection('channelMemory').findOne({ channelId }); } catch { return null; }
@@ -24,41 +26,53 @@ async function enrichChannelMemory(channelId, channelName, channelTopic, recentC
   if (!ANTHROPIC_API_KEY || !shared.mongoDb) return;
   try {
     const existing = await getChannelMemory(channelId);
-    const existingStr = existing
-      ? `ton:${existing.toneProfile?.slice(0, 30)},themes:${existing.frequentThemes?.slice(0, 2)?.join(',')}`
-      : 'new';
+
+    // Cooldown 2h intégré — guard universel quel que soit l'appelant
+    const lastEnrichedAt = existing?.lastEnrichedAt ? new Date(existing.lastEnrichedAt).getTime() : 0;
+    if (Date.now() - lastEnrichedAt < ENRICH_COOLDOWN_MS) return;
+
+    // Reset highlights si nouveau jour (minuit Paris)
+    const toParisDate = d => new Date(d).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
+    const isNewDay = !existing?.lastEnrichedAt || toParisDate(existing.lastEnrichedAt) !== toParisDate(new Date());
+    const oldHighlights = isNewDay ? [] : (existing?.todayHighlights || []);
+
+    const existingCtx = [
+      existing?.frequentThemes?.slice(0, 3).join(', '),
+      oldHighlights.join(' | '),
+    ].filter(Boolean).join('\n');
 
     const { text: analysis } = await callClaude(
-      'Analyse mémoire salon Discord.',
-      `Ch:${sanitizeForJson(channelName)}\nExist:${existingStr}\nRecent:${sanitizeForJson(recentContext.slice(0, 400))}\n\nRetourne JSON compact (valeurs TRÈS courtes):\n{"toneProfile":"3-5 mots max","frequentThemes":["t1","t2"],"heatLevel":5}`,
-      300
+      'Tu notes les moments importants d\'un salon Discord gaming. Très concis.',
+      `Salon: #${sanitizeForJson(channelName)}\nDéjà noté: ${sanitizeForJson(existingCtx.slice(0, 200))}\n\nMessages récents:\n${sanitizeForJson(recentContext.slice(0, 600))}\n\nRetourne JSON strict:\n{"toneProfile":"3-5 mots","frequentThemes":["t1","t2","t3"],"todayHighlights":["Prenom+fait en 8 mots max","..."],"activeUsers":["pseudo1","pseudo2"],"heatLevel":7,"summary":"1 phrase résumé du jour"}`,
+      220,
+      null,
+      'claude-haiku-4-5-20251001'
     );
 
     let parsed;
     try {
       const clean = extractJson(analysis);
-      if (!clean) {
-        pushLog('ERR', `enrichChannelMemory: pas de JSON pour ${channelName}`, 'error');
-        return;
-      }
+      if (!clean) return;
       parsed = JSON.parse(clean);
-    } catch (err) {
-      pushLog('ERR', `enrichChannelMemory: parse échoué ${channelName}`, 'error');
-      return;
-    }
+    } catch { return; }
+
+    // Fusionne anciens + nouveaux moments, déduplique, garde les 5 derniers
+    const merged = [...new Set([...oldHighlights, ...(parsed.todayHighlights || [])])].slice(-5);
 
     await setChannelMemory(channelId, {
       channelName,
       channelTopic,
       toneProfile: parsed.toneProfile || existing?.toneProfile || '',
       frequentThemes: parsed.frequentThemes || existing?.frequentThemes || [],
+      todayHighlights: merged,
+      activeUsersToday: parsed.activeUsers || [],
       insideJokes: existing?.insideJokes || [],
-      heatLevel: parsed.heatLevel || existing?.heatLevel || 5,
+      heatLevel: parsed.heatLevel ?? existing?.heatLevel ?? 5,
       offTopicTolerance: existing?.offTopicTolerance || 5,
-      lastSummary: existing?.lastSummary || '',
+      lastSummary: parsed.summary || existing?.lastSummary || '',
       lastEnrichedAt: new Date(),
     });
-    pushLog('SYS', `🧠 Mémoire #${channelName} compactée`, 'success');
+    pushLog('SYS', `🧠 Mémoire #${channelName} enrichie (${merged.length} moments clés)`, 'success');
   } catch (err) {
     pushLog('ERR', `enrichChannelMemory: ${err.message}`, 'error');
   }
@@ -67,11 +81,12 @@ async function enrichChannelMemory(channelId, channelName, channelTopic, recentC
 function formatChannelMemoryBlock(memory) {
   if (!memory) return '';
   const parts = [];
-  if (memory.toneProfile) parts.push(`Ton habituel du salon : ${memory.toneProfile}`);
-  if (memory.frequentThemes?.length) parts.push(`Sujets récurrents : ${memory.frequentThemes.join(', ')}`);
-  if (memory.insideJokes?.length) parts.push(`Références internes : ${memory.insideJokes.join(', ')}`);
-  if (memory.lastSummary) parts.push(`Derniers sujets : ${memory.lastSummary}`);
-  if (memory.heatLevel) parts.push(`Niveau d'activité du salon : ${memory.heatLevel}/10`);
+  if (memory.toneProfile) parts.push(`Ton : ${memory.toneProfile}`);
+  if (memory.activeUsersToday?.length) parts.push(`Actifs aujourd'hui : ${memory.activeUsersToday.slice(0, 4).join(', ')}`);
+  if (memory.todayHighlights?.length) parts.push(`Moments clés : ${memory.todayHighlights.join(' | ')}`);
+  else if (memory.lastSummary) parts.push(`Résumé : ${memory.lastSummary}`);
+  if (memory.frequentThemes?.length) parts.push(`Thèmes habituels : ${memory.frequentThemes.join(', ')}`);
+  if (memory.insideJokes?.length) parts.push(`Refs internes : ${memory.insideJokes.join(', ')}`);
   if (!parts.length) return '';
   return `\nMémoire du salon :\n${parts.join('\n')}`;
 }
