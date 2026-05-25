@@ -136,8 +136,8 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
   }
   let contextBlock = '';
   try {
-    const msgs = await channel.messages.fetch({ limit: 40 });
-    const ctx = formatContext(msgs, null, 40);
+    const msgs = await channel.messages.fetch({ limit: 15 });
+    const ctx = formatContext(msgs, null, 15);
     if (ctx.length > 20) contextBlock = `\nContexte récent:\n${ctx}`;
   } catch (_) {}
   const crossChannelBlock = await getCrossChannelContext(ch.channelId);
