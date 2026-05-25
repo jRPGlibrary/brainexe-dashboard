@@ -174,14 +174,11 @@ async function handleMentionReply(message, userQuery) {
       // Elle dit pourquoi elle ne répond pas
       try {
         await message.reply(refusal.message);
-        await message.react('😶').catch(() => {});
       } catch (_) {}
       pushLog('SYS', `🚫 Refus émotionnel @mention [${refusal.type}] → ${message.author.username}`);
       return;
     }
     if (refusal.shouldRefuse && refusal.isSilent) {
-      // Cooldown actif mais silencieux — juste une réaction
-      await message.react('⏳').catch(() => {});
       pushLog('SYS', `🚫 Cooldown refus silencieux @mention → ${message.author.username}`);
       return;
     }
@@ -299,16 +296,6 @@ async function handleMentionReply(message, userQuery) {
     const dmCrossContext = await enrichServerWithDmContext(message.author.id, message.author.username).catch(() => '');
     const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}${antiRepeatBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
-    const reactionRoll = Math.random();
-    if (reactionRoll < 0.10) {
-      const emoji = getRandomReaction(userQuery);
-      await message.react(emoji);
-      await updateMemberProfile(message.author.id, message.author.username, userQuery);
-      await applyInteractionToBond(message.author.id, message.author.username, userQuery);
-      pushLog('SYS', `😏 Réaction seule : ${emoji} → ${message.author.username} (retour tardif planifié)`);
-      scheduleDelayedReplyAfterEmoji(message, userQuery, emoji, slot, mood);
-      return;
-    }
     const { getContextualMaxTokens } = require('../utils');
     // 🖼️ Captation images jointes par l'utilisateur
     const userImages = extractImageAttachments(message);
@@ -363,7 +350,6 @@ async function handleMentionReply(message, userQuery) {
     if (userImages.length) pushLog('SYS', `🖼️ ${userImages.length} image(s) lues (mention ${message.author.username})`);
     await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'mention_reply');
     const replyResolved = resolveMentionsInText(reply, message.guild);
-    if (reactionRoll < 0.35) await message.react(getRandomReaction(userQuery + reply)).catch(() => {});
 
     const isConsoleFocused = CONSOLE_ONLY_KEYWORDS.some(kw => lowerQuery.includes(kw));
     let steamBlock = '';

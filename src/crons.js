@@ -102,46 +102,7 @@ function startConvCron() {
     if (Math.random() < baseProba) replyToConversations();
   }, { timezone: 'Europe/Paris' });
 
-  // Scan réactif — lit les conversations récentes et réagit avec des emojis (presence passive)
-  reactionScanCron = cron.schedule('*/20 * * * *', async () => {
-    const cfg = shared.botConfig.conversations;
-    if (!cfg.enabled) return;
-    const slot = getCurrentSlot();
-    if (slot.maxConv === 0 || !slot_is_active(getParisHour())) return;
-    const vibe = getDailyVibe();
-    // Moins actif si vibe introvert/lazy, plus si chatty/excited
-    if (Math.random() > vibe.chattiness * 0.45) return;
-    try {
-      const active = cfg.channels.filter(c => c.enabled);
-      if (!active.length) return;
-      const ch = active[Math.floor(Math.random() * active.length)];
-      const guild = await shared.discord.guilds.fetch(GUILD_ID);
-      await guild.channels.fetch();
-      const channel = guild.channels.cache.get(ch.channelId);
-      if (!channel) return;
-      const msgs = await channel.messages.fetch({ limit: 30 });
-      const botId = shared.discord.user?.id;
-      const now = Date.now();
-      const WINDOW = 25 * 60 * 1000; // messages des 25 dernières minutes
-      const candidates = [...msgs.values()].filter(m =>
-        !m.author.bot &&
-        (now - m.createdTimestamp) < WINDOW &&
-        m.content?.length > 15 &&
-        !m.reactions?.cache?.some(r => r.me)
-      );
-      if (!candidates.length) return;
-      // Réagit à 1 message (parfois 2 si vibe excited/chatty)
-      const maxReact = (vibe.name === 'excited' || vibe.name === 'chatty') && Math.random() < 0.35 ? 2 : 1;
-      const toReact = candidates.slice(0, maxReact);
-      for (const msg of toReact) {
-        await msg.react(getRandomReaction(msg.content)).catch(() => {});
-      }
-      if (toReact.length) {
-        pushLog('SYS', `👁️ Scan réactif : ${toReact.length} réaction(s) → #${ch.channelName}`);
-        shared.lastAnyBotPostTime = Date.now();
-      }
-    } catch (_) {}
-  }, { timezone: 'Europe/Paris' });
+  // Scan réactif désactivé (économie de tokens)
 
   // Events flottants : morning/lunch/goodnight/nightWakeup déclenchés autour d'une heure aléatoire du jour
   floatingEventsCron = cron.schedule('*/2 * * * *', () => {

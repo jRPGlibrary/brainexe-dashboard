@@ -57,6 +57,7 @@ async function postMorningGreeting() {
     await simulateTyping(channel, 800 + Math.random() * 1200);
     await channel.send(contentResolved);
     shared.lastAnyBotPostTime = Date.now();
+    shared.goodnightSent = false;
     await updateConvStats('1481028189680570421');
     pushLog('SYS', `☕ Morning greeting posté (vibe ${vibe.name})`, 'success');
   } catch (err) { pushLog('ERR', `Morning échoué : ${err.message}`, 'error'); }
@@ -115,6 +116,7 @@ async function postGoodnight() {
     await simulateTyping(channel, 600);
     await channel.send(contentResolved);
     shared.lastAnyBotPostTime = Date.now();
+    shared.goodnightSent = true;
     pushLog('SYS', `🌙 Goodnight posté`);
   } catch (err) { pushLog('ERR', `Goodnight échoué : ${err.message}`, 'error'); }
 }
