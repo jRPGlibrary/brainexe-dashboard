@@ -401,7 +401,7 @@ async function replyToConversations() {
       try {
         ({ text: reply } = await callClaudeWithTools(
           dynamicPrompt,
-          [{ role: 'user', content: `${lastMsg.author.username} parle de : "${msgContent}"\nSi un outil est utile, utilise-le. Après la recherche : réponds en 1-2 phrases max, ton Discord naturel, comme si t'en parlais à quelqu'un. Zéro titre, zéro section, zéro lien, zéro ---.` }],
+          [{ role: 'user', content: `${lastMsg.author.username} parle de : "${msgContent}"\nSi un outil est utile, utilise-le. APRÈS OUTIL : parle des infos comme Brainee — ton oral, 2-4 phrases si le sujet le mérite. Réagis d'abord si t'as un avis, puis partage les faits clés à ta façon. Zéro header, zéro section, zéro ---, zéro liste à puces, zéro lien (sauf si demandé). Jamais "selon mes recherches" ou "j'ai trouvé".` }],
           availableTools,
           gamingToolHandler,
           { maxTokens: adjustMaxTokens(300), cachedPrefix: BOT_PERSONA_CONVERSATION, model: 'claude-haiku-4-5-20251001' }

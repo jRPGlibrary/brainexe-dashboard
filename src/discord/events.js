@@ -107,6 +107,9 @@ const POST_KEYWORDS = [
   'à surveiller', 'à ne pas manquer', 'à venir', 'les meilleurs', 'meilleurs jeux',
 ];
 
+// Instruction de synthèse identique dans tous les chemins tool use (DM, mention, proactif)
+const TOOL_SYNTHESIS_RULE = `APRÈS OUTIL : parle des infos comme Brainee — ton oral, 2-4 phrases si le sujet le mérite. Réagis d'abord si t'as un avis, puis partage les faits clés à ta façon. Zéro header, zéro section, zéro ---, zéro liste à puces, zéro lien (sauf si demandé explicitement). Jamais "selon mes recherches" ou "j'ai trouvé" — tu parles juste de ce que tu sais.`;
+
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
   shared.discord.on(Events.ChannelDelete, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon supprimé : ${ch.name}`); });
@@ -328,7 +331,7 @@ async function handleMentionReply(message, userQuery) {
 
     const userTextPrompt = isPostRequest
       ? `${message.author.username} demande : "${userQuery}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord (**, [texte](url)). Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
-      : `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\nRéponds court (1-2 phrases) sauf si le sujet mérite vraiment plus. Si tu utilises un outil : synthétise naturellement — pas de titres, pas de sections, pas de ---, pas de liens (sauf si on te les demande explicitement). Parle-en comme t'en causerais à quelqu'un en vrai.${replyRefContext}`;
+      : `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\n${TOOL_SYNTHESIS_RULE}${replyRefContext}`;
     const userContent = buildMultimodalUserContent(userTextPrompt, userImages);
     const availableTools = getAvailableTools();
     const isNewsQuery = availableTools.length > 0
@@ -551,7 +554,7 @@ function registerMessageHandlers() {
       const dmMaxTokens = adjustMaxTokens(Math.floor(_baseDmTokens * dmBudgetProfile.maxTokensMult));
       const userTextOnlyPrompt = dmIsPostRequest
         ? `${message.author.username} demande : "${enrichedUserContent || userContent}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord. Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
-        : `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"\nSi tu utilises un outil : synthétise ce que t'as trouvé naturellement, en phrases courtes, ton DM normal. Pas de titres, pas de sections, pas de ---, pas de liens (sauf si demandé explicitement). Raconte-le comme si t'en parlais à quelqu'un que tu connais.`;
+        : `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"\n${TOOL_SYNTHESIS_RULE}`;
       const userPrompt = buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
       // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
       await simulateTyping(message.channel, 500 + Math.random() * 500);
