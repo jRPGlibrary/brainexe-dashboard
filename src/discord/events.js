@@ -36,9 +36,7 @@ const { getEmotionCombosBlock } = require('../bot/emotionCombos');
 const {
   getActiveWindow, detectSupport, recordSupportFromMember, getVulnerabilityBlock,
 } = require('../bot/vulnerability');
-const { getRandomReaction } = require('../bot/reactions');
 const { formatContext, extractRecentBraineeWords } = require('../features/context');
-const { scheduleDelayedReplyAfterEmoji } = require('../features/delayedReply');
 const { LIGHT_TAG_CLAUSE } = require('../features/greetings');
 const { scheduleDiscordToFile } = require('./sync');
 const { sendWelcomeMessage } = require('../features/welcome');

@@ -8,7 +8,6 @@ const {
   shouldSkipConvCron, rollImpulse, popAllPendingRelances,
 } = require('./bot/adaptiveSchedule');
 const { GUILD_ID } = require('./config');
-const { getRandomReaction } = require('./bot/reactions');
 const { postRandomConversation, replyToConversations } = require('./features/conversations');
 const { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup, postRelanceMention } = require('./features/greetings');
 const { runDriftCheck } = require('./features/drift');

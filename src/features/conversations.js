@@ -14,7 +14,7 @@ const { getDailyVibe, shouldSkipConvCron } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock, getModeInjectionForChannel } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
 const { sanitizeForJson, getContextualMaxTokens } = require('../utils');
-const { getRandomReaction, shouldCreateThread } = require('../bot/reactions');
+const { shouldCreateThread } = require('../bot/reactions');
 const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
   updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
@@ -22,7 +22,6 @@ const {
 const { ensureMemberBond, applyInteractionToBond, describeBond, getBondToneInstruction } = require('../db/memberBonds');
 const { NO_TAG_CLAUSE, LIGHT_TAG_CLAUSE } = require('./greetings');
 const { formatContext } = require('./context');
-const { scheduleDelayedSpontaneousReply } = require('./delayedReply');
 const {
   getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded,
   updateConvStats, getRankedChannels, getGeneralChannel,
