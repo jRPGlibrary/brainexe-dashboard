@@ -52,6 +52,7 @@ const { isAbsent } = require('../features/absence');
 const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { checkEmotionalRefusal, isInRefusalCooldown } = require('../features/emotionalRefusal');
 const { checkAndHandleSpam } = require('../features/spamDetector');
+const { getBudgetProfile } = require('../ai/budget');
 const { handleHangmanDm, isHangmanActive, launchHangmanFromDm } = require('../features/hangman');
 const { logMemberJoin, logMemberLeave, logMemberBan } = require('../features/modLogger');
 const { analyzeConviction } = require('../features/conviction');
@@ -153,8 +154,9 @@ async function handleReaction(reaction, user, add) {
 async function handleMentionReply(message, userQuery) {
   try {
     const slot = getCurrentSlot();
-    const fetched = await message.channel.messages.fetch({ limit: 20 });
-    const contextLines = formatContext(fetched, message.id, 15);
+    const budgetProfile = getBudgetProfile();
+    const fetched = await message.channel.messages.fetch({ limit: Math.max(budgetProfile.ctxLimit + 2, 5) });
+    const contextLines = formatContext(fetched, message.id, budgetProfile.ctxLimit);
     const profile = await getMemberProfile(message.author.id);
     const toneInstruction = getToneInstruction(profile, message.author.username);
     const mood = refreshDailyMood();
@@ -310,9 +312,8 @@ async function handleMentionReply(message, userQuery) {
     const imgInstruction = userImages.length ? getImageCommentInstruction(userImages.length) : '';
     const lowerQuery = userQuery.toLowerCase();
     const isPostRequest = POST_KEYWORDS.some(kw => lowerQuery.includes(kw));
-    const mentionMaxTokens = isPostRequest
-      ? adjustMaxTokens(900)
-      : adjustMaxTokens(getContextualMaxTokens(userQuery, { defaultShort: 110, extended: 240 }));
+    const _baseMentionTokens = isPostRequest ? 900 : getContextualMaxTokens(userQuery, { defaultShort: 110, extended: 240 });
+    const mentionMaxTokens = adjustMaxTokens(Math.floor(_baseMentionTokens * budgetProfile.maxTokensMult));
 
     // Contexte du message auquel répond l'utilisateur (reply Discord)
     let replyRefContext = '';
@@ -345,16 +346,16 @@ async function handleMentionReply(message, userQuery) {
           [{ role: 'user', content: userContent }],
           getAvailableTools(),
           gamingToolHandler,
-          { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION, model: 'claude-haiku-4-5-20251001' }
+          { maxTokens: mentionMaxTokens, cachedPrefix: BOT_PERSONA_CONVERSATION, model: budgetProfile.model }
         ));
         usedToolCall = true;
         pushLog('SYS', `🔍 Tool use Tavily → @mention ${message.author.username}`, 'success');
       } catch (toolErr) {
         pushLog('DBG', `Tool use échoué, fallback callClaude: ${toolErr.message}`, 'debug');
-        ({ text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION));
+        ({ text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION, budgetProfile.model));
       }
     } else {
-      ({ text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION));
+      ({ text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION, budgetProfile.model));
     }
     if (userImages.length) pushLog('SYS', `🖼️ ${userImages.length} image(s) lues (mention ${message.author.username})`);
     await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'mention_reply');
@@ -545,9 +546,9 @@ function registerMessageHandlers() {
       const dmAvailableTools = getAvailableTools();
       const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
       const dmIsPostRequest = POST_KEYWORDS.some(kw => dmQueryText.includes(kw));
-      const dmMaxTokens = dmIsPostRequest
-        ? adjustMaxTokens(900)
-        : adjustMaxTokens(getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true }));
+      const dmBudgetProfile = getBudgetProfile();
+      const _baseDmTokens = dmIsPostRequest ? 900 : getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true });
+      const dmMaxTokens = adjustMaxTokens(Math.floor(_baseDmTokens * dmBudgetProfile.maxTokensMult));
       const userTextOnlyPrompt = dmIsPostRequest
         ? `${message.author.username} demande : "${enrichedUserContent || userContent}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord. Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
         : `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"`;
@@ -569,16 +570,16 @@ function registerMessageHandlers() {
             [{ role: 'user', content: userPrompt }],
             dmAvailableTools,
             gamingToolHandler,
-            { maxTokens: dmMaxTokens, cachedPrefix: dmPersona, model: 'claude-haiku-4-5-20251001' }
+            { maxTokens: dmMaxTokens, cachedPrefix: dmPersona, model: dmBudgetProfile.model }
           ));
           dmUsedToolCall = true;
           pushLog('SYS', `🔍 Tool use Tavily → DM ${message.author.username}`, 'success');
         } catch (toolErr) {
           pushLog('DBG', `Tool use DM échoué, fallback: ${toolErr.message}`, 'debug');
-          ({ text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona));
+          ({ text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona, dmBudgetProfile.model));
         }
       } else {
-        ({ text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona));
+        ({ text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona, dmBudgetProfile.model));
       }
       if (dmImages.length) pushLog('SYS', `🖼️ ${dmImages.length} image(s) lues (DM ${message.author.username})`);
       const hasPenduTrigger = rawReply.includes('[PENDU]');

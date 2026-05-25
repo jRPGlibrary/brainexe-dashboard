@@ -1,6 +1,7 @@
 const { ANTHROPIC_API_KEY } = require('../config');
 const { sanitizeForJson } = require('../utils');
 const shared = require('../shared');
+const { trackCost } = require('./budget');
 
 const TIMEOUT_MS = 25000;
 const MAX_RETRIES = 2;
@@ -90,15 +91,14 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
       shared.claudeHealth.lastSuccess = Date.now();
       shared.claudeHealth.lastLatencyMs = latency;
       shared.claudeHealth.consecutiveErrors = 0;
-      return {
-        text: data.content[0].text.trim(),
-        usage: {
-          inputTokens: data.usage?.input_tokens || 0,
-          outputTokens: data.usage?.output_tokens || 0,
-          cacheCreationInputTokens: data.usage?.cache_creation_input_tokens || 0,
-          cacheReadInputTokens: data.usage?.cache_read_input_tokens || 0,
-        },
+      const usage = {
+        inputTokens: data.usage?.input_tokens || 0,
+        outputTokens: data.usage?.output_tokens || 0,
+        cacheCreationInputTokens: data.usage?.cache_creation_input_tokens || 0,
+        cacheReadInputTokens: data.usage?.cache_read_input_tokens || 0,
       };
+      trackCost(usage.inputTokens, usage.outputTokens, model);
+      return { text: data.content[0].text.trim(), usage };
     } catch (err) {
       clearTimeout(timer);
       lastErr = err;
@@ -198,6 +198,7 @@ async function callClaudeWithTools(systemPrompt, userMessages, tools, toolHandle
         shared.claudeHealth.lastSuccess = Date.now();
         shared.claudeHealth.lastLatencyMs = latency;
         shared.claudeHealth.consecutiveErrors = 0;
+        trackCost(totalUsage.inputTokens, totalUsage.outputTokens, model);
         return { text, usage: totalUsage };
       }
 

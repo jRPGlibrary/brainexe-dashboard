@@ -38,6 +38,7 @@ const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngageme
 const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossChannelMem');
 const { isAbsent, maybeStartAbsence } = require('./absence');
 const { record: recordChannelPost, getLastPost, isOnCooldown, isOverLimit, COOLDOWN_MS: CHANNEL_COOLDOWN_MS, MAX_POSTS } = require('../bot/channelPostTracker');
+const { getBudgetMode } = require('../ai/budget');
 
 const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
@@ -176,6 +177,8 @@ async function postRandomConversation() {
   if (getConvDailyCount() >= getConvMaxPerDay()) return;
   if (Date.now() - shared.lastAnyBotPostTime < getSlotIntervalMs(slot)) return;
   if (!ANTHROPIC_API_KEY) return;
+  const _budgetMode = getBudgetMode();
+  if (_budgetMode !== 'normal') { pushLog('SYS', `💰 Conv skip — budget ${_budgetMode}`); return; }
 
   if (isAbsent()) return;
 

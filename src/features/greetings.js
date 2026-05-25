@@ -10,6 +10,7 @@ const { simulateTyping, resolveMentionsInText } = require('../bot/messaging');
 const { updateConvStats, getQuietestChannel } = require('./convStats');
 const { sanitizeForJson } = require('../utils');
 const { formatContext } = require('./context');
+const { getBudgetMode } = require('../ai/budget');
 const {
   getMorningSeed, getGoodnightSeed, getNightWakeupSeed, getLunchBackSeed,
 } = require('./greetingVariants');
@@ -32,6 +33,7 @@ const DAY_CONTEXTS = {
 async function postMorningGreeting() {
   const cfg = shared.botConfig.conversations;
   if (!cfg.enabled || !ANTHROPIC_API_KEY) return;
+  const _bm = getBudgetMode(); if (_bm !== 'normal') { pushLog('SYS', `💰 Morning skip — budget ${_bm}`); return; }
   try {
     const guild = await shared.discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
@@ -63,6 +65,7 @@ async function postMorningGreeting() {
 async function postLunchBack() {
   const cfg = shared.botConfig.conversations;
   if (!cfg.enabled || !ANTHROPIC_API_KEY) return;
+  const _bm = getBudgetMode(); if (_bm !== 'normal') { pushLog('SYS', `💰 Lunch skip — budget ${_bm}`); return; }
   const ch = getQuietestChannel();
   if (!ch) return;
   try {
@@ -91,6 +94,7 @@ async function postLunchBack() {
 async function postGoodnight() {
   const cfg = shared.botConfig.conversations;
   if (!cfg.enabled || !ANTHROPIC_API_KEY) return;
+  const _bm = getBudgetMode(); if (_bm !== 'normal') { pushLog('SYS', `💰 Goodnight skip — budget ${_bm}`); return; }
   const ids = ['1481028189680570421', '1481028244500385946', '1481028247415296231'];
   const targetId = ids[Math.floor(Math.random() * ids.length)];
   try {
@@ -118,6 +122,7 @@ async function postGoodnight() {
 async function postNightWakeup() {
   const cfg = shared.botConfig.conversations;
   if (!cfg.enabled || !ANTHROPIC_API_KEY) return;
+  const _bm = getBudgetMode(); if (_bm !== 'normal') { pushLog('SYS', `💰 Wakeup skip — budget ${_bm}`); return; }
   try {
     const guild = await shared.discord.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
