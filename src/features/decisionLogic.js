@@ -33,6 +33,11 @@ async function shouldRespond(slot, vibe, mentalLoad, messageContent, isUrgent = 
       return { should: true, reason: 'mention_priority' };
     }
 
+    // Goodnight posté — plus de réponses spontanées jusqu'au matin
+    if (shared.goodnightSent) {
+      return { should: false, reason: 'goodnight_sent' };
+    }
+
     // E3 — Engagement actif : bloc total (non-mentions)
     if (shared.commitmentUntil && Date.now() < shared.commitmentUntil) {
       return { should: false, reason: 'commitment_active', message: 'engagement en cours' };

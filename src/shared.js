@@ -20,4 +20,5 @@ module.exports = {
   commitmentUntil: null,
   commitmentReason: null,
   pendingMentionUntil: null,
+  goodnightSent: false,
 };

@@ -265,6 +265,7 @@ async function replyToConversations() {
   if (!cfg.enabled || !cfg.canReply || !ANTHROPIC_API_KEY) return;
   const slot = getCurrentSlot();
   if (slot.maxConv === 0) return;
+  if (shared.goodnightSent) return;
   if (isAbsent()) return;
   const _skipReplyProba = { wakeup: 0.10, active: 0.20, lunch: 0.25, productive: 0.25, transition: 0.30, gaming: 0.40, latenight: 0.50 };
   const _replySkip = _skipReplyProba[slot.status] ?? 0.30;
@@ -335,9 +336,6 @@ async function replyToConversations() {
 
     if (!decision.should) {
       pushLog('SYS', `🙅 Skip reply (${decision.reason}): ${decision.message ? decision.message : ''}`);
-      if (decision.message && Math.random() < 0.3) {
-        try { await lastMsg.react('😴').catch(() => {}); } catch (_) {}
-      }
       return;
     }
 
@@ -373,18 +371,6 @@ async function replyToConversations() {
     const crossReplyBlock = await getCrossChannelContext(ch.channelId);
     const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
 
-    const reactionRoll = Math.random();
-    if (reactionRoll < 0.10) {
-      const emoji = getRandomReaction(msgContent);
-      await lastMsg.react(emoji);
-      shared.lastAnyBotPostTime = Date.now();
-      await updateConvStats(ch.channelId);
-      await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
-      await applyInteractionToBond(lastMsg.author.id, lastMsg.author.username, msgContent);
-      pushLog('SYS', `😏 Réaction seule → ${lastMsg.author.username} (retour tardif planifié)`);
-      scheduleDelayedSpontaneousReply(lastMsg, ch, slot, mood, emoji);
-      return;
-    }
     const availableTools = getAvailableTools();
     const lowerMsgContent = msgContent.toLowerCase();
     const INFO_REQUEST_KEYWORDS = [
@@ -414,7 +400,6 @@ async function replyToConversations() {
       ({ text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\nSois naturelle. Court par défaut (1-2 phrases). Plus long uniquement si vraiment utile.`, replyMaxTokens, BOT_PERSONA_CONVERSATION));
     }
     const replyResolved = resolveMentionsInText(reply, guild);
-    if (reactionRoll < 0.30) await lastMsg.react(getRandomReaction(msgContent + reply)).catch(() => {});
     const { THREAD_TRIGGERS } = require('../bot/keywords');
     const lowerReply = replyResolved.toLowerCase();
     const lowerMsg = msgContent.toLowerCase();
