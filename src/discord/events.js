@@ -66,6 +66,7 @@ const {
   checkPendingDmProposal, consumeDmProposal, openAndSendDm,
 } = require('../features/dmOutreach');
 const { recordEngagement } = require('../db/messageEngagement');
+const { recordInteraction, triggerSummaryIfNeeded, getConvSummary } = require('../db/conversationSummaries');
 
 const NEWS_KEYWORDS = [
   'actu', 'news', 'nouvelles', 'dernier', 'dernière', 'dernières', 'récent', 'récente',
@@ -107,6 +108,8 @@ const POST_KEYWORDS = [
 
 // Instruction de synthèse identique dans tous les chemins tool use (DM, mention, proactif)
 const TOOL_SYNTHESIS_RULE = `APRÈS OUTIL : parle des infos comme Brainee — ton oral, 2-4 phrases si le sujet le mérite. Réagis d'abord si t'as un avis, puis partage les faits clés à ta façon. Zéro header, zéro section, zéro ---, zéro liste à puces, zéro lien (sauf si demandé explicitement). Jamais "selon mes recherches" ou "j'ai trouvé" — tu parles juste de ce que tu sais.`;
+
+const DISCORD_LENGTH_CLAUSE = `LONGUEUR : adapte au message reçu. 1 phrase si c'est casual/court, 2-3 si le sujet mérite. Jamais de liste structurée ou de paragraphes formatés en chat Discord. Le budget token est un maximum — pas un objectif à remplir.`;
 
 function registerDiscordEvents() {
   shared.discord.on(Events.ChannelCreate, ch => { if (ch.guildId !== GUILD_ID) return; scheduleDiscordToFile(`Salon créé : ${ch.name}`); });
@@ -246,6 +249,9 @@ async function handleMentionReply(message, userQuery) {
     const memberStories = await getMemberStories(message.author.id);
     const memberStoriesBlock = formatStoriesBlock(memberStories, message.author.username);
 
+    // 📝 Résumé des sessions précédentes avec cette personne (v0.17.0)
+    const convSummaryBlock = await getConvSummary(message.author.id, 'server').catch(() => '');
+
     // 💎 VIP tier (v0.8.0)
     const vipTier = getVipTier(bond);
     const vipBlock = getVipBlockForPrompt(vipTier, bond, message.author.username);
@@ -292,7 +298,7 @@ async function handleMentionReply(message, userQuery) {
     const temporalBlock = getTemporalBlock();
     // 🔗 Contexte DM récents avec cette personne pour faire le lien serveur ↔ DM
     const dmCrossContext = await enrichServerWithDmContext(message.author.id, message.author.username).catch(() => '');
-    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}${antiRepeatBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
+    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}${antiRepeatBlock}${convSummaryBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\n${DISCORD_LENGTH_CLAUSE}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
 
     const { getContextualMaxTokens } = require('../utils');
     // 🖼️ Captation images jointes par l'utilisateur
@@ -300,7 +306,7 @@ async function handleMentionReply(message, userQuery) {
     const imgInstruction = userImages.length ? getImageCommentInstruction(userImages.length) : '';
     const lowerQuery = userQuery.toLowerCase();
     const isPostRequest = POST_KEYWORDS.some(kw => lowerQuery.includes(kw));
-    const _baseMentionTokens = isPostRequest ? 900 : getContextualMaxTokens(userQuery, { defaultShort: 110, extended: 240 });
+    const _baseMentionTokens = isPostRequest ? 900 : getContextualMaxTokens(userQuery, { defaultShort: 90, extended: 185 });
     const mentionMaxTokens = adjustMaxTokens(Math.floor(_baseMentionTokens * budgetProfile.maxTokensMult));
 
     // Contexte du message auquel répond l'utilisateur (reply Discord)
@@ -367,6 +373,11 @@ async function handleMentionReply(message, userQuery) {
     await sendHuman(message.channel, replyResolved + youtubeBlock + steamBlock, message, { bond });
     await updateMemberProfile(message.author.id, message.author.username, userQuery);
     const updatedBond = await applyInteractionToBond(message.author.id, message.author.username, userQuery);
+
+    // 📝 Résumé conversationnel (async, non-bloquant)
+    recordInteraction(message.author.id, 'user', userQuery, 'server').catch(() => {});
+    recordInteraction(message.author.id, 'brainee', reply, 'server').catch(() => {});
+    triggerSummaryIfNeeded(message.author.id, message.author.username, 'server').catch(() => {});
 
     // v0.12.0 : Vérifier la promotion au lien singulier (stade 5) après chaque interaction
     if (updatedBond && updatedBond.baseAttachment > 83) {
@@ -477,6 +488,9 @@ function registerMessageHandlers() {
       // 🌐 Mémoire narrative du serveur — pour faire le lien DM ↔ vie serveur
       const dmNarrativeBlock = await getNarrativeContext().catch(() => '');
 
+      // 📝 Résumé des sessions précédentes en DM (v0.17.0)
+      const dmConvSummaryBlock = await getConvSummary(message.author.id, 'dm').catch(() => '');
+
       // 💎 VIP tier
       const vipTier = getVipTier(bond);
       const vipBlock = getVipBlockForPrompt(vipTier, bond, message.author.username);
@@ -528,13 +542,13 @@ function registerMessageHandlers() {
       const dmTemporalBlock = getTemporalBlock();
       const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
       const penduInstruction = `\n\n🎮 PENDU : Tu peux proposer spontanément une partie de pendu RPG/JRPG, ou accepter si l'utilisateur en demande une. Si tu décides de lancer le jeu, inclus exactement \`[PENDU]\` sur une ligne seule dans ta réponse — le jeu démarre automatiquement. N'explique pas ce marker, fais juste comme si tu lançais la partie naturellement.`;
-      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}\n\n${historyBlock ? `Historique de vos échanges précédents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.${dmImgInstruction}${penduInstruction}`;
+      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}${dmConvSummaryBlock}\n\n${historyBlock ? `Échanges récents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.\n${DISCORD_LENGTH_CLAUSE}${dmImgInstruction}${penduInstruction}`;
       const { getContextualMaxTokens } = require('../utils');
       const dmAvailableTools = getAvailableTools();
       const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
       const dmIsPostRequest = POST_KEYWORDS.some(kw => dmQueryText.includes(kw));
       const dmBudgetProfile = getBudgetProfile();
-      const _baseDmTokens = dmIsPostRequest ? 900 : getContextualMaxTokens(userContent || '', { defaultShort: 130, extended: 320, isDM: true });
+      const _baseDmTokens = dmIsPostRequest ? 900 : getContextualMaxTokens(userContent || '', { defaultShort: 110, extended: 220, isDM: true });
       const dmMaxTokens = adjustMaxTokens(Math.floor(_baseDmTokens * dmBudgetProfile.maxTokensMult));
       const userTextOnlyPrompt = dmIsPostRequest
         ? `${message.author.username} demande : "${enrichedUserContent || userContent}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord. Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
@@ -608,6 +622,12 @@ function registerMessageHandlers() {
       }
       await appendDmMessage(message.author.id, message.author.username, 'user', userContent);
       await appendDmMessage(message.author.id, message.author.username, 'assistant', reply);
+
+      // 📝 Résumé conversationnel DM (async, non-bloquant)
+      recordInteraction(message.author.id, 'user', userContent, 'dm').catch(() => {});
+      recordInteraction(message.author.id, 'brainee', reply, 'dm').catch(() => {});
+      triggerSummaryIfNeeded(message.author.id, message.author.username, 'dm').catch(() => {});
+
       await updateMemberProfile(message.author.id, message.author.username, userContent);
       await applyInteractionToBond(message.author.id, message.author.username, userContent);
 

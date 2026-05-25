@@ -34,6 +34,7 @@ const { tryPromoteSingularBond } = require('./features/attachmentStages');
 const { setSlotPresence, postSlotTransitionMessage } = require('./features/presenceManager');
 const { sendOwnerBriefing } = require('./features/ownerBriefing');
 const { compactMemory, getSmartMemory } = require('./db/intelligentMemory');
+const { cleanupOldPending } = require('./db/conversationSummaries');
 
 let convCron = null, replyCron = null, floatingEventsCron = null;
 let moodResetCron = null, driftCron = null, relanceCron = null;
@@ -298,6 +299,12 @@ function startConvCron() {
   cron.schedule('0 20 * * 0', () => {
     pushLog('SYS', `💡 Owner briefing hebdo déclenché`);
     sendOwnerBriefing().catch(err => pushLog('ERR', `ownerBriefing: ${err.message}`, 'error'));
+  }, { timezone: 'Europe/Paris' });
+
+  // Nettoyage hebdo des pendingMessages anciens (conversationSummaries) — dimanche 4h
+  cron.schedule('0 4 * * 0', () => {
+    cleanupOldPending().catch(err => pushLog('ERR', `convSummary cleanup: ${err.message}`, 'error'));
+    pushLog('SYS', `🗑️ Nettoyage résumés conv anciens (pendingMessages > 7j)`);
   }, { timezone: 'Europe/Paris' });
 
   // Compaction mémoire hebdo — dimanche 3h
