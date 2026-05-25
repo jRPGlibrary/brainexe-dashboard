@@ -273,7 +273,7 @@ function startConvCron() {
 
       const prompt = `Analyse ces 50 derniers messages Discord et identifie 3-4 "faits marquants" ou arcs narratifs intéressants — des éléments qui définissent la dynamique du groupe ou les tendances émergentes.\n\nMessages:\n${msgSummary}\n\nRetourne un JSON array avec objets {title, description, importance (1-5)}. Sois bref, ne repère que les vrais patterns.`;
 
-      let { text: arcsJson } = await callClaude('', prompt, 600);
+      let { text: arcsJson } = await callClaude('', prompt, 600, null, 'claude-haiku-4-5-20251001');
       arcsJson = arcsJson.replace(/```json|```/g, '').trim();
 
       try {

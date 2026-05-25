@@ -53,7 +53,7 @@ Ton message doit :
 - max 200 mots
 - ton conversationnel, comme si t'écrivais un vrai message privé à Brain`;
 
-    const { text } = await callClaude(prompt, 'Rédige le DM de propositions pour Brain.', 300, BOT_PERSONA_DM);
+    const { text } = await callClaude(prompt, 'Rédige le DM de propositions pour Brain.', 300, BOT_PERSONA_DM, 'claude-haiku-4-5-20251001');
 
     const dm = await owner.createDM();
     await dm.send(`💡 **Idées de la semaine**\n\n${text}`);
