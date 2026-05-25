@@ -387,7 +387,15 @@ async function replyToConversations() {
     }
     const availableTools = getAvailableTools();
     const lowerMsgContent = msgContent.toLowerCase();
-    const isGamingTopic = availableTools.length > 0 && GAMING_KEYWORDS.some(kw => lowerMsgContent.includes(kw));
+    const INFO_REQUEST_KEYWORDS = [
+      'tu sais', 'tu connais', "c'est quoi", 'dis-moi', 'parle-moi',
+      'infos sur', 'info sur', 'ce que tu sais', 'tu peux dire',
+      'que sais-tu', 'dis moi', 'parle moi', 'tu peux me dire',
+    ];
+    const isGamingTopic = availableTools.length > 0 && (
+      GAMING_KEYWORDS.some(kw => lowerMsgContent.includes(kw))
+      || INFO_REQUEST_KEYWORDS.some(kw => lowerMsgContent.includes(kw))
+    );
     let reply;
     if (isGamingTopic) {
       try {

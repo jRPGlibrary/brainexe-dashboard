@@ -398,11 +398,12 @@ async function gamingToolHandler(toolName, toolInput) {
       const results = await searchGamingNews(toolInput.query || '');
       if (!results.length) return "Aucun résultat dans les sources indexées. Le jeu ou la news peut exister ailleurs — utilise rechercher_jeu_plateforme pour une recherche ouverte sur tout le web.";
 
-      return results.map((r, i) => {
+      const header = '[DONNÉES BRUTES — synthétise naturellement, NE RÉPÈTE PAS les URLs sauf si demandé]\n';
+      return header + results.map((r, i) => {
         const date = r.publishedDate
           ? ` (${new Date(r.publishedDate).toLocaleDateString('fr-FR')})`
           : '';
-        return `${i + 1}. ${r.title}${date}\n${r.snippet}\nURL: ${r.url}`;
+        return `${i + 1}. ${r.title}${date}\n${r.snippet}`;
       }).join('\n\n');
     } catch (err) {
       return JSON.stringify({
@@ -418,17 +419,17 @@ async function gamingToolHandler(toolName, toolInput) {
       const games = await searchIGDB(toolInput.game_name || '');
       if (!games.length) return `Aucun jeu trouvé dans la base IGDB pour "${toolInput.game_name}". IGDB peut manquer des titres récents, annoncés ou indépendants — utilise rechercher_jeu_plateforme pour chercher sur Steam, PS Store, Xbox, Nintendo et le web complet.`;
 
-      return games.map(g => {
-        const lines = [`🎮 **${g.name}**`];
-        if (g.releaseDate) lines.push(`📅 Sortie : ${g.releaseDate}`);
-        if (g.platforms.length) lines.push(`🖥️ Plateformes : ${g.platforms.join(', ')}`);
-        if (g.genres.length) lines.push(`🏷️ Genres : ${g.genres.join(', ')}`);
-        if (g.developers.length) lines.push(`🏗️ Développeur : ${g.developers.join(', ')}`);
-        if (g.rating) lines.push(`⭐ Note : ${g.rating}`);
-        if (g.summary) lines.push(`📝 ${g.summary}`);
-        lines.push(`🔗 ${g.url}`);
-        return lines.join('\n');
-      }).join('\n\n---\n\n');
+      const header = '[DONNÉES BRUTES — synthétise naturellement, NE RÉPÈTE PAS les URLs dans ta réponse sauf si demandé]\n';
+      return header + games.map(g => {
+        const parts = [`Jeu : ${g.name}`];
+        if (g.releaseDate) parts.push(`Sortie : ${g.releaseDate}`);
+        if (g.platforms.length) parts.push(`Plateformes : ${g.platforms.join(', ')}`);
+        if (g.genres.length) parts.push(`Genres : ${g.genres.join(', ')}`);
+        if (g.developers.length) parts.push(`Développeur : ${g.developers.join(', ')}`);
+        if (g.rating) parts.push(`Note : ${g.rating}`);
+        if (g.summary) parts.push(`Résumé : ${g.summary}`);
+        return parts.join(' | ');
+      }).join('\n');
     } catch (err) {
       return JSON.stringify({
         error: err.message,
@@ -443,7 +444,8 @@ async function gamingToolHandler(toolName, toolInput) {
       const results = await searchGamingHelp(toolInput.query || '');
       if (!results.length) return 'Aucun guide ou soluce trouvé pour cette recherche.';
 
-      return results.map((r, i) =>
+      const header = '[DONNÉES BRUTES — synthétise naturellement, NE RÉPÈTE PAS les URLs sauf si demandé]\n';
+      return header + results.map((r, i) =>
         `${i + 1}. [${r.source}] ${r.title}\n${r.snippet}`
       ).join('\n\n');
     } catch (err) {
@@ -460,8 +462,9 @@ async function gamingToolHandler(toolName, toolInput) {
       const results = await searchGoogleGaming(toolInput.query || '');
       if (!results.length) return 'Aucun résultat Google CSE trouvé pour cette recherche.';
 
-      return results.map((r, i) =>
-        `${i + 1}. [${r.source}] ${r.title}\n${r.snippet}\nURL: ${r.url}`
+      const headerG = '[DONNÉES BRUTES — synthétise naturellement, NE RÉPÈTE PAS les URLs sauf si demandé]\n';
+      return headerG + results.map((r, i) =>
+        `${i + 1}. [${r.source}] ${r.title}\n${r.snippet}`
       ).join('\n\n');
     } catch (err) {
       return JSON.stringify({
@@ -477,8 +480,9 @@ async function gamingToolHandler(toolName, toolInput) {
       const results = await searchPlatformLookup(toolInput.query || '');
       if (!results.length) return "Aucun résultat trouvé même sur le web complet. Le jeu est peut-être très récemment annoncé ou le nom est inexact.";
 
-      return results.map((r, i) =>
-        `${i + 1}. [${r.source}] ${r.title}\n${r.snippet}\nURL: ${r.url}`
+      const headerP = '[DONNÉES BRUTES — synthétise naturellement, NE RÉPÈTE PAS les URLs sauf si demandé]\n';
+      return headerP + results.map((r, i) =>
+        `${i + 1}. [${r.source}] ${r.title}\n${r.snippet}`
       ).join('\n\n');
     } catch (err) {
       return JSON.stringify({

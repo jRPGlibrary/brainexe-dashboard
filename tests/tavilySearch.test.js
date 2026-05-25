@@ -272,7 +272,8 @@ describe('gamingToolHandler', () => {
     const result = await gamingToolHandler('rechercher_actu_gaming', { query: 'handler-unique-' + Date.now() });
     expect(typeof result).toBe('string');
     expect(result).toContain('GTA VI delayed to 2026');
-    expect(result).toContain('https://ign.com/gta6');
+    expect(result).toContain('DONNÉES BRUTES');
+    expect(result).not.toContain('https://ign.com/gta6');
   });
 
   test('retourne un fallback JSON si Tavily actu échoue', async () => {
@@ -337,7 +338,8 @@ describe('gamingToolHandler', () => {
     const result = await gamingToolHandler('rechercher_google_gaming', { query: 'google-handler-unique-' + Date.now() });
     expect(typeof result).toBe('string');
     expect(result).toContain('Jeuxvideo.com');
-    expect(result).toContain('https://www.jeuxvideo.com/zelda-totk');
+    expect(result).toContain('DONNÉES BRUTES');
+    expect(result).not.toContain('https://www.jeuxvideo.com/zelda-totk');
   });
 
   test('retourne un fallback JSON si Google CSE échoue', async () => {
