@@ -202,27 +202,25 @@ async function callClaudeWithTools(systemPrompt, userMessages, tools, toolHandle
         return { text, usage: totalUsage };
       }
 
-      const toolUseBlock = data.content.find(b => b.type === 'tool_use');
-      if (!toolUseBlock) break;
+      const toolUseBlocks = data.content.filter(b => b.type === 'tool_use');
+      if (!toolUseBlocks.length) break;
 
       messages = [...messages, { role: 'assistant', content: data.content }];
 
-      let toolResultContent;
-      try {
-        const rawResult = await toolHandler(toolUseBlock.name, toolUseBlock.input);
-        toolResultContent = typeof rawResult === 'string' ? rawResult : JSON.stringify(rawResult);
-      } catch (toolErr) {
-        toolResultContent = JSON.stringify({ error: toolErr.message, fallback: true });
-      }
+      const toolResults = await Promise.all(
+        toolUseBlocks.map(async (toolBlock) => {
+          let resultContent;
+          try {
+            const rawResult = await toolHandler(toolBlock.name, toolBlock.input);
+            resultContent = typeof rawResult === 'string' ? rawResult : JSON.stringify(rawResult);
+          } catch (toolErr) {
+            resultContent = JSON.stringify({ error: toolErr.message, fallback: true });
+          }
+          return { type: 'tool_result', tool_use_id: toolBlock.id, content: resultContent };
+        })
+      );
 
-      messages = [...messages, {
-        role: 'user',
-        content: [{
-          type: 'tool_result',
-          tool_use_id: toolUseBlock.id,
-          content: toolResultContent,
-        }],
-      }];
+      messages = [...messages, { role: 'user', content: toolResults }];
 
     } catch (err) {
       clearTimeout(timer);
