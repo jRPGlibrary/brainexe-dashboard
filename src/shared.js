@@ -15,4 +15,6 @@ module.exports = {
   debounceFile: null,
   lastAnyBotPostTime: 0,
   tiktokLiveActive: false,
+  dailyCostUSD: 0,
+  dailyCostResetDay: '',
 };
