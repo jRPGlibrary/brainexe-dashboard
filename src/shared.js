@@ -17,4 +17,6 @@ module.exports = {
   tiktokLiveActive: false,
   dailyCostUSD: 0,
   dailyCostResetDay: '',
+  commitmentUntil: null,
+  commitmentReason: null,
 };

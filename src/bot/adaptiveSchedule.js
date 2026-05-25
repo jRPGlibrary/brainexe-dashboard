@@ -70,24 +70,34 @@ function getDailyFloatingSchedule() {
   const day = parisDayOfWeek();
   const vibe = getDailyVibe();
 
-  // Les vibes "lazy" décalent le réveil plus tard
   const lazyShift = vibe.name === 'lazy' ? 0.5 : vibe.name === 'excited' ? -0.25 : 0;
 
+  // Greetings flottants (inchangés)
   const morningBase = day === 0 ? 10 : day === 6 ? 9.5 : 9;
   const morning     = Math.max(8, morningBase + lazyShift + jitterH(25));
   const lunchBack   = 14 + jitterH(25);
   const goodnight   = 23 + jitterH(45);
   const nightWakeup = 3 + jitterH(60) + 0.5;
 
-  cachedFloating = { morning, lunchBack, goodnight, nightWakeup };
+  // Planning journalier dynamique (C)
+  const isWeekend = day === 0 || day === 6;
+  const wakeBase  = isWeekend ? 9.0 : 7.5 + lazyShift;
+  const wakeMax   = isWeekend ? 11.5 : 10.5;
+  const wakeHour  = Math.max(7, Math.min(wakeMax, wakeBase + jitterH(45)));
+
+  const lunchStart  = 12 + Math.random() * 1.5;  // 12h00–13h30
+  const dinnerStart = 19 + Math.random() * 2;     // 19h00–21h00
+  const sleepHour   = 23 + Math.random() * 2.5;   // 23h00–01h30
+
+  cachedFloating = { morning, lunchBack, goodnight, nightWakeup, wakeHour, lunchStart, dinnerStart, sleepHour };
   cachedFloatingDate = today;
 
   const fmt = (h) => {
-    const hh = Math.floor(h);
-    const mm = Math.round((h - hh) * 60);
+    const hh = Math.floor(h % 24);
+    const mm = Math.round(((h % 24) - hh) * 60);
     return `${String(hh).padStart(2, '0')}h${String(mm).padStart(2, '0')}`;
   };
-  pushLog('SYS', `📅 Planning flottant : morning ${fmt(morning)} · lunch ${fmt(lunchBack)} · goodnight ${fmt(goodnight)} · wakeup ${fmt(nightWakeup)}`, 'success');
+  pushLog('SYS', `📅 Planning : lever ${fmt(wakeHour)} · déj ${fmt(lunchStart)} · dîner ${fmt(dinnerStart)} · dodo ${fmt(sleepHour)} | morning ${fmt(morning)} · goodnight ${fmt(goodnight)}`, 'success');
 
   return cachedFloating;
 }

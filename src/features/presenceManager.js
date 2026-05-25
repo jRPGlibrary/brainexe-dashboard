@@ -15,6 +15,7 @@ const shared = require('../shared');
 const { pushLog } = require('../logger');
 const { callClaude } = require('../ai/claude');
 const { BOT_PERSONA } = require('../bot/persona');
+const { GUILD_ID } = require('../config');
 
 // Statut Discord (dnd/idle/online/invisible) — ne change pas
 const REASON_STATUS = {
@@ -132,4 +133,42 @@ async function setSlotPresence(slotStatus) {
   } catch (_) {}
 }
 
-module.exports = { setOccupied, setAvailable, setSlotPresence };
+// B — Messages de transition de slot dans #général
+const TRANSITION_CONTEXTS = {
+  gaming:    { ctx: "tu passes en mode gaming pour la soirée",                       prob: 0.60 },
+  lunch:     { ctx: "tu pars manger, tu reviens après",                              prob: 0.35 },
+  latenight: { ctx: "il est super tard et tu es encore là, hyperfocus ou insomnie",  prob: 0.30 },
+  wakeup:    { ctx: "tu viens de te lever et tu es encore zombie",                   prob: 0.20 },
+};
+
+async function postSlotTransitionMessage(slotStatus) {
+  const entry = TRANSITION_CONTEXTS[slotStatus];
+  if (!entry || Math.random() > entry.prob) return;
+  if (!shared.discord?.isReady()) return;
+  try {
+    const { text } = await callClaude(
+      '',
+      `Tu es Brainee. ${entry.ctx}. Génère UN message Discord ultra-court et naturel (max 12 mots, style oral, en minuscules, SANS emoji, sans ponctuation finale) à poster dans le général. Texte brut uniquement, pas de guillemets.`,
+      20,
+      BOT_PERSONA,
+      'claude-haiku-4-5-20251001'
+    );
+    const msg = text.trim().replace(/^["'«»]|["'«»]$/g, '').replace(/[.!?]$/, '');
+    if (!msg) return;
+
+    const guild = await shared.discord.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.get('1481028189680570421');
+    if (!channel) return;
+
+    await channel.sendTyping().catch(() => {});
+    await new Promise(r => setTimeout(r, 800 + Math.random() * 1200));
+    await channel.send(msg);
+    shared.lastAnyBotPostTime = Date.now();
+    pushLog('SYS', `📢 Transition [${slotStatus}] → #général : "${msg}"`);
+  } catch (err) {
+    pushLog('ERR', `postSlotTransitionMessage: ${err.message}`, 'error');
+  }
+}
+
+module.exports = { setOccupied, setAvailable, setSlotPresence, postSlotTransitionMessage };

@@ -52,7 +52,7 @@ function pickReason(slot) {
 
 async function generateExcuse(reason, username) {
   const reasonLabel = REASON_LABELS[reason] || 'tu es occupée';
-  const userPrompt = `${username} vient de t'écrire. ${reasonLabel}. Génère UNE seule phrase très courte et naturelle (max 10 mots) pour lui dire que tu es occupée et que tu reviendras. Style oral Brainee, en français, sans majuscule au début si ça sonne plus naturel. Juste la phrase brute, sans guillemets.`;
+  const userPrompt = `${username} vient de t'écrire. ${reasonLabel}. Génère UNE seule phrase très courte et naturelle (max 10 mots) pour lui dire que tu es occupée et que tu reviendras. Style oral Brainee, en français, sans majuscule au début si ça sonne plus naturel. SANS emoji. Juste la phrase brute, sans guillemets.`;
   try {
     const { text, usage } = await callClaude('', userPrompt, 60, BOT_PERSONA, 'claude-haiku-4-5-20251001');
     await recordTokenUsage('system', 'brainee', usage.inputTokens, usage.outputTokens, 'busy_excuse');
@@ -84,11 +84,18 @@ async function triggerBusyExcuse(message, userQuery, slot, isDM) {
 
     const delayMin = 20 + Math.random() * 55; // 20 à 75 min
     const delayMs  = Math.floor(delayMin * 60 * 1000);
+
+    // E2 — Verrouillage d'engagement : aucune réponse spontanée pendant l'absence
+    shared.commitmentUntil  = Date.now() + delayMs;
+    shared.commitmentReason = reason;
+
     pushLog('SYS', `💤 Absence simulée [${reason}] → ${username} — retour dans ${Math.round(delayMin)} min`);
 
     setTimeout(async () => {
       try {
         const currentSlot = getCurrentSlot();
+        shared.commitmentUntil  = null;
+        shared.commitmentReason = null;
         setAvailable();
         if (currentSlot.maxConv === 0) {
           pushLog('SYS', `💤 Retour busyExcuse annulé — Brainee dort`);
@@ -115,6 +122,8 @@ async function triggerBusyExcuse(message, userQuery, slot, isDM) {
         pushLog('SYS', `↩️ Retour busyExcuse → ${username}`, 'success');
       } catch (err) {
         pushLog('ERR', `Retour busyExcuse échoué : ${err.message}`, 'error');
+        shared.commitmentUntil  = null;
+        shared.commitmentReason = null;
         setAvailable();
       }
     }, delayMs);

@@ -192,7 +192,7 @@ async function handleMentionReply(message, userQuery) {
     // For mentions, we check but still respect the urgent flag from caller
     const vibe = getDailyVibe();
     const internalState = getInternalState();
-    const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, userQuery, false);
+    const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, userQuery, false, true);
 
     if (!decision.should) {
       try { await message.react('😴').catch(() => {}); } catch (_) {}
@@ -665,6 +665,16 @@ function registerMessageHandlers() {
     // Absence : répond seulement 35% du temps (comme jeter un œil à son tel en passant)
     if (isAbsent() && Math.random() > 0.35) {
       pushLog('SYS', `📱 @mention pendant absence → ignorée (${message.author.username})`);
+      return;
+    }
+
+    // E3 — Engagement actif : @mention autorisée mais retardée (min 15 min)
+    if (shared.commitmentUntil && Date.now() < shared.commitmentUntil) {
+      const remaining    = shared.commitmentUntil - Date.now();
+      const commitDelay  = Math.max(15 * 60 * 1000, remaining) + Math.random() * 10 * 60 * 1000;
+      await message.react('⏳').catch(() => {});
+      pushLog('SYS', `⏳ @mention pendant engagement → retardée ${Math.round(commitDelay / 60000)} min → ${message.author.username}`);
+      setTimeout(() => handleMentionReply(message, userQuery), commitDelay);
       return;
     }
 

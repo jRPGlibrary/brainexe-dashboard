@@ -10,6 +10,7 @@
 const { checkTopicRedundance, recordTopic } = require('../db/topicFatigue');
 const { shouldAvoidTopic } = require('../db/messageEngagement');
 const { pushLog } = require('../logger');
+const shared = require('../shared');
 
 /**
  * Décide si Brainee doit répondre à un message
@@ -20,14 +21,16 @@ const { pushLog } = require('../logger');
  * - Si sujet redondant (5+ fois semaine) ET pas urgent → maybe ("déjà débattu")
  * - Sinon : true
  */
-async function shouldRespond(slot, vibe, mentalLoad, messageContent, isUrgent = false) {
+async function shouldRespond(slot, vibe, mentalLoad, messageContent, isUrgent = false, isMention = false) {
   try {
     // Si urgent, toujours répondre
     if (isUrgent) {
-      return {
-        should: true,
-        reason: 'urgent',
-      };
+      return { should: true, reason: 'urgent' };
+    }
+
+    // E3 — Engagement actif : bloc total sauf mentions (déjà retardées dans events.js)
+    if (!isMention && shared.commitmentUntil && Date.now() < shared.commitmentUntil) {
+      return { should: false, reason: 'commitment_active', message: 'engagement en cours' };
     }
 
     // Gate vibe : la responsiveness influe directement sur la décision de s'inviter dans une conv
