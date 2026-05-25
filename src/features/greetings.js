@@ -151,12 +151,11 @@ async function postRelanceMention({ userId, username, channelId, messageId, quer
     const vibe = getDailyVibe();
     const tagInstruction = `Tu commences par taguer <@${userId}> pour qu'il/elle voit la relance.`;
 
-    // Charge les 30 derniers messages pour ne pas perdre le fil de la conversation
     let recentCtx = '';
     try {
-      const msgs = await channel.messages.fetch({ limit: 30 });
-      const ctx = formatContext(msgs, null, 30);
-      if (ctx.length > 20) recentCtx = `\n\nContexte récent du salon (30 derniers messages) :\n${ctx}`;
+      const msgs = await channel.messages.fetch({ limit: 15 });
+      const ctx = formatContext(msgs, null, 15);
+      if (ctx.length > 20) recentCtx = `\n\nContexte récent du salon :\n${ctx}`;
     } catch (_) {}
 
     // Bug 2 : calcul du délai réel depuis le message d'origine via Discord snowflake
