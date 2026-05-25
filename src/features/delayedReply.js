@@ -42,7 +42,7 @@ async function scheduleDelayedReplyAfterEmoji(message, userQuery, emojiUsed, slo
       const currentSlot = getCurrentSlot();
       if (currentSlot.maxConv === 0) { pushLog('SYS', `💤 Retour tardif annulé — Brainee dort`); return; }
       const excuse = getEmojiExcuse(slot, mood);
-      const fetched = await message.channel.messages.fetch({ limit: 50 });
+      const fetched = await message.channel.messages.fetch({ limit: 15 });
       // Bug 1 : annuler si Brainee a déjà répondu à cet utilisateur dans les 2h
       const _botId = shared.discord?.user?.id;
       const _twoHAgo = Date.now() - 2 * 60 * 60 * 1000;
@@ -63,7 +63,7 @@ async function scheduleDelayedReplyAfterEmoji(message, userQuery, emojiUsed, slo
                       : _ageH < 20 ? `y'a ${Math.round(_ageH)}h`
                       : _ageH < 36 ? `hier`
                       : `y'a ${Math.ceil(_ageH / 24)} jours`;
-      const contextLines = formatContext(fetched, null, 40);
+      const contextLines = formatContext(fetched, null, 15);
       const profile = await getMemberProfile(message.author.id);
       const toneInstruction = getToneInstruction(profile, message.author.username);
       const channelMemory = await getChannelMemory(message.channelId);
@@ -73,7 +73,7 @@ async function scheduleDelayedReplyAfterEmoji(message, userQuery, emojiUsed, slo
       const chTopicD = shared.botConfig.conversations.channels.find(c => c.channelId === message.channelId)?.topic || message.channel.name;
       const intentBlockD = getChannelIntentBlock(message.channel.name, chTopicD, dirEntryD?.officialDescription || '');
       const dynamicPrompt = `${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\n${intentBlockD}\nContexte récent #${sanitizeForJson(message.channel.name)} :\n${contextLines}\nTu reviens après avoir réagi avec ${emojiUsed} sans répondre.`;
-      const userPrompt = `Tu dois répondre à cette question de ${sanitizeForJson(message.author.username)} que t'as laissée sans réponse : "${sanitizeForJson(userQuery)}"\nLe message date de ${_ageLabel}. Idée d'excuse : "${excuse}" — reformule-la complètement à ta façon, sans copier mot pour mot, en cohérence avec l'heure réelle.\nPuis réponds vraiment à la question. Max 3 phrases au total.`;
+      const userPrompt = `${sanitizeForJson(message.author.username)} t'avait écrit (${_ageLabel}) : "${sanitizeForJson(userQuery)}"\nRéponds directement à son message, sans annoncer ton retour. Max 2 phrases.`;
       const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, 250, BOT_PERSONA_CONVERSATION);
       await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'delayed_reply');
       const replyResolved = resolveMentionsInText(reply, message.guild);
@@ -98,7 +98,7 @@ async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, 
       await guild.channels.fetch();
       const channel = guild.channels.cache.get(channelObj.channelId);
       if (!channel) return;
-      const msgs = await channel.messages.fetch({ limit: 50 });
+      const msgs = await channel.messages.fetch({ limit: 15 });
       // Bug 1 : annuler si Brainee a déjà répondu à cet utilisateur dans les 2h
       const _botIdS = shared.discord?.user?.id;
       const _twoHAgoS = Date.now() - 2 * 60 * 60 * 1000;
@@ -119,7 +119,7 @@ async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, 
                        : _ageHS < 20 ? `y'a ${Math.round(_ageHS)}h`
                        : _ageHS < 36 ? `hier`
                        : `y'a ${Math.ceil(_ageHS / 24)} jours`;
-      const context = formatContext(msgs, null, 40);
+      const context = formatContext(msgs, null, 15);
       const profile = await getMemberProfile(lastMsg.author.id);
       const toneInstruction = getToneInstruction(profile, lastMsg.author.username);
       const channelMemory = await getChannelMemory(channelObj.channelId);
@@ -128,7 +128,7 @@ async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, 
       const dirEntryS = await getChannelDirectory(channelObj.channelId);
       const intentBlockS = getChannelIntentBlock(channel.name, channelObj.topic || '', dirEntryS?.officialDescription || '');
       const dynamicPrompt = `${toneInstruction}\nHumeur : ${currentMood}. ${getMoodInjection(currentMood)}\n${memoryBlock}\n${intentBlockS}\nContexte récent #${sanitizeForJson(channel.name)} :\n${context}\nTu reviens après avoir réagi avec ${emojiUsed} sans rien dire.`;
-      const userPrompt = `${sanitizeForJson(lastMsg.author.username)} avait dit : "${sanitizeForJson(lastMsg.content)}"\nLe message date de ${_ageLabelS}. Idée d'excuse : "${excuse}" — reformule-la complètement à ta façon, sans copier mot pour mot, en cohérence avec l'heure réelle.\nTu reviens maintenant. Réponds naturellement. Max 2-3 phrases.`;
+      const userPrompt = `${sanitizeForJson(lastMsg.author.username)} avait dit (${_ageLabelS}) : "${sanitizeForJson(lastMsg.content)}"\nRéponds directement, sans annoncer ton retour. Max 2 phrases.`;
       const { text: reply, usage } = await callClaude(dynamicPrompt, userPrompt, 200, BOT_PERSONA_CONVERSATION);
       await recordTokenUsage(lastMsg.author.id, lastMsg.author.username, usage.inputTokens, usage.outputTokens, 'delayed_reply');
       const replyResolved = resolveMentionsInText(reply, guild);

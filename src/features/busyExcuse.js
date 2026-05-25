@@ -19,8 +19,8 @@ const { pushLog } = require('../logger');
 const { setOccupied, setAvailable } = require('./presenceManager');
 const shared = require('../shared');
 
-const BUSY_PROB_DM     = 0.08; // 8% en DM
-const BUSY_PROB_SERVER = 0.06; // 6% en serveur (vraies absences plus fréquentes)
+const BUSY_PROB_DM     = 0.04; // 4% en DM
+const BUSY_PROB_SERVER = 0.03; // 3% en serveur
 
 const REASON_BY_SLOT = {
   sleep:      'resting',
@@ -63,14 +63,13 @@ async function generateExcuse(reason, username) {
 }
 
 async function generateReturnMessage(userQuery, username, reason) {
-  const reasonLabel = REASON_LABELS[reason] || 'tu étais occupée';
-  const userPrompt = `${username} t'avait écrit : "${userQuery}". Tu reviens après une absence (${reasonLabel}). Commence par signaler ton retour en 3-5 mots max (style : "okay j'suis de retour", "bon me revoilà", "j'avais pas oublié hein"), puis réponds vraiment à ce qu'il/elle a dit. Max 2-3 phrases au total, style oral Brainee.`;
+  const userPrompt = `${username} t'avait écrit : "${userQuery}". Réponds directement à son message — pas de "je suis de retour", pas de préambule. Juste la réponse. Max 2 phrases, style oral Brainee.`;
   try {
-    const { text, usage } = await callClaude('', userPrompt, 180, BOT_PERSONA, 'claude-haiku-4-5-20251001');
+    const { text, usage } = await callClaude('', userPrompt, 150, BOT_PERSONA, 'claude-haiku-4-5-20251001');
     await recordTokenUsage('system', 'brainee', usage.inputTokens, usage.outputTokens, 'busy_return');
     return text.trim();
   } catch (_) {
-    return `j'suis de retour — ${userQuery ? 'alors, tu disais ?' : 'me revoilà'}`;
+    return null;
   }
 }
 
@@ -104,6 +103,7 @@ async function triggerBusyExcuse(message, userQuery, slot, isDM) {
           if (lastUserMsg && lastUserMsg.content.trim()) pendingQuery = lastUserMsg.content.trim();
         } catch (_) {}
         const returnMsg = await generateReturnMessage(pendingQuery, username, reason);
+        if (!returnMsg) { setAvailable(); return; }
         const returnResolved = resolveMentionsInText(returnMsg, message.guild || null);
         if (isDM) {
           await simulateDmTyping(message.channel, returnResolved.length);
