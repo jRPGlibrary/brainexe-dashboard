@@ -42,21 +42,14 @@ async function postMorningGreeting() {
     const vibe = getDailyVibe();
     const dayCtx = DAY_CONTEXTS[day] || DAY_NAMES[day];
 
-    // Charge les 30 derniers messages pour contexte
-    let recentCtx = '';
-    try {
-      const msgs = await channel.messages.fetch({ limit: 30 });
-      const ctx = formatContext(msgs, null, 30);
-      if (ctx.length > 30) recentCtx = `\nDerniers échanges (pour capter l'ambiance) :\n${ctx}`;
-    } catch (_) {}
-
     const hourNow = getParisHour();
     const morningSeed = getMorningSeed(hourNow);
     const { text: content } = await callClaude(
-      `\nHumeur : ${mood}. Vibe du jour : ${vibe.name} (${vibe.desc}). Heure actuelle : ${hourNow.toFixed(1)}h. C'est ${dayCtx}.\nAngle pour ce matin : ${morningSeed}.${recentCtx}\n${NO_TAG_CLAUSE}`,
-      `Message du matin, naturel, COURT (1-2 phrases max, ~30 mots). Pas forcément "bonjour" — varie ("yo", "salut", "hey", "ça commence", ou même direct sans formule). Pas de café automatique. Si la conversation récente s'y prête, rebondis dessus. Jamais de @. Pas plus d'un emoji et seulement si vraiment ça colle (~10% des cas). INTERDIT : ne commence JAMAIS par "[jour] matin", "pour un [jour]", "le [jour] matin" ou toute variante — le jour ne doit pas structurer l'ouverture de la phrase.`,
-      110,
-      BOT_PERSONA
+      `\nHumeur : ${mood}. Vibe du jour : ${vibe.name} (${vibe.desc}). Heure actuelle : ${hourNow.toFixed(1)}h. C'est ${dayCtx}.\nAngle pour ce matin : ${morningSeed}.\n${NO_TAG_CLAUSE}`,
+      `Message du matin, naturel, COURT (1-2 phrases max, ~30 mots). Varie l'accroche ("yo", "salut", "hey", "ça commence", ou direct sans formule). Pas de café automatique. Jamais de @. Pas d'emoji. INTERDIT : ne commence JAMAIS par "[jour] matin", "pour un [jour]", "le [jour] matin" ou toute variante.`,
+      80,
+      BOT_PERSONA,
+      'claude-haiku-4-5-20251001'
     );
     const contentResolved = resolveMentionsInText(content, guild);
     await simulateTyping(channel, 800 + Math.random() * 1200);
@@ -81,9 +74,10 @@ async function postLunchBack() {
     const lunchSeed = getLunchBackSeed();
     const { text: content } = await callClaude(
       `\nTu reviens de ta pause. Vibe : ${vibe.name}.\nAngle : ${lunchSeed}.\n${NO_TAG_CLAUSE}`,
-      `Retour de pause dans ${sanitizeForJson(ch.topic)}. UNE phrase courte, max deux. Décontracté. Pas de @. Pas d'emoji sauf si ça colle vraiment (~10%).`,
-      80,
-      BOT_PERSONA
+      `Retour de pause dans ${sanitizeForJson(ch.topic)}. UNE phrase courte, max deux. Décontracté. Pas de @. Pas d'emoji.`,
+      60,
+      BOT_PERSONA,
+      'claude-haiku-4-5-20251001'
     );
     const contentResolved = resolveMentionsInText(content, guild);
     await simulateTyping(channel, 600);
@@ -108,9 +102,10 @@ async function postGoodnight() {
     const goodnightSeed = getGoodnightSeed();
     const { text: content } = await callClaude(
       `\nFin de soirée gaming. Vibe : ${vibe.name}.\nAngle pour ce soir : ${goodnightSeed}.\n${NO_TAG_CLAUSE}`,
-      `Message fin de soirée naturel, COURT (1-2 phrases max, ~30 mots). Jamais "bonsoir" / "bonne nuit" tels quels. Pas de @. Pas d'emoji sauf si ça colle vraiment (~10%).`,
-      90,
-      BOT_PERSONA
+      `Message fin de soirée naturel, COURT (1-2 phrases max, ~30 mots). Jamais "bonsoir" / "bonne nuit" tels quels. Pas de @. Pas d'emoji.`,
+      70,
+      BOT_PERSONA,
+      'claude-haiku-4-5-20251001'
     );
     const contentResolved = resolveMentionsInText(content, guild);
     await simulateTyping(channel, 600);
@@ -133,8 +128,9 @@ async function postNightWakeup() {
     const { text: content } = await callClaude(
       `\nRéveil nocturne, mode zombie. Il est ${wakeHour.toFixed(1)}h.\nAngle : ${wakeSeed}.\n${NO_TAG_CLAUSE}`,
       `UNE seule phrase courte, ~15-25 mots, vraie ambiance d'insomnie. Style "y'en a parmi vous qui dorment pas ? j'arrive pas à me rendormir". Pas de @. Pas d'emoji.`,
-      70,
-      BOT_PERSONA
+      60,
+      BOT_PERSONA,
+      'claude-haiku-4-5-20251001'
     );
     const contentResolved = resolveMentionsInText(content, guild);
     await channel.send(contentResolved);
