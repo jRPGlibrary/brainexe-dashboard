@@ -11,7 +11,7 @@ const { extractYoutubeQuery, searchYoutube } = require('../ai/youtube');
 const { getMemberProfile, updateMemberProfile, getToneInstruction } = require('../db/members');
 const { getChannelMemory, formatChannelMemoryBlock } = require('../db/channelMem');
 const { getChannelDirectory } = require('../db/channelDir');
-const { getDmHistory, appendDmMessage, formatDmHistory } = require('../db/dmHistory');
+const { getDmHistory, appendDmMessage, formatDmHistory, getLastBotMessage } = require('../db/dmHistory');
 const { BOT_PERSONA_CONVERSATION, BOT_PERSONA_DM, BOT_PERSONA_DM_LIBRE } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getCurrentSlot, getMentionDelayMs, getParisDay, getTemporalBlock } = require('../bot/scheduling');
@@ -67,6 +67,20 @@ const {
 } = require('../features/dmOutreach');
 const { recordEngagement } = require('../db/messageEngagement');
 const { recordInteraction, triggerSummaryIfNeeded, getConvSummary } = require('../db/conversationSummaries');
+
+// Flags d'instructions par user en DM (in-memory, reset au redémarrage)
+// { noLinks: bool, beShort: bool }
+const _dmFlags = new Map();
+
+function _parseDmInstructions(userId, content) {
+  const lower = content.toLowerCase();
+  const flags = _dmFlags.get(userId) || {};
+  const isStop = /stop|arrête|arreter|plus de|évite|sans/.test(lower);
+  if (isStop && /lien|link|url|embed/.test(lower)) flags.noLinks = true;
+  if (isStop && /pavé|long|paragraphe|blabla|texte|contenu/.test(lower)) flags.beShort = true;
+  _dmFlags.set(userId, flags);
+  return flags;
+}
 
 const NEWS_KEYWORDS = [
   'actu', 'news', 'nouvelles', 'dernier', 'dernière', 'dernières', 'récent', 'récente',
@@ -356,8 +370,9 @@ async function handleMentionReply(message, userQuery) {
     const replyResolved = resolveMentionsInText(reply, message.guild);
 
     const isConsoleFocused = CONSOLE_ONLY_KEYWORDS.some(kw => lowerQuery.includes(kw));
+    const _serverWantsLink = /steam|lien|link|url/.test(lowerQuery);
     let steamBlock = '';
-    if (!usedToolCall && !isConsoleFocused && GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
+    if (!usedToolCall && !isConsoleFocused && _serverWantsLink && GAMING_KEYWORDS.some(kw => `${userQuery} ${reply}`.toLowerCase().includes(kw))) {
       try {
         const gameName = await extractGameName(userQuery, reply);
         if (gameName && !contextLines.toLowerCase().includes(gameName.toLowerCase())) {
@@ -468,6 +483,23 @@ function registerMessageHandlers() {
     try {
       const history = await getDmHistory(message.author.id);
       const historyBlock = formatDmHistory(history);
+
+      // Détection instructions user (stop les liens, version courte, etc.)
+      const _uFlags = _parseDmInstructions(message.author.id, userContent);
+      const _lowerDm = userContent.toLowerCase();
+      const _wantsShort = /version courte|raccourcis|plus court|résume|en bref|en résumé/i.test(_lowerDm);
+      // Auto-référence : user parle du dernier message de Brainee sans citer de contenu externe
+      const _isSelfRef = /ce texte|ce que tu viens|version courte de|raccourcis.{0,20}(ça|ca|le|les)|résume ce/i.test(_lowerDm) && userContent.length < 150;
+      let _selfRefBlock = '';
+      if (_isSelfRef) {
+        const _lastBotMsg = getLastBotMessage(history);
+        if (_lastBotMsg) _selfRefBlock = `\n[L'utilisateur fait référence à TON dernier message : "${_lastBotMsg.slice(0, 300)}"]`;
+      }
+      const _flagsBlock = [
+        _uFlags.noLinks ? '⛔ INSTRUCTION USER : aucun lien ni URL dans ta réponse.' : '',
+        (_uFlags.beShort || _wantsShort) ? '⛔ INSTRUCTION USER : réponse TRÈS courte, max 2 phrases.' : '',
+      ].filter(Boolean).join('\n');
+
       const profile = await getMemberProfile(message.author.id);
       const toneInstruction = getToneInstruction(profile, message.author.username);
       const mood = refreshDailyMood();
@@ -542,13 +574,15 @@ function registerMessageHandlers() {
       const dmTemporalBlock = getTemporalBlock();
       const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
       const penduInstruction = `\n\n🎮 PENDU : Tu peux proposer spontanément une partie de pendu RPG/JRPG, ou accepter si l'utilisateur en demande une. Si tu décides de lancer le jeu, inclus exactement \`[PENDU]\` sur une ligne seule dans ta réponse — le jeu démarre automatiquement. N'explique pas ce marker, fais juste comme si tu lançais la partie naturellement.`;
-      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}${dmConvSummaryBlock}\n\n${historyBlock ? `Échanges récents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.\n${DISCORD_LENGTH_CLAUSE}${dmImgInstruction}${penduInstruction}`;
+      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}${dmConvSummaryBlock}\n\n${historyBlock ? `Échanges récents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.\n${DISCORD_LENGTH_CLAUSE}${dmImgInstruction}${penduInstruction}${_flagsBlock ? '\n' + _flagsBlock : ''}${_selfRefBlock}`;
       const { getContextualMaxTokens } = require('../utils');
       const dmAvailableTools = getAvailableTools();
       const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
       const dmIsPostRequest = POST_KEYWORDS.some(kw => dmQueryText.includes(kw));
       const dmBudgetProfile = getBudgetProfile();
-      const _baseDmTokens = dmIsPostRequest ? 900 : getContextualMaxTokens(userContent || '', { defaultShort: 110, extended: 220, isDM: true });
+      const _baseDmTokens = (_uFlags.beShort || _wantsShort) ? 80
+        : dmIsPostRequest ? 900
+        : getContextualMaxTokens(userContent || '', { defaultShort: 110, extended: 220, isDM: true });
       const dmMaxTokens = adjustMaxTokens(Math.floor(_baseDmTokens * dmBudgetProfile.maxTokensMult));
       const userTextOnlyPrompt = dmIsPostRequest
         ? `${message.author.username} demande : "${enrichedUserContent || userContent}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord. Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
@@ -588,8 +622,9 @@ function registerMessageHandlers() {
       await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'dm_reply');
 
       const dmIsConsoleFocused = CONSOLE_ONLY_KEYWORDS.some(kw => dmQueryText.includes(kw));
+      const _dmUserWantsLink = !_uFlags.noLinks && /steam|lien|link|url/.test(_lowerDm);
       let dmSteamBlock = '';
-      if (!dmUsedToolCall && !dmIsConsoleFocused && GAMING_KEYWORDS.some(kw => `${userContent} ${reply}`.toLowerCase().includes(kw))) {
+      if (!dmUsedToolCall && !dmIsConsoleFocused && _dmUserWantsLink && GAMING_KEYWORDS.some(kw => `${userContent} ${reply}`.toLowerCase().includes(kw))) {
         try {
           const gameName = await extractGameName(userContent, reply);
           if (gameName && !(historyBlock || '').toLowerCase().includes(gameName.toLowerCase())) {
