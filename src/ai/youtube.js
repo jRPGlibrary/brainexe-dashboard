@@ -3,6 +3,9 @@ const { callClaude } = require('./claude');
 const { pushLog } = require('../logger');
 const { sanitizeForJson } = require('../utils');
 
+// Désactivé temporairement : l'API retourne des videoId manquants → URLs cassées + embeds non demandés
+const YOUTUBE_DISABLED = true;
+
 const _queryCache = new Map(); // hash → { result, expiresAt }
 const QUERY_CACHE_MS = 60 * 60 * 1000;
 
@@ -13,6 +16,7 @@ function _hash(str) {
 }
 
 async function extractYoutubeQuery(userMessage) {
+  if (YOUTUBE_DISABLED) return '';
   const key = _hash(userMessage.slice(0, 200).toLowerCase());
   const cached = _queryCache.get(key);
   if (cached && Date.now() < cached.expiresAt) return cached.result;
@@ -30,7 +34,7 @@ async function extractYoutubeQuery(userMessage) {
 }
 
 async function searchYoutube(query, maxResults = 3) {
-  if (!YOUTUBE_API_KEY) return [];
+  if (YOUTUBE_DISABLED || !YOUTUBE_API_KEY) return [];
   try {
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=${maxResults}&type=video&key=${YOUTUBE_API_KEY}&relevanceLanguage=fr`;
     const data = await (await fetch(url)).json();

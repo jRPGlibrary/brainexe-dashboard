@@ -13,7 +13,7 @@ async function appendDmMessage(userId, username, role, content) {
   try {
     const existing = await getDmHistory(userId);
     const messages = existing?.messages ?? [];
-    messages.push({ role, content: content.slice(0, 300), timestamp: new Date() });
+    messages.push({ role, content: content.slice(0, 600), timestamp: new Date() });
     const trimmed = messages.slice(-DM_HISTORY_MAX);
     await shared.mongoDb.collection('dmHistory').updateOne(
       { userId },
@@ -31,4 +31,11 @@ function formatDmHistory(history) {
     .join('\n');
 }
 
-module.exports = { getDmHistory, appendDmMessage, formatDmHistory };
+function getLastBotMessage(history) {
+  if (!history?.messages?.length) return null;
+  const msgs = [...history.messages].reverse();
+  const found = msgs.find(m => m.role === 'assistant');
+  return found?.content || null;
+}
+
+module.exports = { getDmHistory, appendDmMessage, formatDmHistory, getLastBotMessage };
