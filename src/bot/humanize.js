@@ -45,13 +45,15 @@ const RELAX_SUBSTITUTIONS = [
   [/\bil y a\b/g, "y'a"],
   [/\bne t'inquiète pas\b/gi, "tkt"],
   [/\bt'inquiète pas\b/gi, "tkt"],
-  [/\bquelque chose\b/gi, "un truc"],
+  // lookbehind: évite "dans quelque chose" / "pour quelque chose" (contexte temporel/prépositionnel)
+  [/(?<!dans |pour |en |sur )\bquelque chose\b/gi, "un truc"],
   [/\bvraiment\b/g, "vrmt"],
   [/\bpeut-être\b/gi, "ptet"],
   [/\bde la même manière\b/gi, "pareil"],
   [/\bbeaucoup de\b/gi, "plein de"],
   [/\bdes choses\b/gi, "des trucs"],
-  [/\bune chose\b/gi, "un truc"],
+  // "une chose" aussi protégée en contexte prépositionnel
+  [/(?<!dans |pour |en |sur )\bune chose\b/gi, "un truc"],
 ];
 
 // Sécurise une transformation contre les zones "intouchables"
