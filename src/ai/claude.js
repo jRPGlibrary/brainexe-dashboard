@@ -43,7 +43,7 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
   const system = cleanCachedPrefix
     ? [
         { type: 'text', text: cleanCachedPrefix, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: cleanSystemPrompt },
+        ...(cleanSystemPrompt ? [{ type: 'text', text: cleanSystemPrompt }] : []),
       ]
     : cleanSystemPrompt;
 
