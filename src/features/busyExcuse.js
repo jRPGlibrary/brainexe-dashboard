@@ -143,15 +143,22 @@ async function triggerBusyExcuse(message, userQuery, slot, isDM) {
           return;
         }
 
-        // Slot latenight → goodnight au lieu de revenir dans la conv
+        // Slot latenight → goodnight dans #général uniquement
         if (currentSlot.status === 'latenight') {
-          const goodnightMsg = await generateGoodnightMessage();
-          await simulateTyping(message.channel, 800 + Math.random() * 1200);
-          await message.channel.send(goodnightMsg);
-          shared.goodnightSent         = true;
-          shared.lastAnyBotPostTime    = Date.now();
+          const generalChannel = message.guild?.channels?.cache?.find(
+            c => c.isTextBased?.() && ['général', 'general', 'generale'].includes(c.name?.toLowerCase())
+          );
+          if (generalChannel) {
+            const goodnightMsg = await generateGoodnightMessage();
+            await simulateTyping(generalChannel, 800 + Math.random() * 1200);
+            await generalChannel.send(goodnightMsg);
+            shared.lastAnyBotPostTime = Date.now();
+            pushLog('SYS', `🌙 BusyExcuse → goodnight latenight dans #général → ${username}`, 'success');
+          } else {
+            pushLog('SYS', `🌙 BusyExcuse → goodnight latenight silencieux (pas de #général trouvé)`);
+          }
+          shared.goodnightSent = true;
           setAvailable();
-          pushLog('SYS', `🌙 BusyExcuse → goodnight latenight → ${username}`, 'success');
           return;
         }
 
