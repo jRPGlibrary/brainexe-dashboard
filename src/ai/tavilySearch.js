@@ -74,6 +74,11 @@ const GAMING_PRESS_DOMAINS = [
   'store.xbox.com', 'xbox.com',
   'nintendo.com', 'eshop.nintendo.com',
   'gog.com',
+  // Indie + communauté + crowdfunding
+  'itch.io',
+  'gamejolt.com',
+  'kickstarter.com',
+  'reddit.com',
 ];
 
 async function searchGamingNews(query) {
