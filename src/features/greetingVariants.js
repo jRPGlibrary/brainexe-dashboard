@@ -42,14 +42,19 @@ const MORNING_SEEDS = {
   ],
 };
 
+// Fins de soirée : la majorité ne sont PAS du gaming (sinon Brainee parle de
+// jeux vidéo tous les soirs). Une seule seed sur le lot évoque le jeu en cours.
 const GOODNIGHT_SEEDS = [
-  "tu finis une quête / un boss et tu vas dormir, normalement",
-  "t'es claquée, tu lâches l'affaire pour ce soir",
-  "t'as encore un truc en tête, tu vas essayer de dormir quand même",
-  "tu reportes le sommeil pour finir un dernier truc, classique",
+  "t'as fini un épisode de série et tu enchaînes pas, tu coupes",
+  "t'es tombée dans un rabbit hole youtube/wiki et t'as vu l'heure",
+  "t'as le cerveau cramé par ta journée, tu débranches tout",
+  "t'écoutais de la musique allongée et t'as failli t'endormir",
+  "t'as scrollé bien trop longtemps, tu te forces à lâcher le tel",
+  "t'as encore un truc en tête mais tu vas tenter de dormir quand même",
   "tu sens que demain va piquer, tu vas dormir maintenant",
-  "tu lâches le clavier, tu vas tenter le coucher sérieusement",
-  "t'as les yeux qui ferment, tu signes la fin de la session",
+  "t'as les yeux qui ferment, tu signes la fin de la journée",
+  "tu repenses à un truc random de ta journée et tu vas dormir dessus",
+  "t'étais sur ton jeu du moment et tu lâches enfin la manette",
 ];
 
 // Réveils nocturnes : très spécifique selon l'heure (3h, 4h, 5h)

@@ -22,6 +22,7 @@ const { getCurrentSlot } = require('../bot/scheduling');
 const { simulateTyping, simulateDmTyping, resolveMentionsInText } = require('../bot/messaging');
 const { pushLog } = require('../logger');
 const { setOccupied, setAvailable } = require('./presenceManager');
+const { getCurrentGameName } = require('../bot/currentGame');
 const shared = require('../shared');
 
 const BUSY_PROB_DM     = 0.02; // 2%
@@ -80,7 +81,8 @@ function delayLabel(delayMin) {
 }
 
 async function generateExcuse(reason, username, delayMin) {
-  const reasonLabel = REASON_LABELS[reason] || 'tu es occupée';
+  let reasonLabel = REASON_LABELS[reason] || 'tu es occupée';
+  if (reason === 'gaming') reasonLabel += ` (à ${getCurrentGameName()})`;
   const whenLabel   = delayLabel(delayMin);
   const userPrompt  = `${username} vient de t'écrire. ${reasonLabel}. Génère UNE seule phrase très courte et naturelle (max 12 mots) pour lui dire que tu es occupée et que tu reviens ${whenLabel}. Style oral Brainee, en français, sans majuscule au début si ça sonne plus naturel. SANS emoji. Juste la phrase brute, sans guillemets.`;
   try {

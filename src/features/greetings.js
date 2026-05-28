@@ -14,6 +14,7 @@ const { getBudgetMode } = require('../ai/budget');
 const {
   getMorningSeed, getGoodnightSeed, getNightWakeupSeed, getLunchBackSeed,
 } = require('./greetingVariants');
+const { getCurrentGameName } = require('../bot/currentGame');
 
 // Instructions injectées quand on ne veut pas de tag
 const NO_TAG_CLAUSE = `IMPORTANT : Ne tagge personne dans ce message — pas de @pseudo. Reste ambiant, personne n'a besoin d'être notifié.`;
@@ -105,8 +106,9 @@ async function postGoodnight() {
     if (!channel) return;
     const vibe = getDailyVibe();
     const goodnightSeed = getGoodnightSeed();
+    const currentGame = getCurrentGameName();
     const { text: content } = await callClaude(
-      `\nFin de soirée gaming. Vibe : ${vibe.name}.\nAngle pour ce soir : ${goodnightSeed}.\n${NO_TAG_CLAUSE}`,
+      `\nFin de soirée. Vibe : ${vibe.name}.\nAngle pour ce soir : ${goodnightSeed}.\nSI (et seulement si) cet angle parle de jeu vidéo, le jeu en cours est ${currentGame} — n'en cite aucun autre, surtout pas Elden Ring par défaut. Mais la plupart des soirs ne tournent PAS autour du gaming : suis l'angle donné.\n${NO_TAG_CLAUSE}`,
       `Message fin de soirée naturel, COURT (1-2 phrases max, ~30 mots). Jamais "bonsoir" / "bonne nuit" tels quels. Pas de @. Pas d'emoji.`,
       70,
       BOT_PERSONA,
