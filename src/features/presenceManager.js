@@ -15,6 +15,7 @@ const shared = require('../shared');
 const { pushLog } = require('../logger');
 const { callClaude } = require('../ai/claude');
 const { BOT_PERSONA } = require('../bot/persona');
+const { getCurrentGameName } = require('../bot/currentGame');
 const { GUILD_ID } = require('../config');
 
 // Statut Discord (dnd/idle/online/invisible) — ne change pas
@@ -93,7 +94,8 @@ async function _generateActivity(emoji, context) {
 async function setOccupied(reason) {
   const status = REASON_STATUS[reason] || 'idle';
   const emoji  = REASON_EMOJI[reason] || '🌐';
-  const ctx    = REASON_CONTEXT[reason] || 'tu es occupée';
+  let ctx      = REASON_CONTEXT[reason] || 'tu es occupée';
+  if (reason === 'gaming') ctx += ` (le jeu en cours est ${getCurrentGameName()})`;
   _busyActive  = true;
   const name   = await _generateActivity(emoji, ctx);
   try {
@@ -139,7 +141,10 @@ async function setSlotPresence(slotStatus) {
   if (_busyActive) return;
   const status = SLOT_STATUS[slotStatus] || 'online';
   const emoji  = SLOT_EMOJI[slotStatus];
-  const ctx    = SLOT_CONTEXT[slotStatus];
+  let ctx      = SLOT_CONTEXT[slotStatus];
+  if (ctx && (slotStatus === 'gaming' || slotStatus === 'latenight')) {
+    ctx += ` (si tu parles d'un jeu, c'est ${getCurrentGameName()})`;
+  }
 
   // Slots sans activité affichée (active, productive, sleep)
   if (!ctx) {
@@ -180,9 +185,12 @@ async function postSlotTransitionMessage(slotStatus) {
   if (!entry || Math.random() > entry.prob) return;
   if (!shared.discord?.isReady()) return;
   try {
+    const gameHint = (slotStatus === 'gaming' || slotStatus === 'latenight')
+      ? ` Si tu nommes un jeu, c'est ${getCurrentGameName()}, pas un autre.`
+      : '';
     const { text } = await callClaude(
       '',
-      `Tu es Brainee. ${entry.ctx}. Génère UN message Discord ultra-court et naturel (max 12 mots, style oral, en minuscules, SANS emoji, sans ponctuation finale) à poster dans le général. Texte brut uniquement, pas de guillemets.`,
+      `Tu es Brainee. ${entry.ctx}.${gameHint} Génère UN message Discord ultra-court et naturel (max 12 mots, style oral, en minuscules, SANS emoji, sans ponctuation finale) à poster dans le général. Texte brut uniquement, pas de guillemets.`,
       20,
       BOT_PERSONA,
       'claude-haiku-4-5-20251001'
