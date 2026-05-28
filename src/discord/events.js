@@ -504,6 +504,13 @@ function registerMessageHandlers() {
       const toneInstruction = getToneInstruction(profile, message.author.username);
       const mood = refreshDailyMood();
       const slot = getCurrentSlot();
+
+      // Silence total pendant le sommeil — pas de réponse, pas de token
+      if (slot.status === 'sleep') {
+        pushLog('SYS', `💤 DM ignoré (slot sommeil) → ${message.author.username}`);
+        return;
+      }
+
       updateInternalStatesForSlot(slot);
       applyNaturalDecay();
       detectEmotionFromMessage(userContent, { userId: message.author.id });
