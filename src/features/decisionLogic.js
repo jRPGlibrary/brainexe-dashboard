@@ -84,7 +84,7 @@ async function shouldRespond(slot, vibe, mentalLoad, messageContent, isUrgent = 
       const topicKeywords = {
         'elden ring': ['elden ring', 'elden-ring', 'erdtree', 'grace'],
         eternights: ['eternights', 'eternight', 'dating sim', 'post-apocalyptic'],
-        'gaming-general': ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'speedrun', 'indie'],
+        'gaming-general': ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'speedrun', 'indie', 'metroidvania', 'hollow knight', 'soulslike', 'jeux vidéo', 'jeu vidéo', 'souls', 'zelda', 'mario'],
         anime: ['anime', 'manga', 'weeb', 'otaku', 'isekai', 'shonen'],
         tech: ['api', 'code', 'dev', 'javascript', 'python', 'database', 'git'],
         debate: ['débat', 'argument', 'opinion', 'philosophie', 'contredit'],
@@ -135,7 +135,7 @@ async function recordMessageTopic(messageContent) {
     const topicKeywords = {
       'elden ring': ['elden ring', 'elden-ring', 'erdtree', 'grace'],
       eternights: ['eternights', 'eternight', 'dating sim', 'post-apocalyptic'],
-      'gaming-general': ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'speedrun', 'indie'],
+      'gaming-general': ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'speedrun', 'indie', 'metroidvania', 'hollow knight', 'soulslike', 'jeux vidéo', 'jeu vidéo', 'souls', 'zelda', 'mario'],
       anime: ['anime', 'manga', 'weeb', 'otaku', 'isekai', 'shonen'],
       tech: ['api', 'code', 'dev', 'javascript', 'python', 'database', 'git'],
       debate: ['débat', 'argument', 'opinion', 'philosophie', 'contredit'],
