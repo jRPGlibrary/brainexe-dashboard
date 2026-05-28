@@ -19,6 +19,7 @@ const { getDailyVibe, isUrgentQuery, decideMentionResponse, queueRelance } = req
 const { getChannelIntentBlock } = require('../bot/channelIntel');
 const { simulateTyping, simulateDmTyping, sendHuman, resolveMentionsInText, stripEmDash } = require('../bot/messaging');
 const { checkBusyExcuse, triggerBusyExcuse } = require('../features/busyExcuse');
+const { detectAndSetPresenceFromReply } = require('../features/presenceManager');
 const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
   updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
@@ -405,6 +406,7 @@ async function handleMentionReply(message, userQuery) {
     }
 
     await sendHuman(message.channel, replyResolved + youtubeBlock + steamBlock, message, { bond });
+    detectAndSetPresenceFromReply(replyResolved).catch(() => {});
     await updateMemberProfile(message.author.id, message.author.username, userQuery);
     const updatedBond = await applyInteractionToBond(message.author.id, message.author.username, userQuery);
 

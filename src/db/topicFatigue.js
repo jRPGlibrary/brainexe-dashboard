@@ -73,7 +73,7 @@ async function checkTopicRedundance(messageContent) {
     const topicKeywords = {
       'elden ring': ['elden ring', 'elden-ring', 'erdtree', 'grace'],
       eternights: ['eternights', 'eternight', 'dating sim', 'post-apocalyptic'],
-      'gaming-general': ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'speedrun', 'indie'],
+      'gaming-general': ['game', 'gamer', 'gaming', 'gameplay', 'fps', 'speedrun', 'indie', 'metroidvania', 'hollow knight', 'soulslike', 'jeux vidéo', 'jeu vidéo', 'souls', 'zelda', 'mario'],
       anime: ['anime', 'manga', 'weeb', 'otaku', 'isekai', 'shonen'],
       tech: ['api', 'code', 'dev', 'javascript', 'python', 'database', 'git'],
       debate: ['débat', 'argument', 'opinion', 'philosophie', 'contredit'],
@@ -84,6 +84,7 @@ async function checkTopicRedundance(messageContent) {
       rpg: ['rpg', 'jrpg', 'turn-based', 'moba'],
       silence: ['silence', 'silence des mondes', 'hérité', 'héritage'],
     };
+    const GAMING_TOPICS = new Set(['gaming-general', 'elden ring', 'rpg']);
 
     for (const [topicName, keywords] of Object.entries(topicKeywords)) {
       if (keywords.some(kw => contentLower.includes(kw))) {
@@ -91,10 +92,11 @@ async function checkTopicRedundance(messageContent) {
       }
     }
 
-    // Check fatigue for detected topics (seuil abaissé à 3 pour éviter la répétition)
+    // Check fatigue — seuil 2 pour le gaming, 3 pour le reste
     for (const topic of topics) {
       const count = await getTopicFatigue(topic);
-      if (count >= 3) {
+      const threshold = GAMING_TOPICS.has(topic) ? 2 : 3;
+      if (count >= threshold) {
         return {
           isRedundant: true,
           topic,
@@ -109,6 +111,20 @@ async function checkTopicRedundance(messageContent) {
     pushLog('ERR', `checkTopicRedundance: ${err.message}`, 'error');
     return { isRedundant: false };
   }
+}
+
+/**
+ * Combien de fois un sujet a été mentionné dans les X dernières heures
+ */
+async function getRecentTopicCount(topic, hours = 3) {
+  if (!shared.mongoDb) return 0;
+  try {
+    const topicLower = topic.toLowerCase().trim();
+    const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+    const doc = await shared.mongoDb.collection('topicFatigue').findOne({ topic: topicLower });
+    if (!doc?.dates) return 0;
+    return doc.dates.filter(d => d >= cutoff).length;
+  } catch (_) { return 0; }
 }
 
 /**
@@ -155,6 +171,7 @@ async function resetTopicFatigue() {
 module.exports = {
   recordTopic,
   getTopicFatigue,
+  getRecentTopicCount,
   checkTopicRedundance,
   getTopFatigueTopics,
   resetTopicFatigue,

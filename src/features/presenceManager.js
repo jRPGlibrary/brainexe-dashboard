@@ -58,6 +58,18 @@ const SLOT_CONTEXT = {
   latenight:  'il est tard, tu traînes ou tu es en hyperfocus',
 };
 
+// Patterns dans les réponses de Brainee indiquant qu'elle part / change de statut
+const REPLY_ABSENCE_PATTERNS = [
+  { re: /\bstatut (absent|absente|afk|idle)\b/i,                         reason: 'browsing', durationMin: 45 },
+  { re: /\b(me mets?|mettre en?|passe en?) (absent|absente|afk|idle)\b/i, reason: 'browsing', durationMin: 45 },
+  { re: /\bjuste exister\b/i,                                             reason: 'browsing', durationMin: 60 },
+  { re: /\bvais (manger|bouffer|grignoter|dîner|luncher|prendre l.apéro)\b/i, reason: 'eating', durationMin: 50 },
+  { re: /\bsuis (à table|en train de manger|au repas)\b/i,               reason: 'eating',   durationMin: 40 },
+  { re: /\bvais (dormir|me coucher|au lit|m.endormir)\b/i,               reason: 'resting',  durationMin: 480 },
+  { re: /\b(bonne nuit|good night)\b/i,                                  reason: 'resting',  durationMin: 480 },
+  { re: /\bvais (sortir|dehors|faire un tour)\b/i,                       reason: 'outside',  durationMin: 30 },
+];
+
 let _busyActive = false;
 let _lastSlotKey = '';
 let _cachedSlotActivity = '';
@@ -99,6 +111,28 @@ function setAvailable() {
     shared.discord.user.setPresence({ status: 'online', activities: [] });
     pushLog('SYS', '🟢 Présence → online');
   } catch (_) {}
+}
+
+async function setOccupiedFor(reason, durationMin) {
+  await setOccupied(reason);
+  const ms = Math.max(5, durationMin) * 60 * 1000;
+  setTimeout(() => {
+    setAvailable();
+    pushLog('SYS', `🔄 Fin absence auto [${reason}] → retour online`);
+  }, ms);
+}
+
+async function detectAndSetPresenceFromReply(text) {
+  if (!text || !shared.discord?.user) return false;
+  const lower = text.toLowerCase();
+  for (const { re, reason, durationMin } of REPLY_ABSENCE_PATTERNS) {
+    if (re.test(lower)) {
+      await setOccupiedFor(reason, durationMin);
+      pushLog('SYS', `🟡 Absence détectée dans réponse → [${reason}] ${durationMin}min`);
+      return true;
+    }
+  }
+  return false;
 }
 
 async function setSlotPresence(slotStatus) {
@@ -171,4 +205,4 @@ async function postSlotTransitionMessage(slotStatus) {
   }
 }
 
-module.exports = { setOccupied, setAvailable, setSlotPresence, postSlotTransitionMessage };
+module.exports = { setOccupied, setAvailable, setOccupiedFor, detectAndSetPresenceFromReply, setSlotPresence, postSlotTransitionMessage };

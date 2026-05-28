@@ -30,6 +30,8 @@ const {
   isMonologueChannel, countConsecutiveBotPosts,
 } = require('./convStats');
 const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
+const { getRecentTopicCount } = require('../db/topicFatigue');
+const { detectAndSetPresenceFromReply } = require('./presenceManager');
 const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { logMessageForBridge } = require('./dmServerBridge');
@@ -146,8 +148,19 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
     ? adjustMaxTokens(isDeep ? 220 : 160)
     : adjustMaxTokens(isDeep ? 130 : 85);
 
+  // Anti-gaming-overload : pivot forcé si gaming > 3 échanges dans les 3 dernières heures
+  const [_g1, _g2, _g3] = await Promise.all([
+    getRecentTopicCount('gaming-general', 3),
+    getRecentTopicCount('elden ring', 3),
+    getRecentTopicCount('rpg', 3),
+  ]);
+  const _gamingCount = _g1 + _g2 + _g3;
+  const gamingDiversifyInject = _gamingCount >= 3
+    ? `\n⚠️ DIVERSIFICATION OBLIGATOIRE : gaming mentionné ${_gamingCount}× ces 3 dernières heures. Lance un autre sujet — films, musique, actualité, vie réelle, tech, humeur, ou culture. Aucune référence aux jeux vidéo dans ce message.`
+    : '';
+
   const { text: content } = await callClaude(
-    `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${fallbackInject}${verbosityInstruct}\n${crossChannelBlock ? crossChannelBlock + '\n' : ''}${NO_TAG_CLAUSE}` + contextBlock,
+    `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${fallbackInject}${verbosityInstruct}${gamingDiversifyInject}\n${crossChannelBlock ? crossChannelBlock + '\n' : ''}${NO_TAG_CLAUSE}` + contextBlock,
     `Direct. Adapte-toi au salon. Pas de @ — c'est un lance-conv ambiant.`,
     maxTokens,
     BOT_PERSONA
@@ -424,6 +437,7 @@ async function replyToConversations() {
       pushLog('SYS', `💬 Reply → ${lastMsg.author.username} (mood: ${mood})`, 'success');
       broadcast('conversation', { channel: ch.channelName, type: 'reply' });
     }
+    detectAndSetPresenceFromReply(replyResolved).catch(() => {});
     recordCrossChannelPost(ch.channelId, ch.channelName, replyResolved).catch(() => {});
     shared.lastAnyBotPostTime = Date.now();
     recordChannelPost(ch.channelId);
