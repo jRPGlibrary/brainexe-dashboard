@@ -366,6 +366,11 @@ async function handleMentionReply(message, userQuery) {
       ({ text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION, budgetProfile.model));
     }
     if (userImages.length) pushLog('SYS', `🖼️ ${userImages.length} image(s) lues (mention ${message.author.username})`);
+    if (!reply && usedToolCall) {
+      pushLog('DBG', `Mention tool use vide → retry sans outils`, 'debug');
+      ({ text: reply, usage } = await callClaude(dynamicPrompt + imgInstruction, userContent, mentionMaxTokens, BOT_PERSONA_CONVERSATION, budgetProfile.model));
+    }
+    if (!reply) return;
     await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'mention_reply');
     const replyResolved = resolveMentionsInText(reply, message.guild);
 
@@ -617,6 +622,12 @@ function registerMessageHandlers() {
         ({ text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona, dmBudgetProfile.model));
       }
       if (dmImages.length) pushLog('SYS', `🖼️ ${dmImages.length} image(s) lues (DM ${message.author.username})`);
+      if (!rawReply && dmUsedToolCall) {
+        pushLog('DBG', `DM tool use vide → retry sans outils (${message.author.username})`, 'debug');
+        ({ text: rawReply, usage } = await callClaude(dynamicPrompt, userPrompt, dmMaxTokens, dmPersona, dmBudgetProfile.model));
+        dmUsedToolCall = false;
+      }
+      if (!rawReply) return;
       const hasPenduTrigger = rawReply.includes('[PENDU]');
       const reply = rawReply.replace(/\[PENDU\]/g, '').trim();
       await recordTokenUsage(message.author.id, message.author.username, usage.inputTokens, usage.outputTokens, 'dm_reply');

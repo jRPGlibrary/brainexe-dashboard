@@ -194,6 +194,7 @@ async function callClaudeWithTools(systemPrompt, userMessages, tools, toolHandle
       if (data.stop_reason !== 'tool_use') {
         const textBlock = data.content.find(b => b.type === 'text');
         const text = (textBlock?.text || '').trim();
+        if (!text) throw new Error('callClaudeWithTools: réponse finale vide après tool use');
         const latency = Date.now() - startedAt;
         shared.claudeHealth.lastSuccess = Date.now();
         shared.claudeHealth.lastLatencyMs = latency;
