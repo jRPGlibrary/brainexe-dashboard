@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brainee Home</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="layout">
+
+    <!-- SIDEBAR APPAREILS -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <span class="brand-icon">⚡</span>
+          <span class="brand-name">Brainee Home</span>
+        </div>
+        <div class="header-actions">
+          <span class="ha-status" id="ha-status" title="Home Assistant">●</span>
+          <button class="btn-icon" id="refresh-btn" title="Rafraîchir">↻</button>
+        </div>
+      </div>
+
+      <div class="domain-filters" id="domain-filters">
+        <button class="filter active" data-domain="">Tout</button>
+        <button class="filter" data-domain="light">💡 Lumières</button>
+        <button class="filter" data-domain="switch">🔌 Switches</button>
+        <button class="filter" data-domain="climate">🌡 Climat</button>
+        <button class="filter" data-domain="media_player">🎵 Média</button>
+        <button class="filter" data-domain="sensor">📊 Capteurs</button>
+        <button class="filter" data-domain="cover">🪟 Volets</button>
+      </div>
+
+      <div id="devices-grid" class="devices-grid">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Connexion à Home Assistant…</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CHAT -->
+    <main class="chat-panel">
+      <div class="chat-header">
+        <div class="chat-title">
+          <span class="status-dot" id="ws-dot"></span>
+          <span>Brainee</span>
+          <span class="model-badge" id="model-badge">haiku</span>
+        </div>
+        <button class="btn-icon" id="clear-btn" title="Effacer le chat">✕</button>
+      </div>
+
+      <div id="messages" class="messages">
+        <div class="message assistant">
+          <div class="bubble">Salut ! Je contrôle ta maison. Dis-moi quoi faire ou pose une question.</div>
+        </div>
+      </div>
+
+      <div class="chat-input-wrapper">
+        <input
+          type="text"
+          id="input"
+          class="chat-input"
+          placeholder="Allume la lumière du salon, quelle temp dans la chambre…"
+          autocomplete="off"
+          autofocus
+        >
+        <button id="send-btn" class="send-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </main>
+
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
