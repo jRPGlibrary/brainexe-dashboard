@@ -67,6 +67,64 @@ const AVOID_MARKERS = [
   "j'accroche pas", 'j\'arrive pas à rentrer dans',
 ];
 
+// ─── IMPORT PREFS DETECTION ──────────────────────────────────────
+
+const PLATFORM_OWNERSHIP_KW = {
+  PS5:   ['ps5', 'playstation 5', 'playstation5'],
+  Switch: ['nintendo switch', 'switch oled', 'switch lite', ' switch '],
+  PS4:   ['ps4', 'playstation 4', 'playstation4'],
+  Xbox:  ['xbox series', 'xbox one', 'series x', 'series s'],
+};
+const OWNERSHIP_MARKERS = ["j'ai", "j'ai une", "j'ai un", "j'ai la", "j'ai le", "ma ", "mon ", "sur ma", "sur mon", "avec ma", "avec mon"];
+
+function detectImportSignals(content = '') {
+  const text = ` ${content.toLowerCase()} `;
+  const signals = { platforms: [], languageTolerance: null };
+
+  const hasOwnership = OWNERSHIP_MARKERS.some(m => text.includes(m));
+  if (hasOwnership) {
+    for (const [platform, kws] of Object.entries(PLATFORM_OWNERSHIP_KW)) {
+      if (kws.some(kw => text.includes(kw))) signals.platforms.push(platform);
+    }
+  }
+
+  if (/full jap|tout en japonais|je (lis|comprends) le japonais/i.test(text)) {
+    signals.languageTolerance = 'full_jp';
+  } else if (/menu[sx]? (en )?anglais|interface (en )?anglais|juste les menus|sous-titre[sx]? anglais/i.test(text)) {
+    signals.languageTolerance = 'english_menu';
+  } else if (/j'ai besoin d'anglais|full anglais|tout en anglais|anglais (complet|obligatoire|requis)/i.test(text)) {
+    signals.languageTolerance = 'full_english';
+  }
+
+  return (signals.platforms.length || signals.languageTolerance) ? signals : null;
+}
+
+async function updateImportPrefs(userId, username, content) {
+  if (!shared.mongoDb) return null;
+  const signals = detectImportSignals(content);
+  if (!signals) return null;
+  try {
+    const existing = await getTasteProfile(userId) || { userId, username };
+    const prefs = existing.importPrefs || { platforms: [], languageTolerance: null };
+    if (!Array.isArray(prefs.platforms)) prefs.platforms = [];
+    for (const p of signals.platforms) {
+      if (!prefs.platforms.includes(p)) prefs.platforms.push(p);
+    }
+    if (signals.languageTolerance) prefs.languageTolerance = signals.languageTolerance;
+    prefs.updatedAt = new Date();
+    await shared.mongoDb.collection(COLLECTION).updateOne(
+      { userId },
+      { $set: { importPrefs: prefs, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    pushLog('DBG', `Import prefs ${username}: [${prefs.platforms.join(',')}] lang=${prefs.languageTolerance}`, 'debug');
+    return prefs;
+  } catch (err) {
+    pushLog('ERR', `updateImportPrefs: ${err.message}`, 'error');
+    return null;
+  }
+}
+
 // ─── DETECTION ───────────────────────────────────────────────────
 function detectTasteSignals(content = '') {
   const text = (content || '').toLowerCase();
@@ -294,6 +352,16 @@ function formatTasteBlock(profile, username) {
     parts.push(`Déjà conseillé par toi : ${recent.join(', ')} — évite de re-recommander pareil sauf demande explicite.`);
   }
 
+  // Import JAP prefs (boost recherches import)
+  if (profile.importPrefs) {
+    const { platforms = [], languageTolerance } = profile.importPrefs;
+    const langMap = { full_jp: 'full japonais OK', english_menu: 'menus anglais minimum', full_english: 'anglais complet requis' };
+    const imp = [];
+    if (platforms.length) imp.push(`plateformes : ${platforms.join(', ')}`);
+    if (languageTolerance) imp.push(`langue : ${langMap[languageTolerance] || languageTolerance}`);
+    if (imp.length) parts.push(`🇯🇵 Import JAP — ${imp.join(' | ')} — utilise ces infos pour enrichir tes recherches sur les versions japonaises`);
+  }
+
   if (!parts.length) return '';
 
   return `🎯 GOÛTS DE ${username.toUpperCase()} :
@@ -317,8 +385,10 @@ async function findCommonTaste(userIdA, userIdB) {
 
 module.exports = {
   detectTasteSignals,
+  detectImportSignals,
   getTasteProfile,
   updateTasteFromMessage,
+  updateImportPrefs,
   noteRecommendation,
   formatTasteBlock,
   findCommonTaste,

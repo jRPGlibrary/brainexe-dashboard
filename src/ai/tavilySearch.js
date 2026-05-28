@@ -393,7 +393,120 @@ async function searchPlatformLookup(query) {
   }
 }
 
-// ─── Handler unifié — reçoit les cinq outils ────────────────────────────────
+// ─── OUTIL 6 : Import JAP — Play Asia, CdJapan, Amazon JP, Nintendo JP ───────
+
+const IMPORT_DOMAINS = [
+  'playasia.com',
+  'cdjapan.co.jp',
+  'nin-nin-game.com',
+  'solaris-japan.com',
+  'yesasia.com',
+  'amazon.co.jp',
+  'store.jp.playstation.com',
+  'nintendo.co.jp',
+  'geekjack.net',
+  'amiami.com',
+];
+
+const IMPORT_LOOKUP_TOOL = {
+  name: 'rechercher_version_import',
+  description: "Recherche les informations sur une version japonaise d'un jeu sur les sites d'import spécialisés (Play Asia, CdJapan, Amazon JP, Nintendo JP, etc.) : langues disponibles (Japanese only / English menus / Multi-language), prix, disponibilité sur quelle console. Utiliser dès que quelqu'un mentionne : version JAP, Amazon Japan/JAP, langues disponibles sur une version JAP, import, playasia, cdjapan, acheter/commander au Japon.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: "Nom du jeu + plateforme + 'language' ou 'japanese version'. Ex: 'Terra Memoria PS5 japanese version language english', 'Monster Hunter Stories 3 Switch import language support'",
+      },
+    },
+    required: ['query'],
+  },
+};
+
+async function searchImportVersion(query) {
+  if (!TAVILY_API_KEY) throw new Error('TAVILY_API_KEY manquante');
+
+  const cacheKey = `import:${query}`;
+  const cached = getCached(cacheKey);
+  if (cached) {
+    pushLog('DBG', `Tavily import cache hit pour "${query}"`, 'debug');
+    return cached;
+  }
+
+  let results = [];
+
+  // Phase 1 : sites d'import spécialisés
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), TAVILY_TIMEOUT_MS);
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: TAVILY_API_KEY,
+        query: `${query} japanese import`,
+        search_depth: 'advanced',
+        include_answer: false,
+        include_raw_content: false,
+        max_results: 6,
+        days: 180,
+        include_domains: IMPORT_DOMAINS,
+      }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (res.ok) {
+      const data = await res.json();
+      results = (data.results || []).map(r => ({
+        title: r.title || '',
+        url: r.url || '',
+        snippet: (r.content || '').slice(0, 500),
+        source: (r.url || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0] || 'web',
+      }));
+    }
+  } catch (_) {}
+
+  // Phase 2 : fallback open web si < 2 résultats sur les stores import
+  if (results.length < 2) {
+    try {
+      const ctrl2 = new AbortController();
+      const t2 = setTimeout(() => ctrl2.abort(), TAVILY_TIMEOUT_MS);
+      const res2 = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: TAVILY_API_KEY,
+          query: `${query} japanese version language support`,
+          search_depth: 'advanced',
+          include_answer: false,
+          include_raw_content: false,
+          max_results: 6,
+          days: 180,
+        }),
+        signal: ctrl2.signal,
+      });
+      clearTimeout(t2);
+      if (res2.ok) {
+        const data2 = await res2.json();
+        const extra = (data2.results || []).map(r => ({
+          title: r.title || '',
+          url: r.url || '',
+          snippet: (r.content || '').slice(0, 500),
+          source: (r.url || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0] || 'web',
+        }));
+        results = [...results, ...extra].slice(0, 8);
+      }
+    } catch (_) {}
+  }
+
+  if (!results.length) throw new Error('Aucun résultat import trouvé');
+
+  setCache(cacheKey, results);
+  pushLog('DBG', `Tavily import: ${results.length} résultat(s) pour "${query}" → mis en cache`, 'debug');
+  return results;
+}
+
+// ─── Handler unifié — reçoit les six outils ─────────────────────────────────
 
 async function gamingToolHandler(toolName, toolInput) {
   if (toolName === 'rechercher_actu_gaming') {
@@ -499,13 +612,31 @@ async function gamingToolHandler(toolName, toolInput) {
     }
   }
 
+  if (toolName === 'rechercher_version_import') {
+    try {
+      const results = await searchImportVersion(toolInput.query || '');
+      if (!results.length) return "Aucune fiche trouvée sur les sites d'import pour cette version. Essaie de reformuler avec le nom exact du jeu + la plateforme.";
+
+      const headerI = '[DONNÉES BRUTES — synthétise naturellement, mentionne les langues trouvées par titre, NE RÉPÈTE PAS les URLs sauf si demandé]\n';
+      return headerI + results.map((r, i) =>
+        `${i + 1}. [${r.source}] ${r.title}\n${r.snippet}`
+      ).join('\n\n');
+    } catch (err) {
+      return JSON.stringify({
+        error: err.message,
+        fallback: true,
+        instruction: "La recherche import a échoué. Dis que tu n'as pas pu accéder aux sites d'import et conseille de vérifier directement sur playasia.com ou cdjapan.co.jp.",
+      });
+    }
+  }
+
   return JSON.stringify({ error: 'Outil inconnu' });
 }
 
 // Liste des outils disponibles selon les clés présentes
 function getAvailableTools() {
   const tools = [];
-  if (TAVILY_API_KEY) tools.push(GAMING_NEWS_TOOL, GAMING_HELP_TOOL, PLATFORM_LOOKUP_TOOL);
+  if (TAVILY_API_KEY) tools.push(GAMING_NEWS_TOOL, GAMING_HELP_TOOL, PLATFORM_LOOKUP_TOOL, IMPORT_LOOKUP_TOOL);
   if (IGDB_API_KEY && IGDB_CLIENT_ID) tools.push(IGDB_GAME_TOOL);
   if (GOOGLE_CSE_API_KEY && GOOGLE_CSE_CX) tools.push(GOOGLE_GAMING_TOOL);
   return tools;
@@ -517,12 +648,14 @@ module.exports = {
   searchGamingHelp,
   searchGoogleGaming,
   searchPlatformLookup,
+  searchImportVersion,
   gamingToolHandler,
   GAMING_NEWS_TOOL,
   IGDB_GAME_TOOL,
   GAMING_HELP_TOOL,
   GOOGLE_GAMING_TOOL,
   PLATFORM_LOOKUP_TOOL,
+  IMPORT_LOOKUP_TOOL,
   getAvailableTools,
   getCacheStats,
 };

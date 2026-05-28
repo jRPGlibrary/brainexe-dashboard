@@ -29,7 +29,7 @@ const {
 } = require('../db/memberStories');
 const { getVipTier, getVipBlockForPrompt } = require('../db/vipSystem');
 const {
-  getTasteProfile, updateTasteFromMessage, formatTasteBlock,
+  getTasteProfile, updateTasteFromMessage, formatTasteBlock, updateImportPrefs,
 } = require('../db/tasteProfile');
 const { detectHyperFocusTopic, registerObsession } = require('../bot/hyperFocus');
 const { getEmotionCombosBlock } = require('../bot/emotionCombos');
@@ -111,6 +111,16 @@ const HELP_KEYWORDS = [
 
 // Steam link ignoré si l'user demande explicitement une console non-PC
 const CONSOLE_ONLY_KEYWORDS = ['ps5', 'ps4', 'ps3', 'playstation', 'xbox', 'switch', 'nintendo eshop'];
+
+// Import JAP — déclenche rechercher_version_import
+const IMPORT_KEYWORDS = [
+  'version jap', 'version jp', 'amazon jap', 'amazon jp', 'amazon japon',
+  'playasia', 'play asia', 'cdjapan', 'cd japan', 'nin-nin', 'solaris japan',
+  'import', 'importer', 'commander au japon', 'acheter au japon', 'depuis le japon',
+  'langues disponibles', 'langue disponible', 'available language', 'language support',
+  'version japonaise', 'japanese version', 'jap physique', 'boîte japonaise',
+  'english text', 'texte anglais', 'multilingue', 'multi-langue',
+];
 
 // Demandes de post/liste formaté → plus de tokens, livraison directe sans "j'arrive"
 const POST_KEYWORDS = [
@@ -320,7 +330,8 @@ async function handleMentionReply(message, userQuery) {
     const imgInstruction = userImages.length ? getImageCommentInstruction(userImages.length) : '';
     const lowerQuery = userQuery.toLowerCase();
     const isPostRequest = POST_KEYWORDS.some(kw => lowerQuery.includes(kw));
-    const _baseMentionTokens = isPostRequest ? 900 : getContextualMaxTokens(userQuery, { defaultShort: 90, extended: 185 });
+    const _isImportMention = IMPORT_KEYWORDS.some(kw => lowerQuery.includes(kw));
+    const _baseMentionTokens = isPostRequest ? 900 : _isImportMention ? 500 : getContextualMaxTokens(userQuery, { defaultShort: 90, extended: 185 });
     const mentionMaxTokens = adjustMaxTokens(Math.floor(_baseMentionTokens * budgetProfile.maxTokensMult));
 
     // Contexte du message auquel répond l'utilisateur (reply Discord)
@@ -339,11 +350,14 @@ async function handleMentionReply(message, userQuery) {
       : `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\n${TOOL_SYNTHESIS_RULE}${replyRefContext}`;
     const userContent = await buildMultimodalUserContent(userTextPrompt, userImages);
     const availableTools = getAvailableTools();
+    const isImportQuery = IMPORT_KEYWORDS.some(kw => lowerQuery.includes(kw));
     const isNewsQuery = availableTools.length > 0
-      && (isPostRequest
+      && (isPostRequest || isImportQuery
         || NEWS_KEYWORDS.some(kw => lowerQuery.includes(kw))
         || GAME_INFO_KEYWORDS.some(kw => lowerQuery.includes(kw))
         || HELP_KEYWORDS.some(kw => lowerQuery.includes(kw)));
+    // Import prefs non-bloquant : on détecte les plateformes/langue mentionnées
+    updateImportPrefs(message.author.id, message.author.username, userQuery).catch(() => {});
 
     let reply, usage;
     let usedToolCall = false;
@@ -584,9 +598,13 @@ function registerMessageHandlers() {
       const dmAvailableTools = getAvailableTools();
       const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
       const dmIsPostRequest = POST_KEYWORDS.some(kw => dmQueryText.includes(kw));
+      const dmIsImportQuery = IMPORT_KEYWORDS.some(kw => dmQueryText.includes(kw));
+      // Import prefs : détecte plateformes/langue mentionnées non-bloquant
+      updateImportPrefs(message.author.id, message.author.username, userContent).catch(() => {});
       const dmBudgetProfile = getBudgetProfile();
       const _baseDmTokens = (_uFlags.beShort || _wantsShort) ? 80
         : dmIsPostRequest ? 900
+        : dmIsImportQuery ? 500
         : getContextualMaxTokens(userContent || '', { defaultShort: 110, extended: 220, isDM: true });
       const dmMaxTokens = adjustMaxTokens(Math.floor(_baseDmTokens * dmBudgetProfile.maxTokensMult));
       const userTextOnlyPrompt = dmIsPostRequest
@@ -596,7 +614,7 @@ function registerMessageHandlers() {
       // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
       await simulateTyping(message.channel, 500 + Math.random() * 500);
       const dmIsNewsQuery = dmAvailableTools.length > 0
-        && (dmIsPostRequest
+        && (dmIsPostRequest || dmIsImportQuery
           || NEWS_KEYWORDS.some(kw => dmQueryText.includes(kw))
           || GAME_INFO_KEYWORDS.some(kw => dmQueryText.includes(kw))
           || HELP_KEYWORDS.some(kw => dmQueryText.includes(kw)));

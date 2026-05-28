@@ -119,15 +119,16 @@ describe('Schémas outils Anthropic', () => {
 // ── getAvailableTools ────────────────────────────────────────────────────────
 
 describe('getAvailableTools', () => {
-  test('retourne les cinq outils quand toutes les clés sont présentes', () => {
+  test('retourne les six outils quand toutes les clés sont présentes', () => {
     const tools = getAvailableTools();
-    expect(tools).toHaveLength(5);
+    expect(tools).toHaveLength(6);
     const names = tools.map(t => t.name);
     expect(names).toContain('rechercher_actu_gaming');
     expect(names).toContain('rechercher_jeu_igdb');
     expect(names).toContain('rechercher_aide_gaming');
     expect(names).toContain('rechercher_google_gaming');
     expect(names).toContain('rechercher_jeu_plateforme');
+    expect(names).toContain('rechercher_version_import');
   });
 });
 
