@@ -337,7 +337,7 @@ async function handleMentionReply(message, userQuery) {
     const userTextPrompt = isPostRequest
       ? `${message.author.username} demande : "${userQuery}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord (**, [texte](url)). Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
       : `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\n${TOOL_SYNTHESIS_RULE}${replyRefContext}`;
-    const userContent = buildMultimodalUserContent(userTextPrompt, userImages);
+    const userContent = await buildMultimodalUserContent(userTextPrompt, userImages);
     const availableTools = getAvailableTools();
     const isNewsQuery = availableTools.length > 0
       && (isPostRequest
@@ -587,7 +587,7 @@ function registerMessageHandlers() {
       const userTextOnlyPrompt = dmIsPostRequest
         ? `${message.author.username} demande : "${enrichedUserContent || userContent}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord. Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
         : `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"\n${TOOL_SYNTHESIS_RULE}`;
-      const userPrompt = buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
+      const userPrompt = await buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
       // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
       await simulateTyping(message.channel, 500 + Math.random() * 500);
       const dmIsNewsQuery = dmAvailableTools.length > 0

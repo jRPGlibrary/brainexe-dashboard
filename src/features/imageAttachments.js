@@ -9,7 +9,7 @@
  * On reste simple :
  *   - max 3 images par message (au-delà on coupe)
  *   - on ignore tout ce qui n'est pas image (gif/png/jpg/webp)
- *   - on passe les URLs Discord directement (pas de base64)
+ *   - téléchargement base64 (Discord CDN URLs signées/expirantes)
  * ================================================
  */
 
@@ -48,17 +48,49 @@ function extractImageAttachments(message) {
 }
 
 /**
+ * Télécharge une image depuis Discord CDN et retourne le base64.
+ * Fallback URL si le fetch échoue (timeout 8s).
+ */
+async function _fetchImageBase64(url, mime) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BraineeBot/1.0)' },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = await res.arrayBuffer();
+    return { ok: true, data: Buffer.from(buf).toString('base64'), mediaType: mime || 'image/jpeg' };
+  } catch (_) {
+    clearTimeout(timer);
+    return { ok: false };
+  }
+}
+
+/**
  * Transforme un texte utilisateur + images en payload multimodal.
  * Si pas d'image → retourne juste le texte string.
+ * Les images sont téléchargées en base64 pour garantir l'accès par l'API Anthropic.
  */
-function buildMultimodalUserContent(textPrompt, images) {
+async function buildMultimodalUserContent(textPrompt, images) {
   if (!images || images.length === 0) return textPrompt;
   const blocks = [];
   for (const img of images) {
-    blocks.push({
-      type: 'image',
-      source: { type: 'url', url: img.url },
-    });
+    const result = await _fetchImageBase64(img.url, img.mime);
+    if (result.ok) {
+      blocks.push({
+        type: 'image',
+        source: { type: 'base64', media_type: result.mediaType, data: result.data },
+      });
+    } else {
+      // Fallback URL si téléchargement impossible
+      blocks.push({
+        type: 'image',
+        source: { type: 'url', url: img.url },
+      });
+    }
   }
   blocks.push({ type: 'text', text: textPrompt });
   return blocks;
