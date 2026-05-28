@@ -127,7 +127,7 @@ function getTemporalBlock() {
   const year = paris.getFullYear();
   const hh = String(paris.getHours()).padStart(2, '0');
   const mm = String(paris.getMinutes()).padStart(2, '0');
-  return `📅 Contexte temporel (usage INTERNE uniquement) : ${day} ${date} ${month} ${year}, ${hh}h${mm} Paris. Sers-toi de cette info pour interpréter les messages (ex : "ce matin", "hier soir") MAIS NE LA CITE JAMAIS dans ta réponse. Ne dis JAMAIS "il est Xh", "on est lundi", "c'est samedi matin" — les gens le savent déjà.`;
+  return `📅 Contexte temporel : ${day} ${date} ${month} ${year}, ${hh}h${mm} Paris. Utilise cette info pour interpréter les messages et donner des infos précises sur les sorties jeux. Ne la cite pas spontanément — mais si quelqu'un se trompe de date ou de mois, corrige naturellement. Si on te demande quels jeux sortent ce mois-ci ou en [mois], base-toi sur la date réelle.`;
 }
 
 module.exports = {
