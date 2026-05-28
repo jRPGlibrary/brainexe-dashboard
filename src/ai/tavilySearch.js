@@ -95,10 +95,11 @@ async function searchGamingNews(query) {
       body: JSON.stringify({
         api_key: TAVILY_API_KEY,
         query: `gaming ${query}`,
-        search_depth: 'basic',
+        search_depth: 'advanced',
         include_answer: false,
         include_raw_content: false,
-        max_results: 5,
+        max_results: 7,
+        days: 30,
         include_domains: GAMING_PRESS_DOMAINS,
       }),
       signal: controller.signal,
@@ -364,6 +365,7 @@ async function searchPlatformLookup(query) {
         include_answer: false,
         include_raw_content: false,
         max_results: 8,
+        days: 90,
         // Pas d'include_domains → tout le web, toutes les stores
       }),
       signal: controller.signal,
@@ -378,6 +380,7 @@ async function searchPlatformLookup(query) {
       url: r.url || '',
       snippet: (r.content || '').slice(0, 400),
       source: (r.url || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0] || 'web',
+      publishedDate: r.published_date || null,
     }));
 
     setCache(cacheKey, results);
@@ -481,9 +484,12 @@ async function gamingToolHandler(toolName, toolInput) {
       if (!results.length) return "Aucun résultat trouvé même sur le web complet. Le jeu est peut-être très récemment annoncé ou le nom est inexact.";
 
       const headerP = '[DONNÉES BRUTES — synthétise naturellement, NE RÉPÈTE PAS les URLs sauf si demandé]\n';
-      return headerP + results.map((r, i) =>
-        `${i + 1}. [${r.source}] ${r.title}\n${r.snippet}`
-      ).join('\n\n');
+      return headerP + results.map((r, i) => {
+        const date = r.publishedDate
+          ? ` (publié le ${new Date(r.publishedDate).toLocaleDateString('fr-FR')})`
+          : '';
+        return `${i + 1}. [${r.source}]${date} ${r.title}\n${r.snippet}`;
+      }).join('\n\n');
     } catch (err) {
       return JSON.stringify({
         error: err.message,
