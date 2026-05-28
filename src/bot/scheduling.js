@@ -127,7 +127,7 @@ function getTemporalBlock() {
   const year = paris.getFullYear();
   const hh = String(paris.getHours()).padStart(2, '0');
   const mm = String(paris.getMinutes()).padStart(2, '0');
-  return `📅 Contexte temporel : ${day} ${date} ${month} ${year}, ${hh}h${mm} Paris. Utilise cette info pour interpréter les messages et donner des infos précises sur les sorties jeux. Ne la cite pas spontanément — mais si quelqu'un se trompe de date ou de mois, corrige naturellement. Si on te demande quels jeux sortent ce mois-ci ou en [mois], base-toi sur la date réelle.`;
+  return `📅 Contexte temporel : ${day} ${date} ${month} ${year}, ${hh}h${mm} Paris. Utilise cette info pour interpréter les messages et donner des infos précises sur les sorties jeux. Ne la cite pas spontanément — mais si quelqu'un se trompe de date ou de mois, corrige naturellement. RÈGLE SORTIES : toute date de sortie antérieure à aujourd'hui (${date} ${month} ${year}) = jeu DÉJÀ SORTI — ne le présente JAMAIS comme "à venir" ou "prévu". Si une recherche retourne un article avec une ancienne date planifiée, c'est que le jeu est sorti depuis.`;
 }
 
 module.exports = {
