@@ -22,7 +22,7 @@
 
 const shared = require('../shared');
 const { pushLog } = require('../logger');
-const { GAMING_KEYWORDS, THREAD_TRIGGERS } = require('../bot/keywords');
+const { THREAD_TRIGGERS } = require('../bot/keywords');
 
 const COLLECTION = 'tasteProfiles';
 const MAX_GAMES = 40;

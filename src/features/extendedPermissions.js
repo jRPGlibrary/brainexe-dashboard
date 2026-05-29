@@ -21,7 +21,6 @@ const { GUILD_ID } = require('../config');
 const { auditLog } = require('../audit');
 const { getCurrentSlot } = require('../bot/scheduling');
 const { getDailyVibe } = require('../bot/adaptiveSchedule');
-const { getInternalState } = require('../bot/emotions');
 
 const COLLECTION = 'extendedPermActions';
 const DAILY_PIN_LIMIT = 2;

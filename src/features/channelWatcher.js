@@ -48,7 +48,7 @@ const { BOT_PERSONA } = require('../bot/persona');
 const { getChannelIntentBlock } = require('../bot/channelIntel');
 const { getChannelDirectory } = require('../db/channelDir');
 const { formatContext } = require('./context');
-const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
+const { simulateTyping, resolveMentionsInText } = require('../bot/messaging');
 const { HYPER_FOCUS_TOPICS } = require('../bot/hyperFocus');
 
 // ─── COOLDOWNS INTERNES ───────────────────────────────────────────

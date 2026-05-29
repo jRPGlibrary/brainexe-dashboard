@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 
 const shared = require('../../shared');
-const { getBeingStatus, isBeingAlive } = require('../../being');
+const { getBeingStatus } = require('../../being');
 
 /**
  * GET /api/being/status

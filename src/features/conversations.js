@@ -10,11 +10,10 @@ const { getChannelDirectory } = require('../db/channelDir');
 const { BOT_PERSONA, BOT_PERSONA_CONVERSATION } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getCurrentSlot, getRandomMode, getSlotIntervalMs, getTemporalBlock } = require('../bot/scheduling');
-const { getDailyVibe, shouldSkipConvCron } = require('../bot/adaptiveSchedule');
+const { getDailyVibe } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock, getModeInjectionForChannel } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
-const { sanitizeForJson, getContextualMaxTokens } = require('../utils');
-const { shouldCreateThread } = require('../bot/reactions');
+const { getContextualMaxTokens } = require('../utils');
 const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
   updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
@@ -26,7 +25,7 @@ const {
   getConvDailyCount, getConvMaxPerDay, resetDailyCountIfNeeded,
   updateConvStats, getRankedChannels, getGeneralChannel,
   hasUnansweredLastPost, isDeepTopicChannel,
-  isChannelDeadThisWeek, resetWeeklyPostCount,
+  isChannelDeadThisWeek,
   isMonologueChannel, countConsecutiveBotPosts,
 } = require('./convStats');
 const { shouldRespond, recordMessageTopic } = require('./decisionLogic');
@@ -34,11 +33,10 @@ const { getRecentTopicCount } = require('../db/topicFatigue');
 const { detectAndSetPresenceFromReply } = require('./presenceManager');
 const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory');
 const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
-const { logMessageForBridge } = require('./dmServerBridge');
 const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
 const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossChannelMem');
 const { isAbsent, maybeStartAbsence } = require('./absence');
-const { record: recordChannelPost, getLastPost, isOnCooldown, isOverLimit, COOLDOWN_MS: CHANNEL_COOLDOWN_MS, MAX_POSTS } = require('../bot/channelPostTracker');
+const { record: recordChannelPost, getLastPost, isOverLimit, COOLDOWN_MS: CHANNEL_COOLDOWN_MS, MAX_POSTS } = require('../bot/channelPostTracker');
 const { getBudgetMode } = require('../ai/budget');
 
 const MAX_CONV_ATTEMPTS = 10;

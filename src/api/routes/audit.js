@@ -1,7 +1,6 @@
 /* Audit Advanced - Routes */
 
 const router = require('express').Router();
-const { pushLog } = require('../../logger');
 const advancedAudit = require('../audit-advanced');
 
 router.get('/audit', (req, res) => {

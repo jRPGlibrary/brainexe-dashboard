@@ -5,7 +5,6 @@ const { callClaude } = require('../ai/claude');
 const { getChannelMemory, enrichChannelMemory, formatChannelMemoryBlock } = require('../db/channelMem');
 const { BOT_PERSONA_CONVERSATION } = require('../bot/persona');
 const { simulateTyping, resolveMentionsInText } = require('../bot/messaging');
-const { shouldCreateThread } = require('../bot/reactions');
 const { getCurrentSlot } = require('../bot/scheduling');
 const { DRIFT_REDIRECT_MAP } = require('../bot/keywords');
 const { formatContext } = require('./context');

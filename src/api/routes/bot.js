@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const { pushLog } = require('../../logger');
-const { startAnecdoteCron, postDailyAnecdote } = require('../../features/anecdotes');
-const { startActusCron, postBiMonthlyActus } = require('../../features/actus');
+const { postDailyAnecdote } = require('../../features/anecdotes');
+const { postBiMonthlyActus } = require('../../features/actus');
 const { postRandomConversation, replyToConversations } = require('../../features/conversations');
 const { postMorningGreeting, postGoodnight, postNightWakeup } = require('../../features/greetings');
 const { runDriftCheck } = require('../../features/drift');
