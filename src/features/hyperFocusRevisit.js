@@ -50,6 +50,20 @@ async function processDueObsessions() {
       return;
     }
 
+    // Guard : si la source est encore active dans le salon (message dans les 3h), inutile de relancer
+    try {
+      const recent = await channel.messages.fetch({ limit: 30 });
+      const threeHAgo = Date.now() - 3 * 60 * 60 * 1000;
+      const stillActive = [...recent.values()].some(
+        m => m.author?.id === obsession.sourceUserId && m.createdTimestamp > threeHAgo
+      );
+      if (stillActive) {
+        await markObsessionRevisited(obsession._id);
+        pushLog('SYS', `🎯 Hyper-focus revisit skip — ${obsession.sourceUsername} encore actif dans #${channel.name}`);
+        return;
+      }
+    } catch (_) {}
+
     const mood = refreshDailyMood();
     const emotionBlock = getEmotionalInjection();
     const topicLabel = describeTopic(obsession.topic);
@@ -57,12 +71,13 @@ async function processDueObsessions() {
     const ageHours = Math.round((Date.now() - new Date(obsession.createdAt).getTime()) / (1000 * 60 * 60));
 
     const prompt = `Humeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe : ${vibe.name}.\n${emotionBlock}\n\n` +
-      `CONTEXTE : il y a ~${ageHours}h, @${obsession.sourceUsername} a parlé de ${topicLabel} dans #${channel.name}. ` +
+      `CONTEXTE : il y a ~${ageHours}h, quelqu'un a parlé de ${topicLabel} dans #${channel.name}. ` +
       `Le message qui t'a accroché : "${obsession.snippet}".\n` +
-      `Depuis, t'y as repensé. T'as une nouvelle pensée, une remarque, un angle, une question fouillée à ramener.\n\n` +
-      `MISSION : écris UN message de retour différé, naturel, comme si tu y repensais à l'instant. ` +
-      `Pas de résumé du contexte. Pas "comme tu disais tout à l'heure". Plutôt : "attends j'ai repensé à un truc", "tiens ça m'a fait penser…", "ouais bon j'ai pas lâché ton truc sur X". ` +
-      `Tu peux mentionner @${obsession.sourceUsername} naturellement. Max 2 phrases.`;
+      `Depuis, t'y as repensé. T'as une nouvelle pensée, une remarque, un angle fouillé à ramener.\n\n` +
+      `MISSION : écris UN message ambiant, naturel, comme si tu y repensais à l'instant. ` +
+      `Pas de résumé du contexte. Varie l'accroche : "tiens d'ailleurs", "j'ai pas lâché ce truc sur X", "genre en fait", "ça m'est resté", un avis direct, etc. ` +
+      `INTERDIT : "attends j'ai repensé", "j'y ai repensé", "je repense à". INTERDIT absolu : tagger ou mentionner quelqu'un avec @. ` +
+      `Ce message est ambiant — pas une adresse directe. Max 2 phrases.`;
 
     const { text: reply } = await callClaude(prompt, 'Génère ce retour différé.', adjustMaxTokens(180), BOT_PERSONA_CONVERSATION);
     if (!reply || reply.length < 8) {
