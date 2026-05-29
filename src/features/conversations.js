@@ -39,6 +39,7 @@ const { isAbsent, maybeStartAbsence } = require('./absence');
 const { record: recordChannelPost, getLastPost, isOverLimit, COOLDOWN_MS: CHANNEL_COOLDOWN_MS, MAX_POSTS } = require('../bot/channelPostTracker');
 const { getBudgetMode } = require('../ai/budget');
 const { extractImageAttachments, buildMultimodalUserContent, getImageCommentInstruction } = require('./imageAttachments');
+const { enrichServerWithDmContext, logMessageForBridge } = require('./dmServerBridge');
 
 const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
@@ -382,8 +383,9 @@ async function replyToConversations() {
       : adjustMaxTokens(verbosity.shouldBePavé ? Math.round(baseReplyTokens * 1.3) : baseReplyTokens);
 
     const crossReplyBlock = await getCrossChannelContext(ch.channelId);
+    const dmBridgeBlock = await enrichServerWithDmContext(lastMsg.author.id, lastMsg.author.username).catch(() => '');
     const imgInstruction = images.length ? getImageCommentInstruction(images.length) : '';
-    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}${imgInstruction}`;
+    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}${dmBridgeBlock ? dmBridgeBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}${imgInstruction}`;
 
     const availableTools = getAvailableTools();
     const lowerMsgContent = contentForDecision.toLowerCase();
@@ -448,6 +450,7 @@ async function replyToConversations() {
     }
     detectAndSetPresenceFromReply(replyResolved).catch(() => {});
     recordCrossChannelPost(ch.channelId, ch.channelName, replyResolved).catch(() => {});
+    logMessageForBridge(lastMsg.author.id, lastMsg.author.username, contentForDecision, ch.channelId, ch.channelName, 'server').catch(() => {});
     shared.lastAnyBotPostTime = Date.now();
     recordChannelPost(ch.channelId);
     await updateConvStats(ch.channelId);

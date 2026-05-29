@@ -594,8 +594,11 @@ function registerMessageHandlers() {
 
       const dmTemporalBlock = getTemporalBlock();
       const dmImgInstruction = dmImages.length ? getImageCommentInstruction(dmImages.length) : '';
+      const imgMemoryInstruction = !dmImages.length && (historyBlock || '').includes('[image(s) envoyée(s)')
+        ? `\n[Note : des images ont été partagées dans cet échange. Si l'utilisateur fait un suivi sans en renvoyer, base-toi sur tes réponses précédentes — ne lui redemande pas les images.]`
+        : '';
       const penduInstruction = `\n\n🎮 PENDU : Tu peux proposer spontanément une partie de pendu RPG/JRPG, ou accepter si l'utilisateur en demande une. Si tu décides de lancer le jeu, inclus exactement \`[PENDU]\` sur une ligne seule dans ta réponse — le jeu démarre automatiquement. N'explique pas ce marker, fais juste comme si tu lançais la partie naturellement.`;
-      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}${dmConvSummaryBlock}\n\n${historyBlock ? `Échanges récents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.\n${DISCORD_LENGTH_CLAUSE}${dmImgInstruction}${penduInstruction}${_flagsBlock ? '\n' + _flagsBlock : ''}${_selfRefBlock}`;
+      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}${dmConvSummaryBlock}\n\n${historyBlock ? `Échanges récents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.\n${DISCORD_LENGTH_CLAUSE}${dmImgInstruction}${imgMemoryInstruction}${penduInstruction}${_flagsBlock ? '\n' + _flagsBlock : ''}${_selfRefBlock}`;
       const { getContextualMaxTokens } = require('../utils');
       const dmAvailableTools = getAvailableTools();
       const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
@@ -686,7 +689,10 @@ function registerMessageHandlers() {
         humanized = maybeAddOccasionalEmoji(humanized, { isDM: true });
         await message.reply(humanized + dmSteamBlock);
       }
-      await appendDmMessage(message.author.id, message.author.username, 'user', userContent);
+      const userHistoryContent = dmImages.length
+        ? `[${dmImages.length} image(s) envoyée(s)${userContent && userContent !== '[image envoyée]' ? ' — ' + userContent : ''}]`
+        : userContent;
+      await appendDmMessage(message.author.id, message.author.username, 'user', userHistoryContent);
       await appendDmMessage(message.author.id, message.author.username, 'assistant', reply);
 
       // 📝 Résumé conversationnel DM (async, non-bloquant)
