@@ -38,6 +38,7 @@ const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossC
 const { isAbsent, maybeStartAbsence } = require('./absence');
 const { record: recordChannelPost, getLastPost, isOverLimit, COOLDOWN_MS: CHANNEL_COOLDOWN_MS, MAX_POSTS } = require('../bot/channelPostTracker');
 const { getBudgetMode } = require('../ai/budget');
+const { extractImageAttachments, buildMultimodalUserContent, getImageCommentInstruction } = require('./imageAttachments');
 
 const MAX_CONV_ATTEMPTS = 10;
 const FALLBACK_NO_INSIST_MS = 6 * 60 * 60 * 1000;
@@ -338,25 +339,27 @@ async function replyToConversations() {
     }
 
     const msgContent = lastMsg.content;
-    if (!msgContent || msgContent.length < 5) return;
+    const images = extractImageAttachments(lastMsg);
+    if ((!msgContent || msgContent.length < 5) && images.length === 0) return;
+    const contentForDecision = msgContent || (images.length ? '[image envoyée]' : '');
 
     const vibe = getDailyVibe();
     const internalState = getInternalState();
-    const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, msgContent, false);
+    const decision = await shouldRespond(slot, vibe, internalState.mentalLoad, contentForDecision, false);
 
     if (!decision.should) {
       pushLog('SYS', `🙅 Skip reply (${decision.reason}): ${decision.message ? decision.message : ''}`);
       return;
     }
 
-    await recordMessageTopic(msgContent);
+    await recordMessageTopic(contentForDecision);
 
     const profile = await getMemberProfile(lastMsg.author.id);
     const toneInstruction = getToneInstruction(profile, lastMsg.author.username);
     const mood = refreshDailyMood();
     updateInternalStatesForSlot(slot);
     applyNaturalDecay();
-    detectEmotionFromMessage(msgContent, { userId: lastMsg.author.id });
+    detectEmotionFromMessage(contentForDecision, { userId: lastMsg.author.id });
     const bond = await ensureMemberBond(lastMsg.author.id, lastMsg.author.username);
     const bondBlock = describeBond(bond, lastMsg.author.username);
     const bondToneInstruction = getBondToneInstruction(bond, lastMsg.author.username);
@@ -379,10 +382,11 @@ async function replyToConversations() {
       : adjustMaxTokens(verbosity.shouldBePavé ? Math.round(baseReplyTokens * 1.3) : baseReplyTokens);
 
     const crossReplyBlock = await getCrossChannelContext(ch.channelId);
-    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}`;
+    const imgInstruction = images.length ? getImageCommentInstruction(images.length) : '';
+    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}${imgInstruction}`;
 
     const availableTools = getAvailableTools();
-    const lowerMsgContent = msgContent.toLowerCase();
+    const lowerMsgContent = contentForDecision.toLowerCase();
     const INFO_REQUEST_KEYWORDS = [
       'tu sais', 'tu connais', "c'est quoi", 'dis-moi', 'parle-moi',
       'infos sur', 'info sur', 'ce que tu sais', 'tu peux dire',
@@ -392,22 +396,29 @@ async function replyToConversations() {
       GAMING_KEYWORDS.some(kw => lowerMsgContent.includes(kw))
       || INFO_REQUEST_KEYWORDS.some(kw => lowerMsgContent.includes(kw))
     );
+    const effectiveMsgContent = msgContent || '[image envoyée sans texte]';
     let reply;
     if (isGamingTopic) {
       try {
+        const gamingText = `${lastMsg.author.username} parle de : "${effectiveMsgContent}"\nSi un outil est utile, utilise-le. APRÈS OUTIL : parle des infos comme Brainee — ton oral, 2-4 phrases si le sujet le mérite. Réagis d'abord si t'as un avis, puis partage les faits clés à ta façon. Zéro header, zéro section, zéro ---, zéro liste à puces, zéro lien (sauf si demandé). Jamais "selon mes recherches" ou "j'ai trouvé".`;
+        const gamingContent = images.length ? await buildMultimodalUserContent(gamingText, images) : gamingText;
         ({ text: reply } = await callClaudeWithTools(
           dynamicPrompt,
-          [{ role: 'user', content: `${lastMsg.author.username} parle de : "${msgContent}"\nSi un outil est utile, utilise-le. APRÈS OUTIL : parle des infos comme Brainee — ton oral, 2-4 phrases si le sujet le mérite. Réagis d'abord si t'as un avis, puis partage les faits clés à ta façon. Zéro header, zéro section, zéro ---, zéro liste à puces, zéro lien (sauf si demandé). Jamais "selon mes recherches" ou "j'ai trouvé".` }],
+          [{ role: 'user', content: gamingContent }],
           availableTools,
           gamingToolHandler,
           { maxTokens: adjustMaxTokens(300), cachedPrefix: BOT_PERSONA_CONVERSATION, model: 'claude-haiku-4-5-20251001' }
         ));
         pushLog('SYS', `🔍 Tool use gaming → reply spontanée ${lastMsg.author.username}`, 'success');
       } catch (_) {
-        ({ text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\nSois naturelle. Court (1-2 phrases).`, replyMaxTokens, BOT_PERSONA_CONVERSATION));
+        const fbText = `${lastMsg.author.username} dit : "${effectiveMsgContent}"\nSois naturelle. Court (1-2 phrases).`;
+        const fbContent = images.length ? await buildMultimodalUserContent(fbText, images) : fbText;
+        ({ text: reply } = await callClaude(dynamicPrompt, fbContent, replyMaxTokens, BOT_PERSONA_CONVERSATION));
       }
     } else {
-      ({ text: reply } = await callClaude(dynamicPrompt, `${lastMsg.author.username} dit : "${msgContent}"\nSois naturelle. Court par défaut (1-2 phrases). Plus long uniquement si vraiment utile.`, replyMaxTokens, BOT_PERSONA_CONVERSATION));
+      const replyText = `${lastMsg.author.username} dit : "${effectiveMsgContent}"\nSois naturelle. Court par défaut (1-2 phrases). Plus long uniquement si vraiment utile.`;
+      const replyContent = images.length ? await buildMultimodalUserContent(replyText, images) : replyText;
+      ({ text: reply } = await callClaude(dynamicPrompt, replyContent, replyMaxTokens, BOT_PERSONA_CONVERSATION));
     }
     const replyResolved = resolveMentionsInText(reply, guild);
     const { THREAD_TRIGGERS } = require('../bot/keywords');
@@ -440,8 +451,8 @@ async function replyToConversations() {
     shared.lastAnyBotPostTime = Date.now();
     recordChannelPost(ch.channelId);
     await updateConvStats(ch.channelId);
-    await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, msgContent);
-    await applyInteractionToBond(lastMsg.author.id, lastMsg.author.username, msgContent);
+    await updateMemberProfile(lastMsg.author.id, lastMsg.author.username, contentForDecision);
+    await applyInteractionToBond(lastMsg.author.id, lastMsg.author.username, contentForDecision);
   } catch (err) {
     if (!err.message.includes('Missing Permissions') && !err.message.includes('Unknown Message')) {
       pushLog('ERR', `Reply échouée : ${err.message}`, 'error');
