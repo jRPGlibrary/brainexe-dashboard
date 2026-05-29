@@ -172,7 +172,7 @@ function buildPromptForType(type, ctx) {
 
     challenge: `Lance un mini-défi improvisé au salon, fun, low-stakes, qui demande 1 message de réponse max. Exemples : "défi : décrivez votre dernier jeu en 3 mots", "qui aurait votre OST gaming si on faisait un mariage 👀", "votre 2010 était plus PS3 ou DS ?". Original, pas générique. Une seule phrase.`,
 
-    vip_callback: `${vipCallback}\nReprends ce fil de façon TRÈS naturelle, comme si t'y repensais à l'instant. Pas un état des lieux. Juste un "hey au fait…" ou "j'ai repensé à ce que tu disais sur…". Max 2 phrases. Tu peux les tagger naturellement avec @username.`,
+    vip_callback: `${vipCallback}\nReprends ce fil de façon TRÈS naturelle, comme si t'y repensais à l'instant. Pas un état des lieux. Juste un "hey au fait…" ou un angle nouveau sur le sujet. Max 2 phrases. INTERDIT : tagger ou mentionner quelqu'un avec @.`,
   };
 
   const directive = typeInstructions[type] || typeInstructions.random_thought;
@@ -261,7 +261,7 @@ async function fireOutreach(forcedType = null) {
 
     if (!usable) {
       // Pas de story : simple "j'ai pensé à toi"
-      vipCallback = `Tu repenses à @${target.username}, qui n'est pas passé depuis ${target.daysAbsent} jours. Pas de fil narratif ouvert avec — juste un "tiens au fait, t'es passé où ?" léger, sans pression.`;
+      vipCallback = `Tu penses à quelqu'un du serveur qui n'est pas passé depuis ${target.daysAbsent} jours. Juste une pensée légère, sans pression, sans les tagger directement. INTERDIT : tagger ou mentionner quelqu'un avec @.`;
     } else {
       touchedStoryId = usable.id;
       const fragment = {
@@ -271,7 +271,7 @@ async function fireOutreach(forcedType = null) {
         joke: `et le délire : "${usable.content}"`,
         fact: `et le fait que ${usable.content}`,
       }[usable.type] || usable.content;
-      vipCallback = `Tu repenses à @${target.username} ${fragment} (absent depuis ${target.daysAbsent} jours). Reprends ce fil naturellement — pas de récap, juste un rappel fluide. Tu peux mentionner @${target.username} dans le message.`;
+      vipCallback = `Tu repenses à un sujet qu'un membre avait lancé — ${fragment} (absent depuis ${target.daysAbsent} jours). Reprends ce fil naturellement — pas de récap, juste un rappel fluide. INTERDIT : tagger ou mentionner quelqu'un avec @.`;
     }
   }
 

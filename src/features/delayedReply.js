@@ -41,9 +41,8 @@ async function scheduleDelayedReplyAfterEmoji(message, userQuery, emojiUsed, slo
     try {
       const currentSlot = getCurrentSlot();
       if (currentSlot.maxConv === 0) { pushLog('SYS', `💤 Retour tardif annulé — Brainee dort`); return; }
-      const excuse = getEmojiExcuse(slot, mood);
       const fetched = await message.channel.messages.fetch({ limit: 15 });
-      // Bug 1 : annuler si Brainee a déjà répondu à cet utilisateur dans les 2h
+      // Guard : annuler si Brainee a déjà répondu à cet utilisateur dans les 2h
       const _botId = shared.discord?.user?.id;
       const _twoHAgo = Date.now() - 2 * 60 * 60 * 1000;
       const _alreadyReplied = [...fetched.values()].some(m =>
@@ -56,7 +55,7 @@ async function scheduleDelayedReplyAfterEmoji(message, userQuery, emojiUsed, slo
         pushLog('SYS', `↩️ Retour tardif annulé — déjà répondu à ${message.author.username} dans les 2h`);
         return;
       }
-      // Bug 3 : libellé d'âge pour contextualiser l'excuse sans copier-coller
+      // Libellé d'âge relatif pour contextualiser la réponse
       const _ageMs = Date.now() - message.createdTimestamp;
       const _ageH = _ageMs / 3600000;
       const _ageLabel = _ageH < 2 ? `y'a ${Math.round(_ageMs / 60000)} min`
@@ -93,13 +92,12 @@ async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, 
     try {
       const currentSlot = getCurrentSlot();
       if (currentSlot.maxConv === 0) return;
-      const excuse = getEmojiExcuse(slot, mood);
       const guild = await shared.discord.guilds.fetch(GUILD_ID);
       await guild.channels.fetch();
       const channel = guild.channels.cache.get(channelObj.channelId);
       if (!channel) return;
       const msgs = await channel.messages.fetch({ limit: 15 });
-      // Bug 1 : annuler si Brainee a déjà répondu à cet utilisateur dans les 2h
+      // Guard : annuler si Brainee a déjà répondu à cet utilisateur dans les 2h
       const _botIdS = shared.discord?.user?.id;
       const _twoHAgoS = Date.now() - 2 * 60 * 60 * 1000;
       const _alreadyRepliedS = [...msgs.values()].some(m =>
@@ -112,7 +110,7 @@ async function scheduleDelayedSpontaneousReply(lastMsg, channelObj, slot, mood, 
         pushLog('SYS', `↩️ Retour spontané annulé — déjà répondu à ${lastMsg.author.username} dans les 2h`);
         return;
       }
-      // Bug 3 : libellé d'âge contextuel
+      // Libellé d'âge relatif pour contextualiser la réponse
       const _ageMsS = Date.now() - lastMsg.createdTimestamp;
       const _ageHS = _ageMsS / 3600000;
       const _ageLabelS = _ageHS < 2 ? `y'a ${Math.round(_ageMsS / 60000)} min`

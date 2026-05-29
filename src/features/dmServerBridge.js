@@ -1,10 +1,7 @@
 const shared = require('../shared');
 const { pushLog } = require('../logger');
-const { callClaude } = require('../ai/claude');
-const { sanitizeForJson } = require('../utils');
 const { getSmartMemory, formatSmartMemory } = require('../db/intelligentMemory');
 const { getCurrentSlot } = require('../bot/scheduling');
-const { GUILD_ID } = require('../config');
 
 // Récupérer le contexte récent du serveur pour une personne
 // Filtre source='server' pour ne pas mélanger DM et serveur dans le contexte

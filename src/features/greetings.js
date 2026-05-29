@@ -3,9 +3,9 @@ const { pushLog } = require('../logger');
 const { GUILD_ID, ANTHROPIC_API_KEY } = require('../config');
 const { callClaude } = require('../ai/claude');
 const { BOT_PERSONA } = require('../bot/persona');
-const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
+const { refreshDailyMood } = require('../bot/mood');
 const { getParisDay, getParisHour } = require('../bot/scheduling');
-const { getDailyVibe, shouldTagPerson } = require('../bot/adaptiveSchedule');
+const { getDailyVibe } = require('../bot/adaptiveSchedule');
 const { simulateTyping, resolveMentionsInText } = require('../bot/messaging');
 const { updateConvStats, getQuietestChannel } = require('./convStats');
 const { sanitizeForJson } = require('../utils');
@@ -142,6 +142,7 @@ async function postNightWakeup() {
       'claude-haiku-4-5-20251001'
     );
     const contentResolved = resolveMentionsInText(content, guild);
+    await simulateTyping(channel, 500 + Math.random() * 1000);
     await channel.send(contentResolved);
     shared.lastAnyBotPostTime = Date.now();
     pushLog('SYS', `👁️ Night wakeup posté`);

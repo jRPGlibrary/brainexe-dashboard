@@ -8,7 +8,7 @@ const PREFERENCE_KEYWORDS = {
   anime_fan: ['anime', 'manga', 'weeb', 'otaku', 'kawaii', 'sensei', 'san', 'chan', 'shinobi', 'shonen', 'shoujo', 'seinen', 'isekai', 'harem'],
   debate_lover: ['débat', 'argument', 'réflexion', 'philosophie', 'opinion', 'contredit', 'discute', 'pensez', 'croyez', 'théorie', 'hypoth'],
   gaming_lover: [...GAMING_KEYWORDS, 'game', 'gamer', 'gaming', 'gameplay', 'speedrun', 'esport'],
-  music_lover: ['musique', 'chanson', 'chanson', 'album', 'artiste', 'playlist', 'beat', 'rhythm', 'rap', 'rock', 'metal', 'jazz', 'électro'],
+  music_lover: ['musique', 'chanson', 'album', 'artiste', 'playlist', 'beat', 'rhythm', 'rap', 'rock', 'metal', 'jazz', 'électro'],
 };
 
 async function getMemberProfile(userId) {

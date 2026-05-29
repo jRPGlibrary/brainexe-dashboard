@@ -21,12 +21,13 @@ function formatContext(messages, currentMessageId = null, limit = 15) {
     .reverse()
     .slice(-limit)
     .map(m => {
+      if (!m.author) return null;
       const who = m.author.bot ? '[Brainee]' : m.author.username;
       const when = m.createdTimestamp ? ` (${formatRelativeTime(m.createdTimestamp)})` : '';
       let replyInfo = '';
       if (m.reference?.messageId) {
         const ref = messages.get(m.reference.messageId);
-        if (ref) {
+        if (ref && ref.author) {
           const target = ref.author.bot ? 'Brainee' : ref.author.username;
           const preview = (ref.content || '').slice(0, 40).replace(/\n/g, ' ');
           replyInfo = ` [↩ répond à ${target}: "${preview}${preview.length >= 40 ? '...' : ''}"]`;
@@ -40,6 +41,7 @@ function formatContext(messages, currentMessageId = null, limit = 15) {
       }
       return `[${who}${when}${replyInfo}]: ${content.slice(0, 200)}`;
     })
+    .filter(Boolean)
     .join('\n');
 }
 

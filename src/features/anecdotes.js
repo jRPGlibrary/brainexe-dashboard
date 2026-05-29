@@ -1,6 +1,6 @@
 const shared = require('../shared');
 const { pushLog, broadcast } = require('../logger');
-const { GUILD_ID, ANTHROPIC_API_KEY } = require('../config');
+const { GUILD_ID } = require('../config');
 const { callClaude } = require('../ai/claude');
 const { getBotState, setBotState } = require('../db/botState');
 const { BOT_PERSONA } = require('../bot/persona');
