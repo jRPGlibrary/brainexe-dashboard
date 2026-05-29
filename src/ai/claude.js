@@ -42,7 +42,7 @@ async function callClaude(systemPrompt, userPrompt, maxTokens = 400, cachedPrefi
 
   const system = cleanCachedPrefix
     ? [
-        { type: 'text', text: cleanCachedPrefix, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: cleanCachedPrefix, cache_control: { type: 'ephemeral', ttl: '1h' } },
         ...(cleanSystemPrompt ? [{ type: 'text', text: cleanSystemPrompt }] : []),
       ]
     : cleanSystemPrompt;
@@ -136,14 +136,14 @@ async function callClaudeWithTools(systemPrompt, userMessages, tools, toolHandle
   const cleanCached = cachedPrefix ? sanitizeForJson(cachedPrefix) : null;
   const system = cleanCached
     ? [
-        { type: 'text', text: cleanCached, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: cleanCached, cache_control: { type: 'ephemeral', ttl: '1h' } },
         { type: 'text', text: cleanSystem },
       ]
     : cleanSystem;
 
   // Cache les schémas d'outils (constants) : cache_control sur le dernier outil
   const cachedTools = tools.length
-    ? tools.map((t, i) => i === tools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t)
+    ? tools.map((t, i) => i === tools.length - 1 ? { ...t, cache_control: { type: 'ephemeral', ttl: '1h' } } : t)
     : tools;
 
   let messages = userMessages.map(m => ({
