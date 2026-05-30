@@ -345,9 +345,15 @@ async function handleMentionReply(message, userQuery) {
       }
     }
 
+    // Détecte si la requête touche à du gaming → force la recherche web
+    const isGamingContext = GAMING_KEYWORDS.some(kw => lowerQuery.includes(kw))
+      || GAME_INFO_KEYWORDS.some(kw => lowerQuery.includes(kw));
+    const gamingSearchRule = isGamingContext
+      ? `OBLIGATION : si ta réponse va contenir un fait gaming (date de sortie, prix, contenu, studio, score) → utilise l'outil de recherche EN PREMIER. Ne réponds jamais de mémoire sur des faits gaming. `
+      : '';
     const userTextPrompt = isPostRequest
       ? `${message.author.username} demande : "${userQuery}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord (**, [texte](url)). Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
-      : `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\n${TOOL_SYNTHESIS_RULE}${replyRefContext}`;
+      : `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\n${gamingSearchRule}${TOOL_SYNTHESIS_RULE}${replyRefContext}`;
     // Charger les images avant de déterminer imgInstruction :
     // Si le téléchargement échoue, userContent reste une string → imgInstruction vide
     // → Brainee ne dira pas "je vois pas l'image" car elle ne sait pas qu'il y en avait une.
@@ -356,9 +362,10 @@ async function handleMentionReply(message, userQuery) {
     const availableTools = getAvailableTools();
     const isImportQuery = IMPORT_KEYWORDS.some(kw => lowerQuery.includes(kw));
     const isNewsQuery = availableTools.length > 0
-      && (isPostRequest || isImportQuery
+      && (isPostRequest || isImportQuery || isGamingContext
         || NEWS_KEYWORDS.some(kw => lowerQuery.includes(kw))
         || GAME_INFO_KEYWORDS.some(kw => lowerQuery.includes(kw))
+        || GAMING_KEYWORDS.some(kw => lowerQuery.includes(kw))
         || HELP_KEYWORDS.some(kw => lowerQuery.includes(kw)));
     // Import prefs non-bloquant : on détecte les plateformes/langue mentionnées
     updateImportPrefs(message.author.id, message.author.username, userQuery).catch(() => {});
@@ -615,16 +622,22 @@ function registerMessageHandlers() {
         : dmIsImportQuery ? 500
         : getContextualMaxTokens(userContent || '', { defaultShort: 110, extended: 220, isDM: true });
       const dmMaxTokens = adjustMaxTokens(Math.floor(_baseDmTokens * dmBudgetProfile.maxTokensMult));
+      const dmIsGamingContext = GAMING_KEYWORDS.some(kw => dmQueryText.includes(kw))
+        || GAME_INFO_KEYWORDS.some(kw => dmQueryText.includes(kw));
+      const dmGamingSearchRule = dmIsGamingContext
+        ? `OBLIGATION : si ta réponse va contenir un fait gaming (date de sortie, prix, contenu, studio, score) → utilise l'outil de recherche EN PREMIER. Ne réponds jamais de mémoire sur des faits gaming. `
+        : '';
       const userTextOnlyPrompt = dmIsPostRequest
         ? `${message.author.username} demande : "${enrichedUserContent || userContent}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord. Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
-        : `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"\n${TOOL_SYNTHESIS_RULE}`;
+        : `${message.author.username} : "${enrichedUserContent || '(image envoyée sans texte)'}"\n${dmGamingSearchRule}${TOOL_SYNTHESIS_RULE}`;
       const userPrompt = await buildMultimodalUserContent(userTextOnlyPrompt, dmImages);
       // Court signal de lecture (0.5-1s) pendant que Claude réfléchit
       await simulateTyping(message.channel, 500 + Math.random() * 500);
       const dmIsNewsQuery = dmAvailableTools.length > 0
-        && (dmIsPostRequest || dmIsImportQuery
+        && (dmIsPostRequest || dmIsImportQuery || dmIsGamingContext
           || NEWS_KEYWORDS.some(kw => dmQueryText.includes(kw))
           || GAME_INFO_KEYWORDS.some(kw => dmQueryText.includes(kw))
+          || GAMING_KEYWORDS.some(kw => dmQueryText.includes(kw))
           || HELP_KEYWORDS.some(kw => dmQueryText.includes(kw)));
 
       let rawReply, usage;
