@@ -6,12 +6,14 @@
  * en blocs multimodal Claude pour que Brainee puisse les voir
  * et les commenter naturellement.
  *
- * On reste simple :
- *   - max 3 images par message (au-delà on coupe)
- *   - on ignore tout ce qui n'est pas image (gif/png/jpg/webp)
- *   - téléchargement base64 (Discord CDN URLs signées/expirantes)
+ * Stratégie de chargement (3 tentatives par image) :
+ *   1. base64 depuis att.url  (URL CDN Discord signée)
+ *   2. base64 depuis att.proxyURL  (CDN proxy, différent réseau)
+ *   3. source URL pour Anthropic (Anthropic fait le fetch lui-même)
  * ================================================
  */
+
+const { pushLog } = require('../logger');
 
 const SUPPORTED_MIME = new Set([
   'image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif',
@@ -21,8 +23,9 @@ const MAX_IMAGES_PER_MESSAGE = 3;
 
 /**
  * Extrait les images valides d'un message Discord.
+ * Inclut proxyURL comme fallback réseau.
  * @param {import('discord.js').Message} message
- * @returns {Array<{url:string, name:string, mime:string}>}
+ * @returns {Array<{url:string, proxyURL:string|null, name:string, mime:string}>}
  */
 function extractImageAttachments(message) {
   if (!message?.attachments || message.attachments.size === 0) return [];
@@ -40,6 +43,7 @@ function extractImageAttachments(message) {
     if (!att.url) continue;
     out.push({
       url: att.url,
+      proxyURL: att.proxyURL || null,
       name: att.name || 'image',
       mime: mime || 'image/png',
     });
@@ -48,44 +52,72 @@ function extractImageAttachments(message) {
 }
 
 /**
- * Télécharge une image depuis Discord CDN et retourne le base64.
- * Fallback URL si le fetch échoue (timeout 8s).
+ * Télécharge une image depuis une URL et retourne le base64.
+ * Timeout 15s (augmenté vs 8s initial — images HD sur connexion lente).
  */
 async function _fetchImageBase64(url, mime) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
+  const timer = setTimeout(() => controller.abort(), 15000);
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BraineeBot/1.0)' },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; BraineeBot/1.0)',
+        'Accept': 'image/*,*/*',
+      },
       signal: controller.signal,
     });
     clearTimeout(timer);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      pushLog('WARN', `🖼️ CDN image HTTP ${res.status} : ${url.slice(0, 80)}`, 'error');
+      return { ok: false };
+    }
     const buf = await res.arrayBuffer();
     return { ok: true, data: Buffer.from(buf).toString('base64'), mediaType: mime || 'image/jpeg' };
-  } catch (_) {
+  } catch (err) {
     clearTimeout(timer);
+    const reason = err.name === 'AbortError' ? 'timeout 15s' : (err.message || 'erreur réseau').slice(0, 60);
+    pushLog('WARN', `🖼️ CDN image download échoué (${reason}) : ${url.slice(0, 80)}`, 'error');
     return { ok: false };
   }
 }
 
 /**
- * Télécharge toutes les images en base64. Retourne un tableau de blocs image Claude.
- * Retourne [] si aucune image n'a pu être chargée.
+ * Télécharge toutes les images en essayant 3 méthodes par image :
+ *   1. base64 via att.url
+ *   2. base64 via att.proxyURL (si différent)
+ *   3. source URL pour Anthropic (en dernier recours — Anthropic fait le fetch)
+ *
+ * Retourne toujours les blocs pour les images qu'on a pu traiter.
+ * Un bloc URL-type est inclus si base64 échoue (Anthropic tente le fetch depuis ses serveurs).
  */
 async function loadImages(images) {
   if (!images || images.length === 0) return [];
   const blocks = [];
   for (const img of images) {
-    const result = await _fetchImageBase64(img.url, img.mime);
+    // Tentative 1 : base64 depuis l'URL principale
+    let result = await _fetchImageBase64(img.url, img.mime);
+
+    // Tentative 2 : base64 depuis proxyURL (cdn différent, parfois accessible quand le CDN principal ne l'est pas)
+    if (!result.ok && img.proxyURL && img.proxyURL !== img.url) {
+      pushLog('SYS', `🖼️ Retry proxyURL pour ${img.name}`, 'warn');
+      result = await _fetchImageBase64(img.proxyURL, img.mime);
+    }
+
     if (result.ok) {
       blocks.push({
         type: 'image',
         source: { type: 'base64', media_type: result.mediaType, data: result.data },
       });
+    } else {
+      // Tentative 3 : URL-type — Anthropic fait le fetch depuis ses propres serveurs.
+      // Si ses serveurs ne peuvent pas non plus accéder à l'URL, l'API retourne une erreur 400
+      // qui sera propagée (Brainee ne répond pas) — préférable à "je vois pas l'image".
+      pushLog('WARN', `🖼️ Base64 impossible, fallback URL Anthropic pour ${img.name}`, 'error');
+      blocks.push({
+        type: 'image',
+        source: { type: 'url', url: img.url },
+      });
     }
-    // Si le téléchargement échoue (URL expirée, réseau), on skip l'image.
-    // On n'envoie pas l'URL expirée à Anthropic — ça causerait un "je vois pas ce que c'est".
   }
   return blocks;
 }
