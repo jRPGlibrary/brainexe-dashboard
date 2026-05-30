@@ -20,6 +20,10 @@ const { getCurrentGameName } = require('../bot/currentGame');
 const NO_TAG_CLAUSE = `IMPORTANT : Ne tagge personne dans ce message — pas de @pseudo. Reste ambiant, personne n'a besoin d'être notifié.`;
 const LIGHT_TAG_CLAUSE = `IMPORTANT : Évite les tags sauf vraiment nécessaire. Ne tagge personne si pas strictement indispensable.`;
 
+// Clause de précision gaming — injectée dans les prompts où des faits sur des jeux peuvent sortir.
+// Empêche les hallucinations sur les dates de sortie et les prix.
+const GAMING_FACTS_CLAUSE = `\n[FAITS GAMING] Pour les dates de sortie, prix ou scores : n'affirme JAMAIS une date précise sans être certaine — dis "je crois que c'était...", "si je me souviens bien..." ou omets la date. Attention aux références temporelles relatives ("l'été dernier", "l'année dernière") : calcule-les par rapport à la date actuelle. Si tu n'es pas sûre d'un fait → utilise tes outils de recherche, ou exprime le doute clairement.`;
+
 const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 const DAY_CONTEXTS = {
   0: 'dimanche — pas de contrainte, journée à soi',
@@ -201,4 +205,4 @@ async function postRelanceMention({ userId, username, channelId, messageId, quer
   } catch (err) { pushLog('ERR', `Relance échouée : ${err.message}`, 'error'); }
 }
 
-module.exports = { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup, postRelanceMention, NO_TAG_CLAUSE, LIGHT_TAG_CLAUSE };
+module.exports = { postMorningGreeting, postLunchBack, postGoodnight, postNightWakeup, postRelanceMention, NO_TAG_CLAUSE, LIGHT_TAG_CLAUSE, GAMING_FACTS_CLAUSE };
