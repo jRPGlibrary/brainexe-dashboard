@@ -399,15 +399,22 @@ async function replyToConversations() {
       'infos sur', 'info sur', 'ce que tu sais', 'tu peux dire',
       'que sais-tu', 'dis moi', 'parle moi', 'tu peux me dire',
     ];
+    // Élargi : "jeu", "sorti", "ps5", etc. → déclenche la recherche même pour conversations casual gaming
+    const GENERAL_GAMING_KWS = [
+      'jeu', 'game', 'sorti', 'sortie', 'ps5', 'ps4', 'ps3', 'xbox', 'switch',
+      'nintendo', 'playstation', 'studio', 'développeur', 'éditeur', 'prix', 'vend',
+      'rpg', 'fps', 'indie', 'open world', 'multijoueur',
+    ];
     const isGamingTopic = availableTools.length > 0 && (
       GAMING_KEYWORDS.some(kw => lowerMsgContent.includes(kw))
+      || GENERAL_GAMING_KWS.some(kw => lowerMsgContent.includes(kw))
       || INFO_REQUEST_KEYWORDS.some(kw => lowerMsgContent.includes(kw))
     );
     const effectiveMsgContent = msgContent || '[image envoyée sans texte]';
     let reply;
     if (isGamingTopic) {
       try {
-        const gamingText = `${lastMsg.author.username} parle de : "${effectiveMsgContent}"\nSi un outil est utile, utilise-le. APRÈS OUTIL : parle des infos comme Brainee — ton oral, 2-4 phrases si le sujet le mérite. Réagis d'abord si t'as un avis, puis partage les faits clés à ta façon. Zéro header, zéro section, zéro ---, zéro liste à puces, zéro lien (sauf si demandé). Jamais "selon mes recherches" ou "j'ai trouvé".`;
+        const gamingText = `${lastMsg.author.username} parle de : "${effectiveMsgContent}"\nSi ce message contient ou implique un fait gaming (date de sortie, prix, contenu, studio, note) → utilise l'outil de recherche EN PREMIER avant toute réponse. Ne formule jamais un fait gaming depuis ta mémoire. APRÈS OUTIL : parle des infos comme Brainee — ton oral, 2-4 phrases si le sujet le mérite. Réagis d'abord si t'as un avis, puis partage les faits clés à ta façon. Zéro header, zéro section, zéro ---, zéro liste à puces, zéro lien (sauf si demandé). Jamais "selon mes recherches" ou "j'ai trouvé".`;
         const gamingContent = imageBlocks.length ? await buildMultimodalUserContent(gamingText, null, imageBlocks) : gamingText;
         ({ text: reply } = await callClaudeWithTools(
           dynamicPrompt,
