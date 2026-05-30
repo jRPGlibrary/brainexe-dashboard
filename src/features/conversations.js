@@ -38,7 +38,7 @@ const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossC
 const { isAbsent, maybeStartAbsence } = require('./absence');
 const { record: recordChannelPost, getLastPost, isOverLimit, COOLDOWN_MS: CHANNEL_COOLDOWN_MS, MAX_POSTS } = require('../bot/channelPostTracker');
 const { getBudgetMode } = require('../ai/budget');
-const { extractImageAttachments, buildMultimodalUserContent, getImageCommentInstruction } = require('./imageAttachments');
+const { extractImageAttachments, loadImages, buildMultimodalUserContent, getImageCommentInstruction } = require('./imageAttachments');
 const { enrichServerWithDmContext, logMessageForBridge } = require('./dmServerBridge');
 
 const MAX_CONV_ATTEMPTS = 10;
@@ -384,7 +384,12 @@ async function replyToConversations() {
 
     const crossReplyBlock = await getCrossChannelContext(ch.channelId);
     const dmBridgeBlock = await enrichServerWithDmContext(lastMsg.author.id, lastMsg.author.username).catch(() => '');
-    const imgInstruction = images.length ? getImageCommentInstruction(images.length) : '';
+
+    // Charger les images AVANT de construire dynamicPrompt :
+    // Si le téléchargement échoue (URL expirée, réseau), imgInstruction reste vide
+    // → Brainee ne dira pas "je vois pas l'image" car elle ne sait pas qu'il y en avait une.
+    const imageBlocks = images.length ? await loadImages(images) : [];
+    const imgInstruction = imageBlocks.length ? getImageCommentInstruction(imageBlocks.length) : '';
     const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}${dmBridgeBlock ? dmBridgeBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}${imgInstruction}`;
 
     const availableTools = getAvailableTools();
@@ -403,7 +408,7 @@ async function replyToConversations() {
     if (isGamingTopic) {
       try {
         const gamingText = `${lastMsg.author.username} parle de : "${effectiveMsgContent}"\nSi un outil est utile, utilise-le. APRÈS OUTIL : parle des infos comme Brainee — ton oral, 2-4 phrases si le sujet le mérite. Réagis d'abord si t'as un avis, puis partage les faits clés à ta façon. Zéro header, zéro section, zéro ---, zéro liste à puces, zéro lien (sauf si demandé). Jamais "selon mes recherches" ou "j'ai trouvé".`;
-        const gamingContent = images.length ? await buildMultimodalUserContent(gamingText, images) : gamingText;
+        const gamingContent = imageBlocks.length ? await buildMultimodalUserContent(gamingText, null, imageBlocks) : gamingText;
         ({ text: reply } = await callClaudeWithTools(
           dynamicPrompt,
           [{ role: 'user', content: gamingContent }],
@@ -414,14 +419,15 @@ async function replyToConversations() {
         pushLog('SYS', `🔍 Tool use gaming → reply spontanée ${lastMsg.author.username}`, 'success');
       } catch (_) {
         const fbText = `${lastMsg.author.username} dit : "${effectiveMsgContent}"\nSois naturelle. Court (1-2 phrases).`;
-        const fbContent = images.length ? await buildMultimodalUserContent(fbText, images) : fbText;
+        const fbContent = imageBlocks.length ? await buildMultimodalUserContent(fbText, null, imageBlocks) : fbText;
         ({ text: reply } = await callClaude(dynamicPrompt, fbContent, replyMaxTokens, BOT_PERSONA_CONVERSATION));
       }
     } else {
       const replyText = `${lastMsg.author.username} dit : "${effectiveMsgContent}"\nSois naturelle. Court par défaut (1-2 phrases). Plus long uniquement si vraiment utile.`;
-      const replyContent = images.length ? await buildMultimodalUserContent(replyText, images) : replyText;
+      const replyContent = imageBlocks.length ? await buildMultimodalUserContent(replyText, null, imageBlocks) : replyText;
       ({ text: reply } = await callClaude(dynamicPrompt, replyContent, replyMaxTokens, BOT_PERSONA_CONVERSATION));
     }
+    if (imageBlocks.length) pushLog('SYS', `🖼️ ${imageBlocks.length} image(s) lues (reply spontanée ${lastMsg.author.username})`, 'success');
     const replyResolved = resolveMentionsInText(reply, guild);
     const { THREAD_TRIGGERS } = require('../bot/keywords');
     const lowerReply = replyResolved.toLowerCase();
