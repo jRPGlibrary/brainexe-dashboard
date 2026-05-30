@@ -328,7 +328,6 @@ async function handleMentionReply(message, userQuery) {
     const { getContextualMaxTokens } = require('../utils');
     // 🖼️ Captation images jointes par l'utilisateur
     const userImages = extractImageAttachments(message);
-    const imgInstruction = userImages.length ? getImageCommentInstruction(userImages.length) : '';
     const lowerQuery = userQuery.toLowerCase();
     const isPostRequest = POST_KEYWORDS.some(kw => lowerQuery.includes(kw));
     const _isImportMention = IMPORT_KEYWORDS.some(kw => lowerQuery.includes(kw));
@@ -349,7 +348,11 @@ async function handleMentionReply(message, userQuery) {
     const userTextPrompt = isPostRequest
       ? `${message.author.username} demande : "${userQuery}"\nUtilise tes outils de recherche pour trouver les infos réelles, puis livre le post complet directement dans ce message. Format Markdown Discord (**, [texte](url)). Inclus les liens. Ne dis pas que tu vas chercher — cherche et envoie maintenant.`
       : `${message.author.username} dit : "${userQuery || '(image envoyée sans texte)'}"\n${TOOL_SYNTHESIS_RULE}${replyRefContext}`;
+    // Charger les images avant de déterminer imgInstruction :
+    // Si le téléchargement échoue, userContent reste une string → imgInstruction vide
+    // → Brainee ne dira pas "je vois pas l'image" car elle ne sait pas qu'il y en avait une.
     const userContent = await buildMultimodalUserContent(userTextPrompt, userImages);
+    const imgInstruction = Array.isArray(userContent) ? getImageCommentInstruction(userImages.length) : '';
     const availableTools = getAvailableTools();
     const isImportQuery = IMPORT_KEYWORDS.some(kw => lowerQuery.includes(kw));
     const isNewsQuery = availableTools.length > 0

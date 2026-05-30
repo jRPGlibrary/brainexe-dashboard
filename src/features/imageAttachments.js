@@ -70,12 +70,11 @@ async function _fetchImageBase64(url, mime) {
 }
 
 /**
- * Transforme un texte utilisateur + images en payload multimodal.
- * Si pas d'image → retourne juste le texte string.
- * Les images sont téléchargées en base64 pour garantir l'accès par l'API Anthropic.
+ * Télécharge toutes les images en base64. Retourne un tableau de blocs image Claude.
+ * Retourne [] si aucune image n'a pu être chargée.
  */
-async function buildMultimodalUserContent(textPrompt, images) {
-  if (!images || images.length === 0) return textPrompt;
+async function loadImages(images) {
+  if (!images || images.length === 0) return [];
   const blocks = [];
   for (const img of images) {
     const result = await _fetchImageBase64(img.url, img.mime);
@@ -84,16 +83,22 @@ async function buildMultimodalUserContent(textPrompt, images) {
         type: 'image',
         source: { type: 'base64', media_type: result.mediaType, data: result.data },
       });
-    } else {
-      // Fallback URL si téléchargement impossible
-      blocks.push({
-        type: 'image',
-        source: { type: 'url', url: img.url },
-      });
     }
+    // Si le téléchargement échoue (URL expirée, réseau), on skip l'image.
+    // On n'envoie pas l'URL expirée à Anthropic — ça causerait un "je vois pas ce que c'est".
   }
-  blocks.push({ type: 'text', text: textPrompt });
   return blocks;
+}
+
+/**
+ * Transforme un texte utilisateur + images en payload multimodal.
+ * Si pas d'image → retourne juste le texte string.
+ * Accepte des blocs pré-chargés via loadImages() pour éviter un double téléchargement.
+ */
+async function buildMultimodalUserContent(textPrompt, images, preloadedBlocks = null) {
+  const imageBlocks = preloadedBlocks !== null ? preloadedBlocks : await loadImages(images || []);
+  if (imageBlocks.length === 0) return textPrompt;
+  return [...imageBlocks, { type: 'text', text: textPrompt }];
 }
 
 /**
@@ -110,6 +115,7 @@ function getImageCommentInstruction(count) {
 
 module.exports = {
   extractImageAttachments,
+  loadImages,
   buildMultimodalUserContent,
   getImageCommentInstruction,
   MAX_IMAGES_PER_MESSAGE,
