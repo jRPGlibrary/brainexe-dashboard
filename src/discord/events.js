@@ -38,7 +38,7 @@ const {
   getActiveWindow, detectSupport, recordSupportFromMember, getVulnerabilityBlock,
 } = require('../bot/vulnerability');
 const { formatContext, extractRecentBraineeWords } = require('../features/context');
-const { LIGHT_TAG_CLAUSE } = require('../features/greetings');
+const { LIGHT_TAG_CLAUSE, GAMING_FACTS_CLAUSE } = require('../features/greetings');
 const { scheduleDiscordToFile } = require('./sync');
 const { sendWelcomeMessage } = require('../features/welcome');
 const { enrichDMWithServerContext, enrichServerWithDmContext, logMessageForBridge } = require('../features/dmServerBridge');
@@ -323,7 +323,7 @@ async function handleMentionReply(message, userQuery) {
     const temporalBlock = getTemporalBlock();
     // 🔗 Contexte DM récents avec cette personne pour faire le lien serveur ↔ DM
     const dmCrossContext = await enrichServerWithDmContext(message.author.id, message.author.username).catch(() => '');
-    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}${antiRepeatBlock}${convSummaryBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\n${DISCORD_LENGTH_CLAUSE}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}`;
+    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}${antiRepeatBlock}${convSummaryBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\n${DISCORD_LENGTH_CLAUSE}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}${GAMING_FACTS_CLAUSE}`;
 
     const { getContextualMaxTokens } = require('../utils');
     // 🖼️ Captation images jointes par l'utilisateur
