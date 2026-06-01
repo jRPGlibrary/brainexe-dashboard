@@ -156,4 +156,12 @@ function getContextualMaxTokens(userMessage = '', { defaultShort = 90, extended 
   return defaultShort;
 }
 
-module.exports = { sleep, sanitizeString, sanitizeForJson, sanitizeDiscordContent, extractJson, getContextualMaxTokens, IMPORTANT_TOPIC_HINTS };
+/**
+ * Joins non-empty prompt blocks with a single newline.
+ * Prevents \n\n\n spam when conditional blocks are empty strings.
+ */
+function joinBlocks(...blocks) {
+  return blocks.filter(b => typeof b === 'string' && b.trim()).join('\n');
+}
+
+module.exports = { sleep, sanitizeString, sanitizeForJson, sanitizeDiscordContent, extractJson, getContextualMaxTokens, IMPORTANT_TOPIC_HINTS, joinBlocks };
