@@ -13,7 +13,7 @@ const { getCurrentSlot, getRandomMode, getSlotIntervalMs, getTemporalBlock } = r
 const { getDailyVibe } = require('../bot/adaptiveSchedule');
 const { getChannelIntentBlock, getModeInjectionForChannel } = require('../bot/channelIntel');
 const { simulateTyping, sendHuman, resolveMentionsInText } = require('../bot/messaging');
-const { getContextualMaxTokens } = require('../utils');
+const { getContextualMaxTokens, joinBlocks } = require('../utils');
 const {
   getEmotionalInjection, getTemperamentInjection, detectEmotionFromMessage,
   updateInternalStatesForSlot, applyNaturalDecay, adjustMaxTokens, getInternalState,
@@ -126,9 +126,9 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
   let contextBlock = '';
   let recentCtxStr = '';
   try {
-    const msgs = await channel.messages.fetch({ limit: 15 });
-    recentCtxStr = formatContext(msgs, null, 15);
-    if (recentCtxStr.length > 20) contextBlock = `\nContexte récent:\n${recentCtxStr}`;
+    const msgs = await channel.messages.fetch({ limit: 8 });
+    recentCtxStr = formatContext(msgs, null, 8);
+    if (recentCtxStr.length > 20) contextBlock = `Contexte récent:\n${recentCtxStr}`;
   } catch (_) {}
   const crossChannelBlock = await getCrossChannelContext(ch.channelId);
   const verbosity = await getChannelVerbosity(ch.channelId);
@@ -160,7 +160,24 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
     : '';
 
   const { text: content } = await callClaude(
-    `${getTemporalBlock()}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}\n${memoryBlock}\n${narrativeBlock}\n${intentBlockC}\n${modeBlock}${deepInject}${fallbackInject}${verbosityInstruct}${gamingDiversifyInject}\n${crossChannelBlock ? crossChannelBlock + '\n' : ''}${NO_TAG_CLAUSE}${GAMING_FACTS_CLAUSE}` + contextBlock,
+    joinBlocks(
+      getTemporalBlock(),
+      `Humeur : ${mood}. ${getMoodInjection(mood)}`,
+      `Vibe du jour : ${vibe.name} — ${vibe.desc}.`,
+      temperamentBlock,
+      emotionBlock,
+      memoryBlock,
+      narrativeBlock,
+      intentBlockC,
+      modeBlock,
+      deepInject,
+      fallbackInject,
+      verbosityInstruct,
+      gamingDiversifyInject,
+      crossChannelBlock,
+      NO_TAG_CLAUSE + GAMING_FACTS_CLAUSE,
+      contextBlock,
+    ),
     `Direct. Adapte-toi au salon. Pas de @ — c'est un lance-conv ambiant.`,
     maxTokens,
     BOT_PERSONA
@@ -390,7 +407,23 @@ async function replyToConversations() {
     // → Brainee ne dira pas "je vois pas l'image" car elle ne sait pas qu'il y en avait une.
     const imageBlocks = images.length ? await loadImages(images) : [];
     const imgInstruction = imageBlocks.length ? getImageCommentInstruction(imageBlocks.length) : '';
-    const dynamicPrompt = `${getTemporalBlock()}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\nHumeur : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name}.\n${emotionBlock}\n${memoryBlock}\n${intentBlockR}\n${crossReplyBlock ? crossReplyBlock + '\n' : ''}${dmBridgeBlock ? dmBridgeBlock + '\n' : ''}Contexte #${channel.name} :\n${context}\nTu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).\n${verbosityReplyInstruct}\n${LIGHT_TAG_CLAUSE}${GAMING_FACTS_CLAUSE}${imgInstruction}`;
+    const dynamicPrompt = joinBlocks(
+      getTemporalBlock(),
+      toneInstruction,
+      `💞 LIEN : ${bondBlock}`,
+      bondToneInstruction,
+      `Humeur : ${mood}. ${getMoodInjection(mood)}`,
+      `Vibe du jour : ${vibe.name}.`,
+      emotionBlock,
+      memoryBlock,
+      intentBlockR,
+      crossReplyBlock,
+      dmBridgeBlock,
+      `Contexte #${channel.name} :\n${context}`,
+      `Tu réponds à ${lastMsg.author.username} via reply (pas besoin de tag).`,
+      verbosityReplyInstruct,
+      LIGHT_TAG_CLAUSE + GAMING_FACTS_CLAUSE + imgInstruction,
+    );
 
     const availableTools = getAvailableTools();
     const lowerMsgContent = contentForDecision.toLowerCase();

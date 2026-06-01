@@ -11,7 +11,7 @@
 3. **`brainexe-config.json` est éphémère sur Railway** → ne jamais en dépendre pour la persistance critique
 4. **Ne pas bloquer le boot** → toute opération async au démarrage doit être non-bloquante (Railway envoie SIGTERM si le event loop se fige)
 5. **Livrer toujours le fichier complet** — jamais de patch partiel
-6. **Tester avec `npm test` après chaque changement** → 165 tests Jest doivent rester verts
+6. **Tester avec `npm test` après chaque changement** → 212 tests Jest doivent rester verts
 
 ---
 
@@ -35,7 +35,7 @@
 | Hosting | Railway (auto-deploy GitHub) |
 | Repo | `github.com/jRPGlibrary/brainexe-dashboard` |
 | Dashboard | Express 4 + WebSocket + vanilla JS (38 modules, no bundler) |
-| Tests | Jest 30 — 7 suites, 133 tests |
+| Tests | Jest 30 — 10 suites, 212 tests |
 
 ---
 
