@@ -139,10 +139,11 @@ async function buildMultimodalUserContent(textPrompt, images, preloadedBlocks = 
  * pas lister, pas analyser comme une IA.
  */
 function getImageCommentInstruction(count) {
+  const base = `Regarde attentivement — même si la photo est sombre, floue ou mal éclairée, identifie ce que tu distingues (objet, jeu, logo, texte, lieu, ambiance...) et commente-le naturellement. Réaction courte et perso. INTERDIT absolu de dire "je vois rien", "c'est trop flou", "image pas claire" ou équivalent — travaille toujours avec ce qui est visible, même partiellement.`;
   if (count === 1) {
-    return `\n📷 La personne t'a envoyé UNE image. Regarde-la et réagis simplement, comme une humaine — un commentaire court, naturel, perso ("ah pas mal", "wow", "c'est où ?", "joli rendu", "tu joues à quoi là ?"). Pas de description analytique style IA. Reste dans le ton de la conversation.`;
+    return `\n📷 La personne t'a envoyé UNE image. ${base}`;
   }
-  return `\n📷 La personne t'a envoyé ${count} images. Regarde-les et réagis naturellement, en gardant le ton conversationnel. Tu peux commenter l'ensemble en une ou deux phrases courtes. Pas de liste, pas de description IA.`;
+  return `\n📷 La personne t'a envoyé ${count} images. ${base} Tu peux commenter l'ensemble en une ou deux phrases.`;
 }
 
 module.exports = {
