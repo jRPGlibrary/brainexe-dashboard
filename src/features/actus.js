@@ -18,12 +18,21 @@ function withTimeout(ms, signal) {
 }
 
 const TRUSTED_GAMING_DOMAINS = [
+  // Presse gaming FR
+  'jeuxvideo.com', 'gamekult.com', 'millenium.org', 'jvfrance.com',
+  // Presse gaming US/UK
   'ign.com', 'gamespot.com', 'eurogamer.net', 'polygon.com', 'pcgamer.com',
   'rockpapershotgun.com', 'kotaku.com', 'vg247.com', 'gamesradar.com',
   'gameinformer.com', 'destructoid.com', 'pushsquare.com', 'nintendolife.com',
-  'gamedeveloper.com', 'jeuxvideo.com', 'gamekult.com', 'millenium.org',
+  'gamedeveloper.com', 'thegamer.com', 'digitaltrends.com', 'techradar.com',
+  // Presse gaming JP
+  'famitsu.com', '4gamer.net', 'dengekionline.com', 'automaton-media.com',
+  'gamer.ne.jp', 'inside-games.jp',
+  // Éditeurs / plateformes officiels
   'xbox.com', 'playstation.com', 'nintendo.com', 'store.steampowered.com',
-  'epicgames.com', 'ubisoft.com', 'ea.com', 'bethesda.net', 'blizzard.com'
+  'epicgames.com', 'ubisoft.com', 'ea.com', 'bethesda.net', 'blizzard.com',
+  'capcom.com', 'sega.com', 'konami.com', 'bandainamco.com', 'atlus.com',
+  'fromsoftware.jp', 'cdprojektred.com', 'squareenix.com', '2k.com'
 ];
 
 function isFromTrustedDomain(url) {
@@ -45,7 +54,7 @@ async function fetchGNewsArticles(topic, postedUrls = []) {
 
     pushLog('DBG', `GNews: fetching "${topic}"`, 'debug');
     const res = await fetch(
-      `https://gnews.io/api/v4/search?q=${query}&max=25&sortby=publishedAt&from=${from}&lang=fr&token=${GNEWS_API_KEY}`,
+      `https://gnews.io/api/v4/search?q=${query}&max=25&sortby=publishedAt&from=${from}&token=${GNEWS_API_KEY}`,
       { signal: controller.signal }
     );
     cleanup();
@@ -75,10 +84,11 @@ async function fetchGNewsArticles(topic, postedUrls = []) {
 }
 
 const NEWSAPI_TRUSTED_DOMAINS = [
+  'jeuxvideo.com', 'gamekult.com', 'millenium.org',
   'ign.com', 'gamespot.com', 'eurogamer.net', 'polygon.com', 'pcgamer.com',
   'rockpapershotgun.com', 'kotaku.com', 'vg247.com', 'gamesradar.com',
   'gameinformer.com', 'destructoid.com', 'pushsquare.com', 'nintendolife.com',
-  'gamedeveloper.com', 'jeuxvideo.com', 'gamekult.com'
+  'gamedeveloper.com', 'thegamer.com', 'automaton-media.com', 'famitsu.com'
 ].join(',');
 
 async function fetchNewsAPIArticles(topic, postedUrls = []) {
@@ -90,7 +100,7 @@ async function fetchNewsAPIArticles(topic, postedUrls = []) {
 
     pushLog('DBG', `NewsAPI: fetching "${topic}" (sources officielles)`, 'debug');
     const res = await fetch(
-      `https://newsapi.org/v2/everything?q=${query}&domains=${NEWSAPI_TRUSTED_DOMAINS}&language=en&sortBy=publishedAt&pageSize=25&apiKey=${NEWSAPI_API_KEY}`,
+      `https://newsapi.org/v2/everything?q=${query}&domains=${NEWSAPI_TRUSTED_DOMAINS}&sortBy=publishedAt&pageSize=25&apiKey=${NEWSAPI_API_KEY}`,
       { signal: controller.signal }
     );
     cleanup();
