@@ -17,6 +17,33 @@ function withTimeout(ms, signal) {
   return { controller, cleanup: () => clearTimeout(timeout) };
 }
 
+const TRUSTED_GAMING_DOMAINS = [
+  // Presse gaming FR
+  'jeuxvideo.com', 'gamekult.com', 'millenium.org', 'jvfrance.com',
+  // Presse gaming US/UK
+  'ign.com', 'gamespot.com', 'eurogamer.net', 'polygon.com', 'pcgamer.com',
+  'rockpapershotgun.com', 'kotaku.com', 'vg247.com', 'gamesradar.com',
+  'gameinformer.com', 'destructoid.com', 'pushsquare.com', 'nintendolife.com',
+  'gamedeveloper.com', 'thegamer.com', 'digitaltrends.com', 'techradar.com',
+  // Presse gaming JP
+  'famitsu.com', '4gamer.net', 'dengekionline.com', 'automaton-media.com',
+  'gamer.ne.jp', 'inside-games.jp',
+  // Éditeurs / plateformes officiels
+  'xbox.com', 'playstation.com', 'nintendo.com', 'store.steampowered.com',
+  'epicgames.com', 'ubisoft.com', 'ea.com', 'bethesda.net', 'blizzard.com',
+  'capcom.com', 'sega.com', 'konami.com', 'bandainamco.com', 'atlus.com',
+  'fromsoftware.jp', 'cdprojektred.com', 'squareenix.com', '2k.com'
+];
+
+function isFromTrustedDomain(url) {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, '');
+    return TRUSTED_GAMING_DOMAINS.some(d => hostname === d || hostname.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
+}
+
 async function fetchGNewsArticles(topic, postedUrls = []) {
   if (!GNEWS_API_KEY) return [];
 
@@ -25,9 +52,9 @@ async function fetchGNewsArticles(topic, postedUrls = []) {
     const from = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const { controller, cleanup } = withTimeout(8000);
 
-    pushLog('DBG', `GNews: fetching "${topic}" (FR)`, 'debug');
+    pushLog('DBG', `GNews: fetching "${topic}"`, 'debug');
     const res = await fetch(
-      `https://gnews.io/api/v4/search?q=${query}&max=25&sortby=publishedAt&from=${from}&lang=fr&token=${GNEWS_API_KEY}`,
+      `https://gnews.io/api/v4/search?q=${query}&max=25&sortby=publishedAt&from=${from}&token=${GNEWS_API_KEY}`,
       { signal: controller.signal }
     );
     cleanup();
@@ -37,6 +64,7 @@ async function fetchGNewsArticles(topic, postedUrls = []) {
 
     const articles = (data.articles || [])
       .filter(a => a?.url && a?.title && !postedUrls.includes(a.url))
+      .filter(a => isFromTrustedDomain(a.url))
       .map(a => ({
         title: a.title,
         description: a.description,
@@ -47,7 +75,7 @@ async function fetchGNewsArticles(topic, postedUrls = []) {
       }))
       .slice(0, 8);
 
-    pushLog('DBG', `GNews: ${articles.length} articles trouvés`, 'debug');
+    pushLog('DBG', `GNews: ${articles.length} articles (sources officielles)`, 'debug');
     return articles;
   } catch (err) {
     pushLog('DBG', `GNews: ${err.message}`, 'debug');
@@ -55,16 +83,24 @@ async function fetchGNewsArticles(topic, postedUrls = []) {
   }
 }
 
+const NEWSAPI_TRUSTED_DOMAINS = [
+  'jeuxvideo.com', 'gamekult.com', 'millenium.org',
+  'ign.com', 'gamespot.com', 'eurogamer.net', 'polygon.com', 'pcgamer.com',
+  'rockpapershotgun.com', 'kotaku.com', 'vg247.com', 'gamesradar.com',
+  'gameinformer.com', 'destructoid.com', 'pushsquare.com', 'nintendolife.com',
+  'gamedeveloper.com', 'thegamer.com', 'automaton-media.com', 'famitsu.com'
+].join(',');
+
 async function fetchNewsAPIArticles(topic, postedUrls = []) {
   if (!NEWSAPI_API_KEY) return [];
 
   try {
-    const query = encodeURIComponent(`${topic} gaming video game`);
+    const query = encodeURIComponent(`${topic} gaming`);
     const { controller, cleanup } = withTimeout(8000);
 
-    pushLog('DBG', `NewsAPI: fetching "${topic}"`, 'debug');
+    pushLog('DBG', `NewsAPI: fetching "${topic}" (sources officielles)`, 'debug');
     const res = await fetch(
-      `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=25&apiKey=${NEWSAPI_API_KEY}`,
+      `https://newsapi.org/v2/everything?q=${query}&domains=${NEWSAPI_TRUSTED_DOMAINS}&sortBy=publishedAt&pageSize=25&apiKey=${NEWSAPI_API_KEY}`,
       { signal: controller.signal }
     );
     cleanup();
@@ -84,7 +120,7 @@ async function fetchNewsAPIArticles(topic, postedUrls = []) {
       }))
       .slice(0, 8);
 
-    pushLog('DBG', `NewsAPI: ${articles.length} articles trouvés`, 'debug');
+    pushLog('DBG', `NewsAPI: ${articles.length} articles (sources officielles)`, 'debug');
     return articles;
   } catch (err) {
     pushLog('DBG', `NewsAPI: ${err.message}`, 'debug');
@@ -92,57 +128,6 @@ async function fetchNewsAPIArticles(topic, postedUrls = []) {
   }
 }
 
-async function fetchRedditArticles(topic, postedUrls = []) {
-  try {
-    const { controller, cleanup } = withTimeout(8000);
-
-    pushLog('DBG', `Reddit: fetching "${topic}"`, 'debug');
-
-    const subreddits = ['gaming', 'Games', 'pcgaming'];
-    const posts = [];
-
-    for (const subreddit of subreddits) {
-      try {
-        const searchUrl = `https://www.reddit.com/r/${subreddit}/new.json?limit=20`;
-        const res = await fetch(searchUrl, {
-          signal: controller.signal,
-          headers: { 'User-Agent': 'Brainee-GameNews/1.0' }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const newPosts = (data.data?.children || [])
-            .map(p => p.data)
-            .filter(p => p?.title && p?.url && !postedUrls.includes(p.url))
-            .filter(p => !p.stickied)
-            .map(p => ({
-              title: p.title,
-              description: `Discussion Reddit • ${p.subreddit}`,
-              url: `https://reddit.com${p.permalink}`,
-              publishedAt: new Date(p.created_utc * 1000).toISOString(),
-              source: `r/${p.subreddit}`,
-              source_id: 'reddit'
-            }));
-          posts.push(...newPosts);
-        }
-      } catch (e) {
-        // Continue with next subreddit
-      }
-    }
-
-    cleanup();
-
-    const unique = Array.from(
-      new Map(posts.map(p => [p.url, p])).values()
-    ).slice(0, 8);
-
-    pushLog('DBG', `Reddit: ${unique.length} posts trouvés`, 'debug');
-    return unique;
-  } catch (err) {
-    pushLog('DBG', `Reddit: ${err.message}`, 'debug');
-    return [];
-  }
-}
 
 async function fetchIGDBArticles(topic, postedUrls = []) {
   if (!IGDB_API_KEY || !IGDB_CLIENT_ID) return [];
@@ -199,16 +184,15 @@ async function fetchGamingNews(topic, postedUrls = []) {
     .join(' ')
     .slice(0, 50);
 
-  pushLog('DBG', `Actus: agrégation 4-sources pour "${cleanTopic}"`, 'debug');
+  pushLog('DBG', `Actus: agrégation 3-sources officielles pour "${cleanTopic}"`, 'debug');
 
-  const [gnewsArticles, newsapiArticles, redditArticles, igdbArticles] = await Promise.all([
+  const [gnewsArticles, newsapiArticles, igdbArticles] = await Promise.all([
     fetchGNewsArticles(cleanTopic, postedUrls),
     fetchNewsAPIArticles(cleanTopic, postedUrls),
-    fetchRedditArticles(cleanTopic, postedUrls),
     fetchIGDBArticles(cleanTopic, postedUrls)
   ]);
 
-  const allArticles = [...gnewsArticles, ...newsapiArticles, ...redditArticles, ...igdbArticles];
+  const allArticles = [...gnewsArticles, ...newsapiArticles, ...igdbArticles];
 
   const uniqueArticles = Array.from(
     new Map(allArticles.map(a => [a.url, a])).values()
@@ -239,14 +223,14 @@ async function postActuForChannel(ch) {
         let sourceEmoji = '🎮';
         if (a.source_id === 'gnews') sourceEmoji = '📰';
         else if (a.source_id === 'newsapi') sourceEmoji = '📺';
-        else if (a.source_id === 'reddit') sourceEmoji = '🤖';
+        else if (a.source_id === 'newsapi') sourceEmoji = '📺';
         else if (a.source_id === 'igdb') sourceEmoji = '🏆';
         return `${i + 1}. ${a.title}\n   ${a.description || ''}\n   ${sourceEmoji} ${a.source} (${date})\n   Lien : ${a.url}`;
       }).join('\n\n');
 
       ({ text: content } = await callClaude(
-        '\nTu résumes des actualités gaming basées sur des sources réelles. IMPORTANT : chaque actu DOIT avoir son lien exact au format Markdown [titre](url).',
-        `Actus gaming ${month} pour : ${sanitizeForJson(ch.topic)}\n\nSources : ${[...new Set(selected.map(a => a.source))].join(', ')}\n\n${newsContext}\n\n4-6 actus avec emojis. Style Brainee. Commence direct. CHAQUE ACTU DOIT AVOIR [son lien](url) EXACT.`,
+        '\nTu résumes des actualités gaming issues de sources officielles et de presse spécialisée vérifiée. IMPORTANT : chaque actu DOIT avoir son lien exact au format Markdown [titre](url). Ne mentionne JAMAIS de rumeurs ou informations non confirmées.',
+        `Actus gaming ${month} pour : ${sanitizeForJson(ch.topic)}\n\nSources officielles : ${[...new Set(selected.map(a => a.source))].join(', ')}\n\n${newsContext}\n\n4-6 actus avec emojis. Style Brainee. Commence direct. Sources confirmées uniquement. CHAQUE ACTU DOIT AVOIR [son lien](url) EXACT.`,
         500,
         BOT_PERSONA,
         'claude-haiku-4-5-20251001'
@@ -273,7 +257,7 @@ async function postActuForChannel(ch) {
       .setColor(0x5b7fff)
       .setTitle(`📅 Actus ${month.charAt(0).toUpperCase() + month.slice(1)}`)
       .setDescription(content)
-      .setFooter({ text: `${ch.channelName} • Brainee (📰 GNews • 📺 NewsAPI • 🤖 Reddit • 🏆 IGDB)` })
+      .setFooter({ text: `${ch.channelName} • Brainee (📰 GNews • 📺 NewsAPI • 🏆 IGDB)` })
       .setTimestamp();
     await channel.send({ embeds: [embed] });
     pushLog('SYS', `✅ Actus → ${ch.channelName}`, 'success');
