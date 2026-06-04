@@ -51,7 +51,7 @@ const firedToday = { morning: '', lunch: '', goodnight: '', nightWakeup: '', rel
 // B — Suivi du dernier slot pour détecter les transitions
 let _prevSlotStatus = '';
 
-// E4 — Verrous proactifs : commitment en cours OU mention en attente de réponse
+// E4 — Verrous proactifs : commitment en cours, mention en attente, ou nuit déclarée (goodnight)
 function isCommitmentActive() {
   return !!(shared.commitmentUntil && Date.now() < shared.commitmentUntil);
 }
@@ -59,7 +59,8 @@ function isPendingMention() {
   return !!(shared.pendingMentionUntil && Date.now() < shared.pendingMentionUntil);
 }
 function isBlocked() {
-  return isCommitmentActive() || isPendingMention();
+  // goodnightSent : une fois le "bonne nuit" posté, plus aucun post proactif jusqu'au reset du matin
+  return isCommitmentActive() || isPendingMention() || !!shared.goodnightSent;
 }
 
 function parisDateISO() {

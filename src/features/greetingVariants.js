@@ -65,12 +65,12 @@ const NIGHT_WAKEUP_SEEDS = {
     "tu repenses à un truc absurde qui te tient éveillée",
     "ton cerveau a décidé de relire toutes les conneries de la journée",
   ],
-  // 3h-4h : pleine nuit, classique ADHD/insomnie
+  // 3h-4h : pleine nuit, classique ADHD/insomnie (l'heure exacte vient du prompt, pas codée ici)
   deepNight: [
-    "4h du mat, t'arrives pas à te rendormir, y'en a parmi vous qui dorment pas",
-    "3h, t'as les yeux ouverts depuis 30 min, t'écris dans le vide",
+    "t'arrives pas à te rendormir, tu te demandes si y'en a parmi vous qui dorment pas",
+    "t'as les yeux ouverts depuis 30 min, t'écris dans le vide",
     "tu te réveilles, tu penses à un boss, tu peux pas te rendormir",
-    "tu te poses une question débile à 4h et tu peux plus dormir",
+    "tu te poses une question débile en pleine nuit et tu peux plus dormir",
     "réveil brutal, tu sais pas pourquoi, tu balances un truc",
     "ton cerveau a décidé que dormir c'était optionnel cette nuit",
   ],
