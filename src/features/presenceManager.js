@@ -15,7 +15,7 @@ const shared = require('../shared');
 const { pushLog } = require('../logger');
 const { callClaude } = require('../ai/claude');
 const { BOT_PERSONA } = require('../bot/persona');
-const { getCurrentGameName } = require('../bot/currentGame');
+const { getCurrentActivity, getEveningActivity } = require('../bot/currentActivity');
 const { GUILD_ID } = require('../config');
 
 // Statut Discord (dnd/idle/online/invisible) — ne change pas
@@ -95,7 +95,7 @@ async function setOccupied(reason) {
   const status = REASON_STATUS[reason] || 'idle';
   const emoji  = REASON_EMOJI[reason] || '🌐';
   let ctx      = REASON_CONTEXT[reason] || 'tu es occupée';
-  if (reason === 'gaming') ctx += ` (le jeu en cours est ${getCurrentGameName()})`;
+  if (reason === 'gaming') ctx = `tu es ${getCurrentActivity('gaming').label} et tu peux pas lâcher`;
   _busyActive  = true;
   const name   = await _generateActivity(emoji, ctx);
   try {
@@ -142,8 +142,12 @@ async function setSlotPresence(slotStatus) {
   const status = SLOT_STATUS[slotStatus] || 'online';
   const emoji  = SLOT_EMOJI[slotStatus];
   let ctx      = SLOT_CONTEXT[slotStatus];
-  if (ctx && (slotStatus === 'gaming' || slotStatus === 'latenight')) {
-    ctx += ` (si tu parles d'un jeu, c'est ${getCurrentGameName()})`;
+  let actType  = ActivityType.Playing;
+  if (slotStatus === 'gaming' || slotStatus === 'latenight') {
+    const act = getCurrentActivity(slotStatus);
+    ctx = `${SLOT_CONTEXT[slotStatus]} — concrètement tu es ${act.label}, ne mentionne aucune autre activité`;
+    if (act.kind === 'series') actType = ActivityType.Watching;
+    else if (act.kind === 'chill') actType = ActivityType.Listening;
   }
 
   // Slots sans activité affichée (active, productive, sleep)
@@ -166,7 +170,7 @@ async function setSlotPresence(slotStatus) {
 
   try {
     const activities = _cachedSlotActivity
-      ? [{ name: _cachedSlotActivity, type: ActivityType.Playing }]
+      ? [{ name: _cachedSlotActivity, type: actType }]
       : [];
     shared.discord.user.setPresence({ status, activities });
   } catch (_) {}
@@ -185,12 +189,20 @@ async function postSlotTransitionMessage(slotStatus) {
   if (!entry || Math.random() > entry.prob) return;
   if (!shared.discord?.isReady()) return;
   try {
-    const gameHint = (slotStatus === 'gaming' || slotStatus === 'latenight')
-      ? ` Si tu nommes un jeu, c'est ${getCurrentGameName()}, pas un autre.`
-      : '';
+    let ctx = entry.ctx;
+    let hint = '';
+    if (slotStatus === 'gaming' || slotStatus === 'latenight') {
+      const ev = getEveningActivity();
+      if (slotStatus === 'gaming') {
+        ctx = ev.kind === 'series' ? `tu te poses devant ${ev.subject} pour la soirée`
+            : ev.kind === 'chill'  ? `tu pars ${ev.label} pour la soirée, mode détente`
+            : `tu lances ta session ${ev.label} pour la soirée`;
+      }
+      if (ev.subject) hint = ` Si tu nommes une œuvre ou un jeu, c'est ${ev.subject}, pas un autre.`;
+    }
     const { text } = await callClaude(
       '',
-      `Tu es Brainee. ${entry.ctx}.${gameHint} Génère UN message Discord ultra-court et naturel (max 12 mots, style oral, en minuscules, SANS emoji, sans ponctuation finale) à poster dans le général. Texte brut uniquement, pas de guillemets.`,
+      `Tu es Brainee. ${ctx}.${hint} Génère UN message Discord ultra-court et naturel (max 12 mots, style oral, en minuscules, SANS emoji, sans ponctuation finale) à poster dans le général. Texte brut uniquement, pas de guillemets.`,
       20,
       BOT_PERSONA,
       'claude-haiku-4-5-20251001'

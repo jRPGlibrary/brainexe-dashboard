@@ -25,6 +25,7 @@ const { callClaude } = require('../ai/claude');
 const { BOT_PERSONA_CONVERSATION } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
 const { getCurrentSlot, getParisHour } = require('../bot/scheduling');
+const { getCurrentActivity } = require('../bot/currentActivity');
 const { getDailyVibe } = require('../bot/adaptiveSchedule');
 const { getInternalState, getEmotionalInjection, adjustMaxTokens } = require('../bot/emotions');
 const { sendHuman } = require('../bot/messaging');
@@ -162,12 +163,15 @@ function pickChannelForType(type) {
 
 // ─── BUILDERS DE PROMPT ─────────────────────────────────────────
 function buildPromptForType(type, ctx) {
-  const { mood, vibe, channelName, channelTopic, emotionBlock, vipCallback } = ctx;
+  const { mood, vibe, channelName, channelTopic, emotionBlock, vipCallback, activity } = ctx;
   const h = getParisHour();
   const hh = Math.floor(h);
   const mm = String(Math.round((h - hh) * 60)).padStart(2, '0');
   const timeLine = `Il est ${hh}h${mm} (heure de Paris) — ne cite pas l'heure spontanément, mais si tu l'évoques, c'est CELLE-CI, n'en invente aucune autre.`;
-  const baseHeader = `Humeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe : ${vibe.name} — ${vibe.desc}.\n${timeLine}\n${emotionBlock}`;
+  const actLine = activity?.label
+    ? `Là tout de suite, concrètement, tu es ${activity.label}. Tu peux y faire allusion ou pas, mais n'invente pas une autre activité.`
+    : '';
+  const baseHeader = `Humeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe : ${vibe.name} — ${vibe.desc}.\n${timeLine}\n${actLine}\n${emotionBlock}`;
 
   const typeInstructions = {
     random_thought: `Écris UNE seule pensée qui te traverse, comme si t'y avais repensé toute seule, à voix haute. Pas une question lancée au groupe — juste un truc qui te passe par la tête sur le thème du salon (${channelTopic}). Ça peut être un détail bizarre, une connexion entre deux trucs, un souvenir, un avis tranché. Naturel, pas forcé. Max 2 phrases.`,
@@ -244,6 +248,7 @@ async function fireOutreach(forcedType = null) {
   const mood = refreshDailyMood();
   const vibe = getDailyVibe();
   const emotionBlock = getEmotionalInjection();
+  const activity = getCurrentActivity(getCurrentSlot().status);
 
   // Construction du contexte spécifique au type
   let vipCallback = '';
@@ -311,6 +316,7 @@ async function fireOutreach(forcedType = null) {
       channelTopic: channelCfg.topic,
       emotionBlock,
       vipCallback,
+      activity,
     });
 
     const { text: reply } = await callClaude(prompt, 'Génère le message demandé.', adjustMaxTokens(120), BOT_PERSONA_CONVERSATION);

@@ -22,7 +22,7 @@ const { getCurrentSlot } = require('../bot/scheduling');
 const { simulateTyping, simulateDmTyping, resolveMentionsInText } = require('../bot/messaging');
 const { pushLog } = require('../logger');
 const { setOccupied, setAvailable } = require('./presenceManager');
-const { getCurrentGameName } = require('../bot/currentGame');
+const { getCurrentActivity } = require('../bot/currentActivity');
 const shared = require('../shared');
 
 const BUSY_PROB_DM     = 0.02; // 2%
@@ -80,9 +80,9 @@ function delayLabel(delayMin) {
   return 'dans une heure environ';
 }
 
-async function generateExcuse(reason, username, delayMin) {
+async function generateExcuse(reason, username, delayMin, slot) {
   let reasonLabel = REASON_LABELS[reason] || 'tu es occupée';
-  if (reason === 'gaming') reasonLabel += ` (à ${getCurrentGameName()})`;
+  if (reason === 'gaming') reasonLabel = `tu es ${getCurrentActivity(slot?.status).label} et tu peux pas couper là`;
   const whenLabel   = delayLabel(delayMin);
   const userPrompt  = `${username} vient de t'écrire. ${reasonLabel}. Génère UNE seule phrase très courte et naturelle (max 12 mots) pour lui dire que tu es occupée et que tu reviens ${whenLabel}. Style oral Brainee, en français, sans majuscule au début si ça sonne plus naturel. SANS emoji. Juste la phrase brute, sans guillemets.`;
   try {
@@ -105,17 +105,6 @@ async function generateReturnMessage(userQuery, username) {
   }
 }
 
-async function generateGoodnightMessage() {
-  const userPrompt = `Il est tard, tu avais dit que tu revenais mais t'as sommeil. Génère UNE seule phrase très courte (max 10 mots) pour dire que tu vas dormir / que tu lâches pour ce soir. Style oral Brainee, en français, sans majuscule si ça sonne mieux. SANS emoji. Juste la phrase brute.`;
-  try {
-    const { text, usage } = await callClaude('', userPrompt, 60, BOT_PERSONA, 'claude-haiku-4-5-20251001');
-    await recordTokenUsage('system', 'brainee', usage.inputTokens, usage.outputTokens, 'busy_goodnight');
-    return text.trim().replace(/^["']|["']$/g, '');
-  } catch (_) {
-    return 'bon finalement je vais dormir, bonne nuit';
-  }
-}
-
 async function triggerBusyExcuse(message, userQuery, slot, isDM) {
   const reason   = pickReason(slot);
   const username = message.author.username;
@@ -123,7 +112,7 @@ async function triggerBusyExcuse(message, userQuery, slot, isDM) {
   const delayMs  = Math.floor(delayMin * 60 * 1000);
 
   try {
-    const excuse = await generateExcuse(reason, username, delayMin);
+    const excuse = await generateExcuse(reason, username, delayMin, slot);
     await message.reply(excuse);
     setOccupied(reason);
 
@@ -138,33 +127,8 @@ async function triggerBusyExcuse(message, userQuery, slot, isDM) {
         shared.commitmentUntil  = null;
         shared.commitmentReason = null;
 
-        // Slot sleep → silence, on libère juste le commitment
-        if (currentSlot.maxConv === 0) {
-          setAvailable();
-          pushLog('SYS', `💤 Retour busyExcuse annulé — Brainee dort`);
-          return;
-        }
-
-        // Slot latenight → goodnight dans #général uniquement
-        if (currentSlot.status === 'latenight') {
-          const generalChannel = message.guild?.channels?.cache?.find(
-            c => c.isTextBased?.() && ['général', 'general', 'generale'].includes(c.name?.toLowerCase())
-          );
-          if (generalChannel) {
-            const goodnightMsg = await generateGoodnightMessage();
-            await simulateTyping(generalChannel, 800 + Math.random() * 1200);
-            await generalChannel.send(goodnightMsg);
-            shared.lastAnyBotPostTime = Date.now();
-            pushLog('SYS', `🌙 BusyExcuse → goodnight latenight dans #général → ${username}`, 'success');
-          } else {
-            pushLog('SYS', `🌙 BusyExcuse → goodnight latenight silencieux (pas de #général trouvé)`);
-          }
-          shared.goodnightSent = true;
-          setAvailable();
-          return;
-        }
-
-        // Retour normal : cherche le dernier message de l'user dans le channel
+        // Promesse tenue : elle revient TOUJOURS et répond au message —
+        // jamais de ghosting silencieux, jamais un "bonne nuit" à la place.
         let pendingQuery = userQuery;
         try {
           const fetched = await message.channel.messages.fetch({ limit: 20 });
@@ -173,8 +137,15 @@ async function triggerBusyExcuse(message, userQuery, slot, isDM) {
           if (lastUserMsg?.content.trim()) pendingQuery = lastUserMsg.content.trim();
         } catch (_) {}
 
-        const returnMsg = await generateReturnMessage(pendingQuery, username);
-        if (!returnMsg) { setAvailable(); return; }
+        let returnMsg = await generateReturnMessage(pendingQuery, username);
+        if (!returnMsg) returnMsg = `re ${username}, pardon — du coup ?`;
+
+        // Si entre-temps c'est l'heure du dodo : elle répond quand même, puis le signale.
+        const goingToBed = currentSlot.status === 'latenight' || currentSlot.maxConv === 0;
+        if (goingToBed) {
+          returnMsg = `${returnMsg} (bon je file dormir juste après par contre)`;
+          shared.goodnightSent = true;
+        }
 
         const returnResolved = resolveMentionsInText(returnMsg, message.guild || null);
         if (isDM) {
@@ -185,7 +156,7 @@ async function triggerBusyExcuse(message, userQuery, slot, isDM) {
         await message.reply(returnResolved);
         shared.lastAnyBotPostTime = Date.now();
         setAvailable();
-        pushLog('SYS', `↩️ Retour busyExcuse → ${username}`, 'success');
+        pushLog('SYS', `↩️ Retour busyExcuse tenu → ${username}${goingToBed ? ' (puis dodo)' : ''}`, 'success');
       } catch (err) {
         pushLog('ERR', `Retour busyExcuse échoué : ${err.message}`, 'error');
         shared.commitmentUntil  = null;
