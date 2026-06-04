@@ -12,9 +12,9 @@ const { sanitizeForJson } = require('../utils');
 const { formatContext } = require('./context');
 const { getBudgetMode } = require('../ai/budget');
 const {
-  getMorningSeed, getGoodnightSeed, getNightWakeupSeed, getLunchBackSeed,
+  getMorningSeed, getNightWakeupSeed, getLunchBackSeed,
 } = require('./greetingVariants');
-const { getCurrentGameName } = require('../bot/currentGame');
+const { buildGoodnightAngle, getEveningActivity } = require('../bot/currentActivity');
 
 // Instructions injectées quand on ne veut pas de tag
 const NO_TAG_CLAUSE = `IMPORTANT : Ne tagge personne dans ce message — pas de @pseudo. Reste ambiant, personne n'a besoin d'être notifié.`;
@@ -34,6 +34,14 @@ const DAY_CONTEXTS = {
   4: 'jeudi',
   5: 'vendredi — fin de semaine, vivement ce soir',
 };
+
+// Heure Paris décimale → horloge lisible ("3h05"), pour ne jamais balancer "3.1h".
+function fmtClock(h) {
+  const hh = Math.floor(((h % 24) + 24) % 24);
+  let mm = Math.round((h - Math.floor(h)) * 60);
+  if (mm >= 60) mm = 59;
+  return `${hh}h${String(mm).padStart(2, '0')}`;
+}
 
 async function postMorningGreeting() {
   const cfg = shared.botConfig.conversations;
@@ -109,10 +117,9 @@ async function postGoodnight() {
     const channel = guild.channels.cache.get(targetId);
     if (!channel) return;
     const vibe = getDailyVibe();
-    const goodnightSeed = getGoodnightSeed();
-    const currentGame = getCurrentGameName();
+    const goodnightAngle = buildGoodnightAngle();
     const { text: content } = await callClaude(
-      `\nFin de soirée. Vibe : ${vibe.name}.\nAngle pour ce soir : ${goodnightSeed}.\nSI (et seulement si) cet angle parle de jeu vidéo, le jeu en cours est ${currentGame} — n'en cite aucun autre, surtout pas Elden Ring par défaut. Mais la plupart des soirs ne tournent PAS autour du gaming : suis l'angle donné.\n${NO_TAG_CLAUSE}`,
+      `\nFin de soirée. Vibe : ${vibe.name}.\nVoici ce que tu as VRAIMENT fait ce soir — respecte-le, n'invente ni une autre activité ni une heure : ${goodnightAngle}.\n${NO_TAG_CLAUSE}`,
       `Message fin de soirée naturel, COURT (1-2 phrases max, ~30 mots). Jamais "bonsoir" / "bonne nuit" tels quels. Pas de @. Pas d'emoji.`,
       70,
       BOT_PERSONA,
@@ -138,8 +145,10 @@ async function postNightWakeup() {
     if (!channel) return;
     const wakeHour = getParisHour();
     const wakeSeed = getNightWakeupSeed(wakeHour);
+    const ev = getEveningActivity();
+    const continuity = ev.subject ? ` Si un truc te trotte en tête, c'est ${ev.subject} (ta soirée), pas autre chose.` : '';
     const { text: content } = await callClaude(
-      `\nRéveil nocturne, mode zombie. Il est ${wakeHour.toFixed(1)}h.\nAngle : ${wakeSeed}.\n${NO_TAG_CLAUSE}`,
+      `\nRéveil nocturne, mode zombie. Il est ${fmtClock(wakeHour)} (heure réelle — ne l'invente pas, ne l'arrondis pas à une autre).\nAngle : ${wakeSeed}.${continuity}\n${NO_TAG_CLAUSE}`,
       `UNE seule phrase courte, ~15-25 mots, vraie ambiance d'insomnie. Style "y'en a parmi vous qui dorment pas ? j'arrive pas à me rendormir". Pas de @. Pas d'emoji.`,
       60,
       BOT_PERSONA,

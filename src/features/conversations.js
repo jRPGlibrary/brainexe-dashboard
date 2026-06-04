@@ -35,7 +35,7 @@ const { getNarrativeContext, getWeeklyContext } = require('../db/narrativeMemory
 const { getCachedBlocks, setCacheBlocks } = require('../bot/dailyCache');
 const { getChannelVerbosity, recordBotMessage } = require('../db/messageEngagement');
 const { recordCrossChannelPost, getCrossChannelContext } = require('../db/crossChannelMem');
-const { isAbsent, maybeStartAbsence } = require('./absence');
+const { isAbsent, maybeStartAbsence, generateComebackPhrase } = require('./absence');
 const { record: recordChannelPost, getLastPost, isOverLimit, COOLDOWN_MS: CHANNEL_COOLDOWN_MS, MAX_POSTS } = require('../bot/channelPostTracker');
 const { getBudgetMode } = require('../ai/budget');
 const { extractImageAttachments, loadImages, buildMultimodalUserContent, getImageCommentInstruction } = require('./imageAttachments');
@@ -197,6 +197,31 @@ async function postConvInChannel(ch, channel, guild, slot, { fallback = false } 
   return true;
 }
 
+// Retour d'absence tenu : poste un "re" à l'heure annoncée (best-effort ; un
+// redémarrage Railway peut l'annuler, auquel cas elle est de fait déjà revenue).
+function scheduleAbsenceComeback(channelId, durationMs) {
+  const ms = Math.max(60 * 1000, Math.min(durationMs || 0, 6 * 60 * 60 * 1000));
+  setTimeout(async () => {
+    try {
+      if (!shared.discord?.isReady?.()) return;
+      const slot = getCurrentSlot();
+      if (slot.maxConv === 0) return; // elle dort pour de vrai → pas de "re" en pleine nuit
+      const guild = await shared.discord.guilds.fetch(GUILD_ID);
+      await guild.channels.fetch();
+      const channel = guild.channels.cache.get(channelId);
+      if (!channel) return;
+      const txt = await generateComebackPhrase();
+      if (!txt) return;
+      await simulateTyping(channel, 500 + Math.random() * 800);
+      await channel.send(txt);
+      shared.lastAnyBotPostTime = Date.now();
+      pushLog('SYS', `🔙 Retour d'absence tenu dans #général : "${txt}"`, 'success');
+    } catch (err) {
+      pushLog('ERR', `Comeback absence échoué : ${err.message}`, 'error');
+    }
+  }, ms);
+}
+
 async function postRandomConversation() {
   const cfg = shared.botConfig.conversations;
   if (!cfg.enabled) return;
@@ -225,18 +250,19 @@ async function postRandomConversation() {
     };
 
     const _slotKey = slot.status || slot.label || '';
-    const absencePhrase = _slotKey !== 'wakeup' ? await maybeStartAbsence(_slotKey) : null;
-    if (absencePhrase) {
+    const absence = _slotKey !== 'wakeup' ? await maybeStartAbsence(_slotKey) : null;
+    if (absence) {
       const general = getGeneralChannel();
       if (general) {
         const genCh = guild.channels.cache.get(general.channelId);
         if (genCh) {
           try {
             await simulateTyping(genCh, 500 + Math.random() * 1000);
-            await genCh.send(absencePhrase);
+            await genCh.send(absence.phrase);
             shared.lastAnyBotPostTime = Date.now();
             recordChannelPost(general.channelId);
-            pushLog('SYS', `🌙 Absence annoncée dans #${general.channelName} : "${absencePhrase}"`, 'success');
+            pushLog('SYS', `🌙 Absence annoncée dans #${general.channelName} : "${absence.phrase}"`, 'success');
+            scheduleAbsenceComeback(general.channelId, absence.durationMs);
           } catch (_) {}
         }
       }
