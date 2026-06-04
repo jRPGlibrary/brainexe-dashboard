@@ -24,7 +24,7 @@ const { GUILD_ID, ANTHROPIC_API_KEY, MIN_GAP_ANY_POST } = require('../config');
 const { callClaude } = require('../ai/claude');
 const { BOT_PERSONA_CONVERSATION } = require('../bot/persona');
 const { refreshDailyMood, getMoodInjection } = require('../bot/mood');
-const { getCurrentSlot } = require('../bot/scheduling');
+const { getCurrentSlot, getParisHour } = require('../bot/scheduling');
 const { getDailyVibe } = require('../bot/adaptiveSchedule');
 const { getInternalState, getEmotionalInjection, adjustMaxTokens } = require('../bot/emotions');
 const { sendHuman } = require('../bot/messaging');
@@ -163,7 +163,11 @@ function pickChannelForType(type) {
 // ─── BUILDERS DE PROMPT ─────────────────────────────────────────
 function buildPromptForType(type, ctx) {
   const { mood, vibe, channelName, channelTopic, emotionBlock, vipCallback } = ctx;
-  const baseHeader = `Humeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe : ${vibe.name} — ${vibe.desc}.\n${emotionBlock}`;
+  const h = getParisHour();
+  const hh = Math.floor(h);
+  const mm = String(Math.round((h - hh) * 60)).padStart(2, '0');
+  const timeLine = `Il est ${hh}h${mm} (heure de Paris) — ne cite pas l'heure spontanément, mais si tu l'évoques, c'est CELLE-CI, n'en invente aucune autre.`;
+  const baseHeader = `Humeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe : ${vibe.name} — ${vibe.desc}.\n${timeLine}\n${emotionBlock}`;
 
   const typeInstructions = {
     random_thought: `Écris UNE seule pensée qui te traverse, comme si t'y avais repensé toute seule, à voix haute. Pas une question lancée au groupe — juste un truc qui te passe par la tête sur le thème du salon (${channelTopic}). Ça peut être un détail bizarre, une connexion entre deux trucs, un souvenir, un avis tranché. Naturel, pas forcé. Max 2 phrases.`,
