@@ -35,6 +35,7 @@ function navigate(section) {
     channels: ['💬 Salons', 'Arborescence & gestion des salons'],
     roles:    ['🎭 Rôles', 'Gestion des rôles du serveur'],
     members:  ['👥 Membres', 'Liste des membres du serveur'],
+    moderation: ['🛡️ Modération', 'Logs de modération — spam, mutes, kicks, bans'],
     automations: ['⚡ Automatisations', 'Features activables et tests manuels'],
     posts:    ['📝 Posts manuels', 'Envoyer un message dans un salon'],
     backups:  ['💾 Backups', 'Snapshots de configuration'],
