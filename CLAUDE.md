@@ -246,3 +246,54 @@ PORT (défaut 3000)
 - [ ] Vérifier que la feature ne casse rien d'existant
 - [ ] `npm test` → 133 tests verts
 - [ ] Livrer le fichier complet (jamais de patch)
+
+---
+
+## 🚢 POST-TÂCHE OBLIGATOIRE (s'exécute AUTOMATIQUEMENT après chaque changement)
+
+**Cette section est non-négociable. Sans exception. Sans que l'utilisateur ait à demander.**
+
+### Étape 1 — Évaluation du changement
+
+Après avoir terminé chaque tâche, évaluer le type de changement et proposer :
+
+| Type de changement | Bump de version | Exemple |
+|---|---|---|
+| Nouvelle feature visible / nouveau module | **MINOR** (`0.X.0`) | nouveau système, nouvelle commande |
+| Fix de bug / amélioration mineure | **PATCH** (`0.0.X`) | correction d'un crash, ajustement |
+| Refacto interne / config / docs | **AUCUN** | renommage, commentaires, CLAUDE.md |
+
+### Étape 2 — Soumettre la proposition à l'utilisateur
+
+Toujours présenter ce résumé **avant** de commiter/pousser :
+
+```
+📦 Tâche terminée — proposition de déploiement :
+
+• Changement : [description courte]
+• Type : [feature / fix / refacto]
+• Version suggérée : [MINOR / PATCH / aucun bump] → vX.Y.Z → vA.B.C
+• Fichiers modifiés : [liste]
+
+✅ Je déploie ? (commit + push → Railway auto-deploy)
+```
+
+**Attendre la confirmation explicite de l'utilisateur avant tout `git push`.**
+
+### Étape 3 — Déploiement (si validé)
+
+```bash
+# Mettre à jour la version dans package.json si bump validé
+npm version patch  # ou minor
+# Commit + push
+git add .
+git commit -m "feat: ..." # ou fix: / chore:
+git push -u origin <branch>
+```
+
+### Règles absolues POST-TÂCHE
+
+- **JAMAIS pousser sans validation explicite**
+- **TOUJOURS proposer le bump de version** (même si la réponse est "non")
+- **TOUJOURS demander l'avis de l'utilisateur** sur le niveau de bump avant d'appliquer
+- Si l'utilisateur répond "oui" / "go" / "ok" → déployer immédiatement sans redemander
