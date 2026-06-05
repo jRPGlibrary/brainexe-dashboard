@@ -92,7 +92,7 @@ git push -u origin <branch>
 # → Railway auto-deploy depuis GitHub main
 ```
 
-**JAMAIS `git push` sans validation explicite de l'utilisateur.**
+**`git push` automatique après chaque changement validé — aucune confirmation requise.**
 
 ---
 
@@ -113,17 +113,27 @@ YOUTUBE_API_KEY · GNEWS_API_KEY · MONGODB_URI · PORT (défaut 3000)
 
 ---
 
-## 🚢 POST-TÂCHE OBLIGATOIRE
+## 🚢 POST-TÂCHE OBLIGATOIRE (automatique — sans confirmation)
 
-Après chaque tâche, présenter **avant** tout push :
+Après chaque tâche terminée, **exécuter immédiatement** :
+
+```bash
+npm test                              # 212 tests verts obligatoires
+npm version patch|minor --no-git-tag-version  # bump selon tableau
+git add <fichiers modifiés>
+git commit -m "feat|fix|chore: ..."
+git push -u origin <branch>           # Railway auto-deploy
+```
+
+Puis informer l'utilisateur :
 
 ```
-📦 Tâche terminée :
+📦 Déployé :
 • Changement : [description]
 • Type : feature / fix / refacto
-• Version : MINOR / PATCH / aucun → vX.Y.Z
+• Version : vX.Y.Z → vA.B.C
 • Fichiers : [liste]
-✅ Je déploie ?
+• Branch poussée → Railway auto-deploy en cours
 ```
 
 | Type | Bump |
@@ -131,6 +141,8 @@ Après chaque tâche, présenter **avant** tout push :
 | Nouvelle feature / nouveau module | MINOR `0.X.0` |
 | Fix bug / amélioration | PATCH `0.0.X` |
 | Refacto / config / docs | AUCUN |
+
+**Seule exception : si `npm test` échoue → stopper et signaler avant tout push.**
 
 ```bash
 npm version patch  # ou minor — puis commit + push
