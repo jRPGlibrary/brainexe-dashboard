@@ -159,6 +159,9 @@ function resetNightlyEnergy() {
 }
 
 // ─── GESTION DES ÉMOTIONS ────────────────────────────────────────
+let _lastEmotionSave = 0;
+const EMOTION_SAVE_DEBOUNCE_MS = 5 * 60 * 1000; // save au plus toutes les 5 min
+
 function triggerEmotion(name, intensity = 50, source = null) {
   if (!ALL_EMOTIONS.includes(name)) return;
   const now = Date.now();
@@ -175,6 +178,12 @@ function triggerEmotion(name, intensity = 50, source = null) {
     decay: 0.90, // Decay slower: 24h instead of 4-6h
   });
   if (emotionStack.length > 12) emotionStack = emotionStack.slice(-12);
+
+  // Persiste l'état après une émotion significative pour survivre aux restarts Railway
+  if (intensity >= 40 && now - _lastEmotionSave > EMOTION_SAVE_DEBOUNCE_MS) {
+    _lastEmotionSave = now;
+    saveEmotionalState().catch(() => {});
+  }
 }
 
 function decayEmotions() {

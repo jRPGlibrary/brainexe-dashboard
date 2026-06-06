@@ -75,20 +75,29 @@ async function triggerSummaryIfNeeded(userId, username, type = 'server') {
 }
 
 function formatConvSummaryBlock(doc) {
-  if (!doc || !doc.currentSummary) return '';
-  const d = doc.lastSummarizedAt
-    ? new Date(doc.lastSummarizedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-    : '?';
-  const parts = [`[DERNIÈRE CONV - ${d}] ${doc.currentSummary}`];
-  const hist = (doc.recentSessions || []).slice(-4, -1).reverse();
-  if (hist.length > 0) {
-    const histStr = hist.map(s => {
-      const hd = new Date(s.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-      return `${hd}: ${s.summary}`;
-    }).join(' • ');
-    parts.push(`[SESSIONS PRÉCÉDENTES] ${histStr}`);
+  if (!doc) return '';
+  const parts = [];
+  if (doc.currentSummary) {
+    const d = doc.lastSummarizedAt
+      ? new Date(doc.lastSummarizedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+      : '?';
+    parts.push(`[DERNIÈRE CONV - ${d}] ${doc.currentSummary}`);
+    const hist = (doc.recentSessions || []).slice(-4, -1).reverse();
+    if (hist.length > 0) {
+      const histStr = hist.map(s => {
+        const hd = new Date(s.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+        return `${hd}: ${s.summary}`;
+      }).join(' • ');
+      parts.push(`[SESSIONS PRÉCÉDENTES] ${histStr}`);
+    }
   }
-  return `\n${parts.join('\n')}`;
+  // Inject unsummarized pending messages so context survives restarts
+  const pending = (doc.pendingMessages || []).slice(-6);
+  if (pending.length > 0) {
+    const pendingStr = pending.map(m => `${m.role === 'user' ? 'User' : 'Brainee'}: ${m.content}`).join('\n');
+    parts.push(`[ÉCHANGE EN COURS]\n${pendingStr}`);
+  }
+  return parts.length ? `\n${parts.join('\n')}` : '';
 }
 
 async function getConvSummary(userId, type = 'server') {

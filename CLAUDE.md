@@ -11,7 +11,7 @@
 3. **`brainexe-config.json` est éphémère sur Railway** → ne jamais en dépendre pour la persistance critique
 4. **Ne pas bloquer le boot** → toute opération async au démarrage doit être non-bloquante
 5. **Livrer toujours le fichier complet** — jamais de patch partiel
-6. **`npm test` après chaque changement** → 212 tests Jest doivent rester verts
+6. **`npm test` après chaque changement** → 225 tests Jest doivent rester verts
 7. **`server.js` est sanctuarisé** — NE PAS TOUCHER sauf modification de boot explicite
 8. **Ne jamais altérer la personnalité Brainee** → voir section BRAINEE ci-dessous
 9. **Après chaque correction de bug → mettre à jour ce CLAUDE.md** avec la règle apprise
@@ -28,7 +28,7 @@
 | DB | MongoDB Atlas |
 | Hosting | Railway (auto-deploy GitHub) |
 | Dashboard | Express 4 + WebSocket + vanilla JS (38 modules, no bundler) |
-| Tests | Jest 30 — 10 suites, 212 tests |
+| Tests | Jest 30 — 11 suites, 225 tests |
 
 ---
 
@@ -71,7 +71,7 @@ await heavyOperation() // sans fallback → Railway SIGTERM
 ### Critères de succès à définir pour chaque feature
 ```
 ✅ Comportement attendu : [description]
-✅ Tests passants : npm test → 212 verts
+✅ Tests passants : npm test → 225 verts
 ✅ Aucune régression sur les modules existants
 ✅ Pas de nouveau console.log en prod
 ```
@@ -115,15 +115,28 @@ YOUTUBE_API_KEY · GNEWS_API_KEY · MONGODB_URI · PORT (défaut 3000)
 
 ## 🚢 POST-TÂCHE OBLIGATOIRE (automatique — sans confirmation)
 
-Après chaque tâche terminée, **exécuter immédiatement** :
+Après chaque tâche terminée, **exécuter immédiatement dans cet ordre** :
 
+### Étape 1 — Tests + commit + push
 ```bash
-npm test                              # 212 tests verts obligatoires
+npm test                              # 225 tests verts obligatoires
 npm version patch|minor --no-git-tag-version  # bump selon tableau
 git add <fichiers modifiés>
 git commit -m "feat|fix|chore: ..."
-git push -u origin <branch>           # Railway auto-deploy
+git push -u origin <branch>
 ```
+
+### Étape 2 — Créer la PR (via mcp__github__create_pull_request)
+- `owner`: `jRPGlibrary` · `repo`: `brainexe-dashboard`
+- `head`: branch courante · `base`: `main`
+- Titre court + body avec résumé du fix
+- **Demander la permission de merger avant de continuer**
+
+### Étape 3 — Merger (via mcp__github__merge_pull_request) après confirmation
+- `merge_method`: `squash`
+- Confirmer le merge à l'utilisateur une fois fait
+
+---
 
 Puis informer l'utilisateur :
 
@@ -133,7 +146,7 @@ Puis informer l'utilisateur :
 • Type : feature / fix / refacto
 • Version : vX.Y.Z → vA.B.C
 • Fichiers : [liste]
-• Branch poussée → Railway auto-deploy en cours
+• PR mergée → main → Railway auto-deploy en cours
 ```
 
 | Type | Bump |
@@ -143,7 +156,3 @@ Puis informer l'utilisateur :
 | Refacto / config / docs | AUCUN |
 
 **Seule exception : si `npm test` échoue → stopper et signaler avant tout push.**
-
-```bash
-npm version patch  # ou minor — puis commit + push
-```
