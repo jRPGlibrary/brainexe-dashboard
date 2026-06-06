@@ -115,8 +115,44 @@ const lifeExpectancy = {
   }
 };
 
+/**
+ * ECO LIFECYCLE — cycles légers, zéro appel API.
+ * - Toutes les 15 min : decay émotions (state machine pure)
+ * - Toutes les heures : forget mémoire épisodique (nettoyage DB)
+ */
+const ecoCycles = [];
+
+async function startEcoLifecycleCycles(db) {
+  // Decay émotionnel toutes les 15 min
+  ecoCycles.push(
+    setInterval(async () => {
+      try {
+        if (shared.emotionalSystem) await shared.emotionalSystem.decay(15);
+      } catch (_) {}
+    }, 15 * 60 * 1000)
+  );
+
+  // Consolidation mémoire épisodique toutes les heures
+  ecoCycles.push(
+    setInterval(async () => {
+      try {
+        if (shared.memory) await shared.memory.forget();
+      } catch (_) {}
+    }, 60 * 60 * 1000)
+  );
+
+  pushLog('SYS', `✅ ${ecoCycles.length} cycles éco démarrés (15min decay, 1h memory)`, 'success');
+}
+
+function stopEcoLifecycleCycles() {
+  for (const cycle of ecoCycles) clearInterval(cycle);
+  ecoCycles.length = 0;
+}
+
 module.exports = {
   startLifecycleCycles,
   stopLifecycleCycles,
+  startEcoLifecycleCycles,
+  stopEcoLifecycleCycles,
   lifeExpectancy
 };

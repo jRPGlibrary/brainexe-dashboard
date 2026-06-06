@@ -35,6 +35,7 @@ const { setSlotPresence, postSlotTransitionMessage } = require('./features/prese
 const { sendOwnerBriefing } = require('./features/ownerBriefing');
 const { compactMemory, getSmartMemory } = require('./db/intelligentMemory');
 const { cleanupOldPending } = require('./db/conversationSummaries');
+const { triggerDmSummaryIfNeeded } = require('./db/dmHistory');
 
 let convCron = null, replyCron = null, floatingEventsCron = null;
 let moodResetCron = null, driftCron = null, relanceCron = null;
@@ -309,31 +310,37 @@ function startConvCron() {
   }, { timezone: 'Europe/Paris' });
 
   // Compaction mémoire hebdo — dimanche 3h
-  // Distille les messages de la semaine vers smartMemory (1 appel Claude/user actif)
+  // Source : conversationSummaries (sessions de la semaine) → smartMemory (profil compact)
   cron.schedule('0 3 * * 0', async () => {
     if (!shared.mongoDb) return;
     try {
       const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const activeUsers = await shared.mongoDb.collection('messageLog')
-        .distinct('authorId', { createdAt: { $gte: since } });
-      if (!activeUsers.length) return;
-      pushLog('SYS', `🧠 Compaction mémoire hebdo — ${activeUsers.length} user(s) actifs`);
-      for (let i = 0; i < activeUsers.length; i++) {
-        const userId = activeUsers[i];
+
+      // Récupérer les users actifs depuis conversationSummaries (source fiable)
+      const activeDocs = await shared.mongoDb.collection('conversationSummaries')
+        .find({ lastUpdated: { $gte: since } }, { projection: { userId: 1, recentSessions: 1 } })
+        .toArray();
+
+      if (!activeDocs.length) return;
+      pushLog('SYS', `🧠 Compaction mémoire hebdo — ${activeDocs.length} user(s) actifs`);
+
+      for (let i = 0; i < activeDocs.length; i++) {
+        const { userId, recentSessions = [] } = activeDocs[i];
+        if (!userId) continue;
         try {
-          const messages = await shared.mongoDb.collection('messageLog')
-            .find({ authorId: userId, createdAt: { $gte: since } })
-            .sort({ createdAt: -1 })
-            .limit(20)
-            .toArray();
-          if (!messages.length) continue;
-          const recentEvents = messages.map(m => ({
-            date: m.createdAt?.toISOString?.() || 'récent',
-            summary: `[${m.source || 'server'}${m.timeSlot ? '/' + m.timeSlot : ''}] ${(m.content || '').slice(0, 80)}`,
-          }));
+          // Utiliser les résumés de session comme source pour la compaction
+          const recentEvents = recentSessions
+            .slice(-8)
+            .map(s => ({
+              date: s.date?.toISOString?.() || 'récent',
+              summary: s.summary || '',
+            }))
+            .filter(e => e.summary);
+
+          if (!recentEvents.length) continue;
           const existing = await getSmartMemory(userId, 'user');
           await compactMemory(userId, 'user', recentEvents, existing);
-          if (i < activeUsers.length - 1) await new Promise(r => setTimeout(r, 2000));
+          if (i < activeDocs.length - 1) await new Promise(r => setTimeout(r, 2000));
         } catch (err) {
           pushLog('ERR', `Compaction ${userId}: ${err.message}`, 'error');
         }

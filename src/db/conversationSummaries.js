@@ -4,8 +4,9 @@ const { callClaude } = require('../ai/claude');
 const { extractJson } = require('../utils');
 
 const COLLECTION = 'conversationSummaries';
-const TRIGGER_MSGS = 4;      // Résumer après 4 messages (2 échanges complets)
-const MAX_SESSIONS = 5;
+const TRIGGER_MSGS = 4;
+const MAX_SESSIONS = 15;
+const MEGA_SUMMARY_TRIGGER = 8;   // générer un méga-résumé après N sessions
 const SUMMARY_COOLDOWN_MS = 5 * 60 * 1000;
 
 async function _getDoc(userId, type) {
@@ -21,12 +22,44 @@ async function recordInteraction(userId, role, content, type = 'server') {
       { userId, type },
       {
         $push: { pendingMessages: { $each: [msg], $slice: -20 } },
-        $setOnInsert: { userId, type, recentSessions: [], currentSummary: '', topics: [] },
+        $setOnInsert: { userId, type, recentSessions: [], currentSummary: '', topics: [], longTermSummary: '' },
         $set: { lastUpdated: new Date() },
       },
       { upsert: true }
     );
   } catch (_) {}
+}
+
+async function _generateMegaSummary(userId, type, sessions) {
+  if (!shared.mongoDb || sessions.length < MEGA_SUMMARY_TRIGGER) return null;
+  try {
+    const sessionLines = sessions
+      .slice(-MEGA_SUMMARY_TRIGGER)
+      .map((s, i) => {
+        const d = new Date(s.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+        return `${d}: ${s.summary}`;
+      })
+      .join('\n');
+
+    const { text } = await callClaude(
+      'Synthétise en UNE phrase (max 150 chars) l\'essentiel de la relation entre Brainee et cette personne sur la période. Retourne UNIQUEMENT la phrase, sans ponctuation finale ni guillemets.',
+      sessionLines.slice(0, 1000),
+      80,
+      null,
+      'claude-haiku-4-5-20251001'
+    );
+
+    const longTermSummary = (text || '').slice(0, 160).trim();
+    if (longTermSummary) {
+      await shared.mongoDb.collection(COLLECTION).updateOne(
+        { userId, type },
+        { $set: { longTermSummary, longTermSummaryUpdatedAt: new Date() } }
+      );
+    }
+    return longTermSummary;
+  } catch (_) {
+    return null;
+  }
 }
 
 async function triggerSummaryIfNeeded(userId, username, type = 'server') {
@@ -61,13 +94,20 @@ async function triggerSummaryIfNeeded(userId, username, type = 'server') {
     }
 
     const session = { date: new Date(), summary, topics };
+    const updatedSessions = [...(doc.recentSessions || []), session].slice(-MAX_SESSIONS);
+
     await shared.mongoDb.collection(COLLECTION).updateOne(
       { userId, type },
       {
-        $set: { currentSummary: summary, topics, lastSummarizedAt: new Date(), pendingMessages: [] },
-        $push: { recentSessions: { $each: [session], $slice: -MAX_SESSIONS } },
+        $set: { currentSummary: summary, topics, lastSummarizedAt: new Date(), pendingMessages: [], recentSessions: updatedSessions },
       }
     );
+
+    // Déclencher le méga-résumé quand on atteint le seuil (tous les N sessions)
+    if (updatedSessions.length >= MEGA_SUMMARY_TRIGGER && updatedSessions.length % MEGA_SUMMARY_TRIGGER === 0) {
+      _generateMegaSummary(userId, type, updatedSessions).catch(() => {});
+    }
+
     pushLog('SYS', `📝 Résumé conv → ${username} (${type})`, 'success');
   } catch (err) {
     pushLog('ERR', `convSummary trigger: ${err.message}`, 'error');
@@ -77,12 +117,20 @@ async function triggerSummaryIfNeeded(userId, username, type = 'server') {
 function formatConvSummaryBlock(doc) {
   if (!doc) return '';
   const parts = [];
+
+  // Méga-résumé long terme (mémoire persistante > 2 semaines)
+  if (doc.longTermSummary) {
+    parts.push(`[MÉMOIRE LONG TERME] ${doc.longTermSummary}`);
+  }
+
   if (doc.currentSummary) {
     const d = doc.lastSummarizedAt
       ? new Date(doc.lastSummarizedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
       : '?';
     parts.push(`[DERNIÈRE CONV - ${d}] ${doc.currentSummary}`);
-    const hist = (doc.recentSessions || []).slice(-4, -1).reverse();
+
+    // 4 sessions précédentes condensées (sans la dernière qui est currentSummary)
+    const hist = (doc.recentSessions || []).slice(-5, -1).reverse();
     if (hist.length > 0) {
       const histStr = hist.map(s => {
         const hd = new Date(s.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
@@ -91,7 +139,8 @@ function formatConvSummaryBlock(doc) {
       parts.push(`[SESSIONS PRÉCÉDENTES] ${histStr}`);
     }
   }
-  // Inject unsummarized pending messages so context survives restarts
+
+  // Messages non encore résumés
   const pending = (doc.pendingMessages || []).slice(-6);
   if (pending.length > 0) {
     const pendingStr = pending.map(m => `${m.role === 'user' ? 'User' : 'Brainee'}: ${m.content}`).join('\n');

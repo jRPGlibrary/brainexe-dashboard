@@ -108,8 +108,8 @@ const { registerAffinityCommand } = require('./src/features/affinityCommand');
 const { getFundingData, calculateTotalCosts, updateBotStatus } = require('./src/project/funding');
 const { ensureSupportChannel, postCostUpdateEmbed } = require('./src/features/supportChannel');
 
-// ── BRAINEE-LIVING : en veille (aucun appel Claude, aucun token) ──
-// const { initializeBraineeAsLivingBeing } = require('./src/being');
+// ── BRAINEE-LIVING : mode éco (3 modules, 0 token) ──
+const { initializeBraineeEcoMode } = require('./src/being');
 
 // ── AUTH UTILS ──────────────────────────────────────────────────────
 const { isSessionValid } = require('./src/api/auth');
@@ -182,9 +182,14 @@ discord.once('clientReady', async () => {
     pushLog('ERR', `initChannelDirectory boot: ${e.message}`, 'error')
   ), 30000);
 
-  // ── BRAINEE-LIVING : en veille ────────────────────────────────
-  // Désactivé — aucun appel Claude, aucun token consommé.
-  // Réactiver : décommenter require + ce bloc quand utile.
+  // ── BRAINEE-LIVING éco — non-bloquant, 0 token, 3 modules ──────
+  setTimeout(() => {
+    if (shared.mongoDb) {
+      initializeBraineeEcoMode(shared.mongoDb).catch(e =>
+        pushLog('ERR', `Being éco init : ${e.message}`, 'error')
+      );
+    }
+  }, 35000);
 
   await syncDiscordToFile('Démarrage v1.0.0-rc.7');
 });

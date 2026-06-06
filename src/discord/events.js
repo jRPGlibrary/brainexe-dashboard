@@ -68,6 +68,8 @@ const {
 } = require('../features/dmOutreach');
 const { recordEngagement } = require('../db/messageEngagement');
 const { recordInteraction, triggerSummaryIfNeeded, getConvSummary } = require('../db/conversationSummaries');
+const { triggerDmSummaryIfNeeded } = require('../db/dmHistory');
+const { getRelevantMemoryBlocks } = require('../db/memoryRetrieval');
 
 // Flags d'instructions par user en DM — persistés en MongoDB, cache in-memory
 // { noLinks: bool, beShort: bool }
@@ -322,10 +324,10 @@ async function handleMentionReply(message, userQuery) {
     const taggedMembers = [...message.mentions.users.values()].filter(u => u.id !== shared.discord.user.id).map(u => '@' + u.username);
     const taggedBlock = taggedMembers.length > 0 ? `Membres tagués : ${taggedMembers.join(', ')}. Tu peux les évoquer naturellement SANS les re-tagger — ils ont déjà été notifiés.` : '';
 
-    // 🔁 Anti-répétition lexicale — mots récents utilisés par Brainee dans ce salon
-    const recentBraineeWords = extractRecentBraineeWords(fetched, 4, shared.discord.user?.id);
+    // 🔁 Anti-répétition lexicale — cap à 10 mots max pour économiser les tokens
+    const recentBraineeWords = extractRecentBraineeWords(fetched, 4, shared.discord.user?.id).slice(0, 10);
     const antiRepeatBlock = recentBraineeWords.length > 0
-      ? `\n🔁 MOTS RÉCENTS À ÉVITER (tu les as utilisés dans tes derniers messages) : ${recentBraineeWords.join(', ')}. Utilise des synonymes ou reformule complètement.`
+      ? `\n🔁 MOTS À ÉVITER : ${recentBraineeWords.join(', ')}. Reformule.`
       : '';
 
     const needsYoutube = YOUTUBE_KEYWORDS.some(kw => userQuery.toLowerCase().includes(kw));
@@ -341,7 +343,54 @@ async function handleMentionReply(message, userQuery) {
     const temporalBlock = getTemporalBlock();
     // 🔗 Contexte DM récents avec cette personne pour faire le lien serveur ↔ DM
     const dmCrossContext = await enrichServerWithDmContext(message.author.id, message.author.username).catch(() => '');
-    const dynamicPrompt = `${temporalBlock}\n${toneInstruction}\n💞 LIEN : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\nVibe du jour : ${vibe.name} — ${vibe.desc}.\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${narrativeBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${memoryBlock}\n${intentBlock}${singularBlock}${convictionBlock}${appreciationBlock}${antiRepeatBlock}${convSummaryBlock}\nContexte #${message.channel.name} :\n${contextLines}\n${dmCrossContext}\n${taggedBlock}\n${DISCORD_LENGTH_CLAUSE}\nTu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.\n${LIGHT_TAG_CLAUSE}${GAMING_FACTS_CLAUSE}`;
+
+    // 🔍 RAG léger — filtrer les blocs mémoire par pertinence au message
+    const filteredBlocks = getRelevantMemoryBlocks(userQuery, {
+      narrativeBlock,
+      memberStoriesBlock,
+      convSummaryBlock,
+      tasteBlock,
+      memoryBlock,
+    });
+
+    // 📐 Prompt structuré XML — meilleure hiérarchie sémantique pour Claude
+    const dynamicPrompt = `${temporalBlock}
+
+<identity>
+Humeur du jour : ${mood}. ${getMoodInjection(mood)}
+Vibe du jour : ${vibe.name} — ${vibe.desc}.
+${temperamentBlock}
+${emotionBlock}${combosBlock}
+</identity>
+
+<relationship>
+${bondToneInstruction}
+💞 LIEN : ${bondBlock}
+${vipBlock}${singularBlock}${appreciationBlock}${convictionBlock}
+</relationship>
+
+<relevant_memory>
+${filteredBlocks.narrativeBlock}${filteredBlocks.memberStoriesBlock}${filteredBlocks.tasteBlock}${vulnBlock}
+</relevant_memory>
+
+<conversation>
+${intentBlock}
+${filteredBlocks.memoryBlock}
+${filteredBlocks.convSummaryBlock}
+Contexte #${message.channel.name} :
+${contextLines}
+${dmCrossContext}
+</conversation>
+
+<instructions>
+${toneInstruction}
+${antiRepeatBlock}
+${taggedBlock}
+${DISCORD_LENGTH_CLAUSE}
+Tu réponds à ${message.author.username} via reply Discord — pas besoin de re-tagger, la notification part toute seule.
+Si tu as mentionné quelque chose dans une session précédente avec cette personne, sois cohérente avec ça.
+${LIGHT_TAG_CLAUSE}${GAMING_FACTS_CLAUSE}
+</instructions>`;
 
     const { getContextualMaxTokens } = require('../utils');
     // 🖼️ Captation images jointes par l'utilisateur
@@ -626,7 +675,47 @@ function registerMessageHandlers() {
         ? `\n[Note : des images ont été partagées dans cet échange. Si l'utilisateur fait un suivi sans en renvoyer, base-toi sur tes réponses précédentes — ne lui redemande pas les images.]`
         : '';
       const penduInstruction = `\n\n🎮 PENDU : Tu peux proposer spontanément une partie de pendu RPG/JRPG, ou accepter si l'utilisateur en demande une. Si tu décides de lancer le jeu, inclus exactement \`[PENDU]\` sur une ligne seule dans ta réponse — le jeu démarre automatiquement. N'explique pas ce marker, fais juste comme si tu lançais la partie naturellement.`;
-      const dynamicPrompt = `${dmTemporalBlock}\n${toneInstruction}\n💞 LIEN DM : ${bondBlock}\n${bondToneInstruction}\n${vipBlock}\n\nHumeur du jour : ${mood}. ${getMoodInjection(mood)}\n${temperamentBlock}\n${emotionBlock}${combosBlock}${vulnBlock}\n${memberStoriesBlock}\n${tasteBlock}\n${dmNarrativeBlock}${dmConvSummaryBlock}\n\n${historyBlock ? `Échanges récents :\n${historyBlock}` : 'Premier échange avec cette personne.'}\n\nTu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie. Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.\n${DISCORD_LENGTH_CLAUSE}${dmImgInstruction}${imgMemoryInstruction}${penduInstruction}${_flagsBlock ? '\n' + _flagsBlock : ''}${_selfRefBlock}`;
+
+      // 🔍 RAG léger pour les DMs aussi
+      const dmFilteredBlocks = getRelevantMemoryBlocks(enrichedUserContent || userContent, {
+        narrativeBlock: dmNarrativeBlock,
+        memberStoriesBlock,
+        convSummaryBlock: dmConvSummaryBlock,
+        tasteBlock,
+        memoryBlock: '',
+      });
+
+      // 📐 Prompt DM structuré XML
+      const dynamicPrompt = `${dmTemporalBlock}
+
+<identity>
+Humeur du jour : ${mood}. ${getMoodInjection(mood)}
+${temperamentBlock}
+${emotionBlock}${combosBlock}
+</identity>
+
+<relationship>
+${bondToneInstruction}
+💞 LIEN DM : ${bondBlock}
+${vipBlock}
+</relationship>
+
+<relevant_memory>
+${dmFilteredBlocks.narrativeBlock}${dmFilteredBlocks.memberStoriesBlock}${dmFilteredBlocks.tasteBlock}${vulnBlock}
+${dmFilteredBlocks.convSummaryBlock}
+</relevant_memory>
+
+<conversation>
+${historyBlock ? `Échanges récents :\n${historyBlock}` : 'Premier échange avec cette personne.'}
+</conversation>
+
+<instructions>
+${toneInstruction}
+Tu es en message privé avec ${message.author.username}. Réponds de façon naturelle et suivie.
+Si une discussion du serveur est pertinente pour ce DM, fais le lien naturellement sans le signaler explicitement.
+Si tu as mentionné quelque chose dans une session précédente avec cette personne, sois cohérente avec ça.
+${DISCORD_LENGTH_CLAUSE}${dmImgInstruction}${imgMemoryInstruction}${penduInstruction}${_flagsBlock ? '\n' + _flagsBlock : ''}${_selfRefBlock}
+</instructions>`;
       const { getContextualMaxTokens } = require('../utils');
       const dmAvailableTools = getAvailableTools();
       const dmQueryText = (enrichedUserContent || userContent || '').toLowerCase();
@@ -733,6 +822,7 @@ function registerMessageHandlers() {
       recordInteraction(message.author.id, 'user', userContent, 'dm').catch(() => {});
       recordInteraction(message.author.id, 'brainee', reply, 'dm').catch(() => {});
       triggerSummaryIfNeeded(message.author.id, message.author.username, 'dm').catch(() => {});
+      triggerDmSummaryIfNeeded(message.author.id, message.author.username).catch(() => {});
 
       await updateMemberProfile(message.author.id, message.author.username, userContent);
       await applyInteractionToBond(message.author.id, message.author.username, userContent);
