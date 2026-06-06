@@ -29,11 +29,23 @@ async function connectMongoDB() {
       { entityId: 1, entityType: 1 },
       { unique: true, name: 'smartMemory_entity' }
     );
-    pushLog('SYS', '✅ MongoDB Atlas connecté — memberProfiles + botState + channelMemory + dmHistory + channelDirectory + memberBonds + messageLog TTL + smartMemory', 'success');
+    // dmUserFlags: préférences DM persistées (noLinks, beShort)
+    await shared.mongoDb.collection('dmUserFlags').createIndex({ userId: 1 }, { unique: true });
+    // conversationSummaries: index composé pour requêtes par user+type
+    await shared.mongoDb.collection('conversationSummaries').createIndex(
+      { userId: 1, type: 1 },
+      { unique: true, name: 'convSummaries_user_type' }
+    );
+    pushLog('SYS', '✅ MongoDB Atlas connecté — memberProfiles + botState + channelMemory + dmHistory + channelDirectory + memberBonds + messageLog TTL + smartMemory + dmUserFlags + conversationSummaries', 'success');
     try {
       const { loadEmotionalState } = require('../bot/emotions');
       await loadEmotionalState();
     } catch (e) { pushLog('ERR', `loadEmotionalState boot: ${e.message}`, 'error'); }
+    // Pré-chauffe le cache narratif pour que le premier post-restart ne soit pas à froid
+    try {
+      const { getNarrativeContext } = require('./narrativeMemory');
+      getNarrativeContext().catch(() => {});
+    } catch (_) {}
   } catch (err) { pushLog('ERR', `MongoDB connexion échouée : ${err.message}`, 'error'); }
 }
 
