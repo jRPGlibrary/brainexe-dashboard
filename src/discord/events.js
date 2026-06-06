@@ -69,17 +69,35 @@ const {
 const { recordEngagement } = require('../db/messageEngagement');
 const { recordInteraction, triggerSummaryIfNeeded, getConvSummary } = require('../db/conversationSummaries');
 
-// Flags d'instructions par user en DM (in-memory, reset au redémarrage)
+// Flags d'instructions par user en DM — persistés en MongoDB, cache in-memory
 // { noLinks: bool, beShort: bool }
 const _dmFlags = new Map();
 
-function _parseDmInstructions(userId, content) {
+async function _getDmFlags(userId) {
+  if (_dmFlags.has(userId)) return _dmFlags.get(userId);
+  if (!shared.mongoDb) return {};
+  try {
+    const doc = await shared.mongoDb.collection('dmUserFlags').findOne({ userId });
+    const flags = doc?.flags || {};
+    _dmFlags.set(userId, flags);
+    return flags;
+  } catch (_) { return {}; }
+}
+
+async function _parseDmInstructions(userId, content) {
   const lower = content.toLowerCase();
-  const flags = _dmFlags.get(userId) || {};
+  const flags = await _getDmFlags(userId);
   const isStop = /stop|arrête|arreter|plus de|évite|sans/.test(lower);
   if (isStop && /lien|link|url|embed/.test(lower)) flags.noLinks = true;
   if (isStop && /pavé|long|paragraphe|blabla|texte|contenu/.test(lower)) flags.beShort = true;
   _dmFlags.set(userId, flags);
+  if (shared.mongoDb) {
+    shared.mongoDb.collection('dmUserFlags').updateOne(
+      { userId },
+      { $set: { flags, updatedAt: new Date() } },
+      { upsert: true }
+    ).catch(() => {});
+  }
   return flags;
 }
 
@@ -516,7 +534,7 @@ function registerMessageHandlers() {
       const historyBlock = formatDmHistory(history);
 
       // Détection instructions user (stop les liens, version courte, etc.)
-      const _uFlags = _parseDmInstructions(message.author.id, userContent);
+      const _uFlags = await _parseDmInstructions(message.author.id, userContent);
       const _lowerDm = userContent.toLowerCase();
       const _wantsShort = /version courte|raccourcis|plus court|résume|en bref|en résumé/i.test(_lowerDm);
       // Auto-référence : user parle du dernier message de Brainee sans citer de contenu externe
