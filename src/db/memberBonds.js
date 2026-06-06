@@ -1,6 +1,6 @@
 /**
  * ================================================
- * 💞 MEMBER BONDS — Liens affectifs par membre v0.2.6
+ * 💞 MEMBER BONDS — Liens affectifs par membre v0.3.0
  * ================================================
  * Pour chaque membre, on stocke :
  *  - baseAttachment (0-100)   : affection de fond, évolue lentement (semaines)
@@ -8,13 +8,9 @@
  *  - baseComfort    (0-100)   : confort social avec cette personne
  *  - currentMood              : état du moment avec elle/lui (change vite)
  *  - emotionalTrajectory      : résumés journaliers (14 derniers jours)
- *  - keyMoments               : moments marquants (impact + decay)
+ *  - keyMoments               : moments marquants (impact + importance + decay)
  *
- * Le lien influence :
- *  - le ton (plus attachée = plus taquine/relax)
- *  - l'humanisation (plus attachée = plus de slang, tkt, fautes d'accents)
- *  - les retours tardifs (reviens plus souvent sur ce membre)
- *  - la mémoire affective (keyMoments persistent les moments marquants)
+ * v0.3.0 : keyMoments avec score importance (1-5), injection top 8 triés par importance
  * ================================================
  */
 
@@ -126,10 +122,14 @@ async function applyInteractionToBond(userId, username, messageContent, emotiona
   }
 
   if (Math.abs(delta.warmth) >= 4 || Math.abs(delta.patience) >= 5) {
+    const impactVal = delta.warmth >= 4 ? 8 : -6;
+    // importance déduite du delta : fort impact → importance 4-5, moyen → 3
+    const importance = Math.abs(impactVal) >= 8 ? 5 : Math.abs(impactVal) >= 5 ? 4 : 3;
     addKeyMoment(bond, {
       date: new Date().toISOString(),
       event: delta.warmth >= 4 ? 'positive_moment' : 'tense_moment',
-      impact: delta.warmth >= 4 ? 8 : -6,
+      impact: impactVal,
+      importance,
       snippet: (messageContent || '').slice(0, 100),
     });
   }
@@ -140,9 +140,16 @@ async function applyInteractionToBond(userId, username, messageContent, emotiona
 
 function addKeyMoment(bond, moment) {
   if (!Array.isArray(bond.keyMoments)) bond.keyMoments = [];
-  bond.keyMoments.push({ ...moment, decay: 0.97 });
+  bond.keyMoments.push({ ...moment, importance: moment.importance || 3, decay: 0.97 });
+
   if (bond.keyMoments.length > MAX_KEY_MOMENTS) {
-    bond.keyMoments = bond.keyMoments.slice(-MAX_KEY_MOMENTS);
+    // Retirer le moment de moindre importance*decay (pas forcément le plus vieux)
+    bond.keyMoments.sort((a, b) => {
+      const scoreA = (a.importance || 3) * Math.abs(a.impact * (a.decay || 0.97));
+      const scoreB = (b.importance || 3) * Math.abs(b.impact * (b.decay || 0.97));
+      return scoreA - scoreB;
+    });
+    bond.keyMoments.shift(); // retirer le moins important
   }
 }
 
@@ -229,13 +236,31 @@ function describeBond(bond, username) {
 
   if (interactionStreak >= 4) lines.push(`Vous échangez souvent en ce moment (${interactionStreak} jours).`);
 
+  // Top 8 keyMoments triés par importance × impact × decay
   if (Array.isArray(keyMoments) && keyMoments.length) {
-    const recent = keyMoments.slice(-3).filter(m => Math.abs(m.impact) > 2);
-    if (recent.length) {
-      const positives = recent.filter(m => m.impact > 0).length;
-      const negatives = recent.filter(m => m.impact < 0).length;
-      if (positives > negatives) lines.push(`Souvenirs récents plutôt positifs avec cette personne.`);
-      else if (negatives > positives) lines.push(`Quelques frictions récentes à garder en tête, sans y revenir frontalement.`);
+    const scored = keyMoments
+      .map(m => ({ ...m, score: (m.importance || 3) * Math.abs(m.impact) * (m.decay || 0.97) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+      .filter(m => Math.abs(m.impact) > 0.5);
+
+    if (scored.length) {
+      const positives = scored.filter(m => m.impact > 0);
+      const negatives = scored.filter(m => m.impact < 0);
+      const topPositive = positives[0];
+      const topNegative = negatives[0];
+
+      if (topPositive && topPositive.snippet) {
+        lines.push(`Moment fort positif mémorisé : "${topPositive.snippet.slice(0, 60)}…"`);
+      } else if (positives.length > negatives.length) {
+        lines.push(`Souvenirs marquants plutôt positifs avec cette personne.`);
+      }
+
+      if (topNegative && Math.abs(topNegative.impact) > 4) {
+        lines.push(`Point de friction mémorisé : garder en tête sans y revenir frontalement.`);
+      } else if (negatives.length > positives.length) {
+        lines.push(`Quelques frictions dans l'historique — rester attentive.`);
+      }
     }
   }
 
@@ -263,9 +288,6 @@ function getBondSignal(bond) {
 
 /**
  * Instruction de TON DIRECTE injectée dans le prompt.
- * Force le LLM à adapter son registre selon le niveau d'attachement.
- * Plus l'attachement est bas, plus Brainee est distante / formelle.
- * Plus il est haut, plus elle se lâche.
  */
 function getBondToneInstruction(bond, username = 'cette personne') {
   const att = bond?.baseAttachment ?? 30;
@@ -285,13 +307,14 @@ function getBondToneInstruction(bond, username = 'cette personne') {
   return `🎚️ TON LIBRE : Tu es très attachée à ${username} (attachement ${Math.round(att)}/100, confort ${Math.round(comfort)}/100). Tu peux être franche, taquine${teasing > 55 ? ', joueuse' : ''}, te lâcher complètement — "tkt", "j'sais pas", "ptet", surnoms ok, vannes ok. Confiance haute ${Math.round(trust)}/100.`;
 }
 
-async function forceKeyMoment(userId, eventType, impact, snippet = '') {
+async function forceKeyMoment(userId, eventType, impact, snippet = '', importance = 4) {
   const bond = await getMemberBond(userId);
   if (!bond) return;
   addKeyMoment(bond, {
     date: new Date().toISOString(),
     event: eventType,
     impact,
+    importance,
     snippet: snippet.slice(0, 100),
   });
   await upsertMemberBond(bond);

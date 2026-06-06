@@ -138,8 +138,49 @@ async function getBeingStatus() {
   };
 }
 
+/**
+ * ECO MODE — active uniquement emotions + memory + identity (zéro appel API).
+ * Coût token : $0. Bénéfice : cohérence émotionnelle inter-session + mémoire épisodique.
+ *
+ * Modules NON activés en éco : consciousness, dreams, desires, fears, decisions,
+ * expression, relationships, evolution, existence.
+ */
+async function initializeBraineeEcoMode(db) {
+  try {
+    pushLog('SYS', '🌱 BRAINEE-LIVING éco : initialisation légère (3 modules)...');
+
+    await initializeBeingCollections(db);
+
+    await initializeEmotions(db);
+    pushLog('SYS', '✅ [ÉCO] Système émotionnel en ligne');
+
+    await initializeMemory(db);
+    pushLog('SYS', '✅ [ÉCO] Mémoire épisodique initialisée');
+
+    await initializeIdentity(db);
+    pushLog('SYS', '✅ [ÉCO] Identité chargée');
+
+    const { startEcoLifecycleCycles } = require('./lifecycle');
+    await startEcoLifecycleCycles(db);
+
+    pushLog('SYS', '🌱 BRAINEE-LIVING éco actif — 3 systèmes, 0 tokens/h', 'success');
+
+    return {
+      status: 'eco',
+      modules: 3,
+      emotions: shared.emotionalSystem,
+      identity: shared.identity,
+      memory: shared.memory,
+    };
+  } catch (err) {
+    pushLog('ERR', `❌ Échec initializeBraineeEcoMode : ${err.message}`, 'error');
+    // Non-bloquant : le bot continue sans le module being
+  }
+}
+
 module.exports = {
   initializeBraineeAsLivingBeing,
+  initializeBraineeEcoMode,
   isBeingAlive,
   getBeingStatus
 };
