@@ -337,7 +337,7 @@ function startConvCron() {
             }))
             .filter(e => e.summary);
 
-          if (!recentEvents.length) continue;
+          if (recentEvents.length < 2) continue; // pas assez de données pour Haiku
           const existing = await getSmartMemory(userId, 'user');
           await compactMemory(userId, 'user', recentEvents, existing);
           if (i < activeDocs.length - 1) await new Promise(r => setTimeout(r, 2000));

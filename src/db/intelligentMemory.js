@@ -59,16 +59,19 @@ async function compactMemory(entityId, entityType, recentEvents, existingMemory)
 
     // Prompt ultra-court pour compacter (max 200 tokens)
     const { text: analysis } = await callClaude(
-      'Tu analyses la mémoire d\'une personne et compactes les infos essentielles.',
-      `Entité: ${sanitizeForJson(entityId)} (type: ${entityType})\n\nMémoire existante:\n${existingStr}\n\nÉvénements récents:\n${recentEventsStr}\n\nRetourne JSON STRICT:\n{\n  "coreTraits": ["trait1", "trait2"],\n  "importantTopics": ["sujet1", "sujet2"],\n  "relatedPeople": {"personne": "relation"},\n  "style": "description ultra-courte du style",\n  "lastUsedTopics": ["recent1", "recent2"],\n  "topicsToForget": ["oubli1"]\n}`,
-      200,
+      'Réponds UNIQUEMENT avec du JSON valide, aucun autre texte, aucun markdown, aucune explication.',
+      `Analyse ces résumés de conversation et retourne ce JSON exact (remplace les exemples par les vraies valeurs) :\n{"coreTraits":["trait1"],"importantTopics":["sujet1"],"relatedPeople":{},"style":"style court","lastUsedTopics":["recent1"],"topicsToForget":[]}\n\nDonnées à analyser (type: ${entityType}) :\n${recentEventsStr}`,
+      220,
       null,
       'claude-haiku-4-5-20251001'
     );
 
     let parsed;
     try {
-      const clean = extractJson(analysis);
+      // Tentative 1 : extraction JSON standard
+      let clean = extractJson(analysis);
+      // Tentative 2 : le texte est peut-être directement du JSON (sans wrapper)
+      if (!clean && analysis.trim().startsWith('{')) clean = analysis.trim();
       if (!clean) {
         pushLog('ERR', `compactMemory: pas de JSON pour ${entityId}`, 'error');
         return existingMemory;
