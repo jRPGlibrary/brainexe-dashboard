@@ -16,8 +16,8 @@ async function _getDoc(userId, type) {
 
 async function recordInteraction(userId, role, content, type = 'server') {
   if (!shared.mongoDb) return;
+  const msg = { role, content: (content || '').slice(0, 300), at: new Date() };
   try {
-    const msg = { role, content: (content || '').slice(0, 300), at: new Date() };
     await shared.mongoDb.collection(COLLECTION).updateOne(
       { userId, type },
       {
@@ -27,7 +27,20 @@ async function recordInteraction(userId, role, content, type = 'server') {
       },
       { upsert: true }
     );
-  } catch (_) {}
+  } catch (e) {
+    // E11000 : race condition upsert — retry en plain update (le doc existe déjà)
+    if (e.code === 11000) {
+      try {
+        await shared.mongoDb.collection(COLLECTION).updateOne(
+          { userId, type },
+          {
+            $push: { pendingMessages: { $each: [msg], $slice: -20 } },
+            $set: { lastUpdated: new Date() },
+          }
+        );
+      } catch (_) {}
+    }
+  }
 }
 
 async function _generateMegaSummary(userId, type, sessions) {
