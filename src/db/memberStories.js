@@ -93,6 +93,29 @@ function detectStoriesFromMessage(content = '') {
     }
   }
 
+  // PERSONAL LIFE FACT — événements de vie importants (propriété, boulot, relation)
+  const lifeFactPatterns = [
+    /\b(je suis propriétaire[^.!?\n]{0,60})/i,
+    /\bj'(?:ai|me suis) (?:acheté|loué|pris) (?:un |une |mon |ma )?([^.!?\n]{3,60})/i,
+    /\b(mon (?:nouvel?|premier) (?:appart(?:ement)?|logement|chez-moi)[^.!?\n]{0,40})/i,
+    /\b(j'(?:ai )?(?:déménagé|emménagé)[^.!?\n]{0,50})/i,
+    /\b(j'ai (?:trouvé|décroché|commencé)(?: un| une)? (?:job|boulot|CDI|CDD|stage|poste)[^.!?\n]{0,40})/i,
+    /\b(je (?:bosse|travaille) (?:chez|pour|à) [^.!?\n]{3,50})/i,
+    /\b(j'ai (?:démissionné|quitté mon (?:job|boulot|travail|poste)))/i,
+    /\b(je suis (?:en couple|fiancé(?:e)?|marié(?:e)?|pacsé(?:e)?))/i,
+    /\b(on s'est (?:séparé|quittés?|mis ensemble))/i,
+  ];
+  if (!candidates.some(c => c.type === 'fact')) {
+    for (const re of lifeFactPatterns) {
+      const m = text.match(re);
+      if (m && (m[1] || m[0])) {
+        const content = (m[1] || m[0]).trim().replace(/[,;.]$/, '').slice(0, 120);
+        candidates.push({ type: 'fact', content, confidence: 0.85 });
+        break;
+      }
+    }
+  }
+
   // CONCERN — préoccupation
   const concernSignals = [
     'fatigué', 'fatiguée', 'crevé', 'crevée', 'épuisé', 'épuisée',

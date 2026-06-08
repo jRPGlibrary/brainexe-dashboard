@@ -22,7 +22,7 @@ async function recordInteraction(userId, role, content, type = 'server') {
       { userId, type },
       {
         $push: { pendingMessages: { $each: [msg], $slice: -20 } },
-        $setOnInsert: { userId, type, recentSessions: [], currentSummary: '', topics: [], longTermSummary: '' },
+        $setOnInsert: { userId, type, recentSessions: [], currentSummary: '', topics: [], longTermSummary: '', knownFacts: [] },
         $set: { lastUpdated: new Date() },
       },
       { upsert: true }
@@ -89,19 +89,20 @@ async function triggerSummaryIfNeeded(userId, username, type = 'server') {
       .join('\n');
 
     const { text } = await callClaude(
-      'Résume en 1-2 phrases max (120 chars) cette conversation Discord entre Brainee et un membre. JSON strict: {"summary":"...","topics":["sujet1","sujet2"]}',
+      'Résume en 1-2 phrases max (120 chars) cette conversation Discord entre Brainee et un membre. Extrais aussi les faits personnels importants mentionnés (propriété, boulot, relation, événement de vie). JSON strict: {"summary":"...","topics":["sujet1"],"personalFacts":["fait personnel concis ou tableau vide"]}',
       convo.slice(0, 800),
-      130,
+      160,
       null,
       'claude-haiku-4-5-20251001'
     );
 
-    let summary = '', topics = [];
+    let summary = '', topics = [], personalFacts = [];
     try {
       const clean = extractJson(text);
       const parsed = clean ? JSON.parse(clean) : {};
       summary = (parsed.summary || text || '').slice(0, 150);
       topics = (parsed.topics || []).slice(0, 4);
+      personalFacts = (parsed.personalFacts || []).filter(f => typeof f === 'string' && f.trim().length > 5).slice(0, 3);
     } catch {
       summary = text.slice(0, 150);
     }
@@ -109,10 +110,20 @@ async function triggerSummaryIfNeeded(userId, username, type = 'server') {
     const session = { date: new Date(), summary, topics };
     const updatedSessions = [...(doc.recentSessions || []), session].slice(-MAX_SESSIONS);
 
+    // Fusionner les nouveaux faits perso dans knownFacts (dédup simple, cap 10)
+    const existingFacts = doc.knownFacts || [];
+    const mergedFacts = [...existingFacts];
+    for (const fact of personalFacts) {
+      const normalized = fact.toLowerCase().trim();
+      const isDup = mergedFacts.some(f => f.toLowerCase().includes(normalized.slice(0, 20)) || normalized.includes(f.toLowerCase().slice(0, 20)));
+      if (!isDup) mergedFacts.push(fact.trim().slice(0, 120));
+    }
+    const knownFacts = mergedFacts.slice(-10);
+
     await shared.mongoDb.collection(COLLECTION).updateOne(
       { userId, type },
       {
-        $set: { currentSummary: summary, topics, lastSummarizedAt: new Date(), pendingMessages: [], recentSessions: updatedSessions },
+        $set: { currentSummary: summary, topics, lastSummarizedAt: new Date(), pendingMessages: [], recentSessions: updatedSessions, knownFacts },
       }
     );
 
@@ -130,6 +141,11 @@ async function triggerSummaryIfNeeded(userId, username, type = 'server') {
 function formatConvSummaryBlock(doc) {
   if (!doc) return '';
   const parts = [];
+
+  // Faits personnels persistants (propriété, boulot, relation, événements de vie)
+  if (Array.isArray(doc.knownFacts) && doc.knownFacts.length > 0) {
+    parts.push(`[CE QU'ON SAIT DE CETTE PERSONNE] ${doc.knownFacts.join(' • ')}`);
+  }
 
   // Méga-résumé long terme (mémoire persistante > 2 semaines)
   if (doc.longTermSummary) {

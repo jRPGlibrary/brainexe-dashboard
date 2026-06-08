@@ -70,6 +70,7 @@ const { recordEngagement } = require('../db/messageEngagement');
 const { recordInteraction, triggerSummaryIfNeeded, getConvSummary } = require('../db/conversationSummaries');
 const { triggerDmSummaryIfNeeded } = require('../db/dmHistory');
 const { getRelevantMemoryBlocks } = require('../db/memoryRetrieval');
+const { getSmartMemory, formatSmartMemory } = require('../db/intelligentMemory');
 
 // Flags d'instructions par user en DM — persistés en MongoDB, cache in-memory
 // { noLinks: bool, beShort: bool }
@@ -297,6 +298,10 @@ async function handleMentionReply(message, userQuery) {
     // 📝 Résumé des sessions précédentes avec cette personne (v0.17.0)
     const convSummaryBlock = await getConvSummary(message.author.id, 'server').catch(() => '');
 
+    // 🧠 Mémoire compactée — traits, sujets importants, style de comm
+    const smartMem = await getSmartMemory(message.author.id, 'user').catch(() => null);
+    const smartMemBlock = formatSmartMemory(smartMem);
+
     // 💎 VIP tier (v0.8.0)
     const vipTier = getVipTier(bond);
     const vipBlock = getVipBlockForPrompt(vipTier, bond, message.author.username);
@@ -370,7 +375,7 @@ ${vipBlock}${singularBlock}${appreciationBlock}${convictionBlock}
 </relationship>
 
 <relevant_memory>
-${filteredBlocks.narrativeBlock}${filteredBlocks.memberStoriesBlock}${filteredBlocks.tasteBlock}${vulnBlock}
+${smartMemBlock}${filteredBlocks.narrativeBlock}${filteredBlocks.memberStoriesBlock}${filteredBlocks.tasteBlock}${vulnBlock}
 </relevant_memory>
 
 <conversation>
