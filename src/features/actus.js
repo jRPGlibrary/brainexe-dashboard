@@ -134,6 +134,7 @@ async function fetchIGDBArticles(topic, postedUrls = []) {
 
   try {
     const { controller, cleanup } = withTimeout(8000);
+    const currentYear = new Date().getFullYear();
 
     pushLog('DBG', `IGDB: fetching "${topic}"`, 'debug');
 
@@ -155,18 +156,24 @@ async function fetchIGDBArticles(topic, postedUrls = []) {
 
     const articles = games
       .filter(g => g?.name && g?.summary)
+      .filter(g => {
+        const releaseYear = g.release_dates?.[0]?.y;
+        return !releaseYear || releaseYear >= currentYear;
+      })
       .filter(a => !postedUrls.includes(`igdb-${a.id}`))
       .map(g => ({
         title: `${g.name}${g.release_dates?.[0]?.y ? ` (${g.release_dates[0].y})` : ''}`,
         description: g.summary?.slice(0, 200) || 'Jeu vidéo',
         url: `https://www.igdb.com/games/${g.slug || g.id}`,
-        publishedAt: new Date().toISOString(),
+        publishedAt: g.release_dates?.[0]?.date
+          ? new Date(g.release_dates[0].date * 1000).toISOString()
+          : new Date().toISOString(),
         source: 'IGDB',
         source_id: 'igdb'
       }))
       .slice(0, 5);
 
-    pushLog('DBG', `IGDB: ${articles.length} jeux trouvés`, 'debug');
+    pushLog('DBG', `IGDB: ${articles.length} jeux trouvés (${currentYear}+)`, 'debug');
     return articles;
   } catch (err) {
     pushLog('DBG', `IGDB: ${err.message}`, 'debug');
