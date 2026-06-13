@@ -8,6 +8,7 @@ const cron = require('node-cron');
 
 let tiktokConnection = null;
 let liveActive = false;
+let liveConnecting = false;
 let liveStartTime = null;
 let liveStats = { peakViewers: 0, totalLikes: 0, totalGifts: 0, giftDetails: {}, donors: {}, totalDiamonds: 0 };
 let tiktokCron = null;
@@ -279,6 +280,7 @@ async function sendLiveEndEmbed(title) {
 
 function resetLiveState() {
   liveActive = false;
+  liveConnecting = false;
   shared.tiktokLiveActive = false;
   liveStartTime = null;
   liveMessageId = null;
@@ -300,7 +302,8 @@ function connectToTikTokLive() {
     resetLiveState();
   }
 
-  if (liveActive) return;
+  // Bloque si live actif OU si une connexion/validation est déjà en cours
+  if (liveActive || liveConnecting) return;
 
   let WebcastPushConnection;
   try { WebcastPushConnection = require('tiktok-live-connector').WebcastPushConnection; }
@@ -308,6 +311,7 @@ function connectToTikTokLive() {
 
   const conn = new WebcastPushConnection(`@${cfg.username}`);
   let title = `${cfg.username} est en live`;
+  liveConnecting = true;
 
   // Timeout de 15s : si TikTok ne répond pas, on abandonne proprement
   const connectWithTimeout = Promise.race([
@@ -319,20 +323,48 @@ function connectToTikTokLive() {
 
   connectWithTimeout
     .then(s => {
-      tiktokConnection = conn;
-      liveActive = true;
-      shared.tiktokLiveActive = true;
-      liveStartTime = Date.now();
-      liveStats = { peakViewers: 0, totalLikes: 0, totalGifts: 0, giftDetails: {}, donors: {}, totalDiamonds: 0 };
       title = s.roomInfo?.title || title;
+      liveStats = { peakViewers: 0, totalLikes: 0, totalGifts: 0, giftDetails: {}, donors: {}, totalDiamonds: 0 };
       tiktokOfflineNotified = false;
-      pushLog('SYS', `📺 Live : "${title}"`, 'success');
-      sendLiveStartEmbed(title, s.roomInfo?.userCount || 0, s.roomInfo);
 
-      // Écouteurs attachés uniquement après connexion réussie
-      conn.on('roomUser', d => { if ((d.viewerCount || 0) > liveStats.peakViewers) liveStats.peakViewers = d.viewerCount; });
-      conn.on('like', d => { if (d.totalLikeCount) liveStats.totalLikes = d.totalLikeCount; });
+      let liveConfirmed = false;
+
+      // Validation 20s : conn.connect() peut réussir sans que le live soit réel.
+      // On attend un premier événement roomUser/like/gift avant de poster l'alerte.
+      const validationTimeout = setTimeout(() => {
+        if (!liveConfirmed) {
+          pushLog('SYS', '📺 TikTok : connexion sans activité (20s) — faux positif ignoré', 'info');
+          try { conn.removeAllListeners(); } catch (_) {}
+          try { conn.disconnect?.(); } catch (_) {}
+          tiktokConnection = null;
+          liveStartTime = null;
+          liveConnecting = false;
+        }
+      }, 20_000);
+
+      const confirmLive = () => {
+        if (liveConfirmed) return;
+        liveConfirmed = true;
+        clearTimeout(validationTimeout);
+        tiktokConnection = conn;
+        liveActive = true;
+        liveConnecting = false;
+        shared.tiktokLiveActive = true;
+        liveStartTime = Date.now();
+        pushLog('SYS', `📺 Live validé : "${title}"`, 'success');
+        sendLiveStartEmbed(title, liveStats.peakViewers, s.roomInfo);
+      };
+
+      conn.on('roomUser', d => {
+        if (!liveConfirmed) confirmLive();
+        if ((d.viewerCount || 0) > liveStats.peakViewers) liveStats.peakViewers = d.viewerCount;
+      });
+      conn.on('like', d => {
+        if (!liveConfirmed) confirmLive();
+        if (d.totalLikeCount) liveStats.totalLikes = d.totalLikeCount;
+      });
       conn.on('gift', d => {
+        if (!liveConfirmed) confirmLive();
         if (d.giftType === 1 && !d.repeatEnd) return;
         if ((d.diamondCount || 0) > 0 || d.giftName) {
           liveStats.totalGifts += (d.repeatCount || 1);
@@ -346,20 +378,28 @@ function connectToTikTokLive() {
           liveStats.totalDiamonds += diamondValue;
 
           if (!liveStats.donors[username]) {
-            liveStats.donors[username] = {
-              nickname,
-              totalDiamonds: 0,
-              count: 0
-            };
+            liveStats.donors[username] = { nickname, totalDiamonds: 0, count: 0 };
           }
           liveStats.donors[username].totalDiamonds += diamondValue;
           liveStats.donors[username].count += 1;
         }
       });
 
+      // Si roomInfo signale déjà des viewers (live bien établi), validation immédiate
+      if ((s.roomInfo?.userCount || 0) > 0) confirmLive();
+
       const onEnd = async () => {
-        if (!liveActive) return;
-        liveActive = false; // guard immédiat — empêche streamEnd + disconnected de doubler
+        clearTimeout(validationTimeout);
+        liveConnecting = false;
+        if (!liveConfirmed) {
+          // Fin avant validation — faux positif, nettoyage silencieux
+          try { conn.removeAllListeners(); } catch (_) {}
+          tiktokConnection = null;
+          liveStartTime = null;
+          return;
+        }
+        if (!liveActive) return; // guard — empêche streamEnd + disconnected de doubler
+        liveActive = false;
         await sendLiveEndEmbed(title);
         resetLiveState();
       };
@@ -367,7 +407,7 @@ function connectToTikTokLive() {
       conn.on('disconnected', onEnd);
     })
     .catch(err => {
-      // Nettoyage : supprimer tous les écouteurs de la connexion ratée pour éviter les fuites mémoire
+      liveConnecting = false;
       try { conn.removeAllListeners(); } catch (_) {}
       try { conn.disconnect?.(); } catch (_) {}
       if (!tiktokOfflineNotified) {
